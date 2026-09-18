@@ -1,0 +1,606 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Socket } from 'socket.io-client';
+import {
+  ClientEvents,
+  EmoteReactionBroadcastPayload,
+  PlayerSeat,
+  QuickChatBroadcastPayload,
+  SanitizedPlayerState,
+  ServerEvents,
+} from '@baffa/shared';
+import { MessageSquare, MessageSquareOff, Smile, X } from 'lucide-react';
+import { useGameAudio } from '../../hooks/useGameAudio';
+
+const QUICK_CHATS = [
+  'يلا بينا 🔥',
+  'ركز يا زميل 😂',
+  'فوت؟ 😏',
+  'الدوش يا رجالة 🎲',
+  'براحة يا معلم 😎',
+  'إيه اللعب ده 😂',
+  'أنا شايفك 👀',
+  'استنى دورك ⏳',
+  'كده تمام 👌',
+  'يا نهار أبيض 😱',
+  'هنكسبها إن شاء الله 🏆',
+  'ركز يا خصم 😎',
+];
+
+const EMOJIS = ['😂', '😎', '😏', '🤣', '🔥', '💀', '😭', '❤️', '👏', '👑', '🤦', '😮'];
+
+interface ActiveChat {
+  id: string;
+  userId: string;
+  senderName: string;
+  text: string;
+  seat?: number | null;
+  createdAt: number;
+}
+
+interface ActiveReaction {
+  id: string;
+  userId: string;
+  senderName: string;
+  emoji: string;
+  seat?: number | null;
+  createdAt: number;
+}
+
+interface ChatAndReactionsProps {
+  socket: Socket | null;
+  roomId: string;
+  myUserId: string;
+  quickChatEnabled: boolean;
+  reactionsEnabled: boolean;
+  isChatMuted?: boolean;
+  isReactionsMuted?: boolean;
+  players?: SanitizedPlayerState[];
+  mySeat?: PlayerSeat | null;
+}
+
+export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
+  socket,
+  roomId,
+  myUserId,
+  quickChatEnabled,
+  reactionsEnabled,
+  isChatMuted = false,
+  isReactionsMuted = false,
+  players = [],
+  mySeat = null,
+}) => {
+  const { playSound } = useGameAudio();
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeChats, setActiveChats] = useState<ActiveChat[]>([]);
+  const [activeReactions, setActiveReactions] = useState<ActiveReaction[]>([]);
+
+  // Relative seat calculation for visual positioning on the felt table
+  const getRelativeSeat = useCallback(
+    (targetSeat: number | null | undefined): 'BOTTOM' | 'TOP' | 'LEFT' | 'RIGHT' => {
+      if (targetSeat === null || targetSeat === undefined) return 'BOTTOM';
+      const base = mySeat !== null && mySeat !== undefined ? Number(mySeat) : 0;
+      const diff = (Number(targetSeat) - base + 4) % 4;
+      switch (diff) {
+        case 0:
+          return 'BOTTOM'; // Me (South)
+        case 1:
+          return 'RIGHT'; // Right Opponent (East in RTL visual grid)
+        case 2:
+          return 'TOP'; // Partner (North)
+        case 3:
+          return 'LEFT'; // Left Opponent (West)
+        default:
+          return 'BOTTOM';
+      }
+    },
+    [mySeat]
+  );
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onQuickChat = (payload: QuickChatBroadcastPayload) => {
+      // Avoid duplicate display if already added optimistically for local user
+      if (payload.userId === myUserId) return;
+
+      const text = QUICK_CHATS.find((c) => c === payload.messageId) || payload.messageId;
+      const id = `${payload.userId}-${payload.timestamp}`;
+      const senderPlayer = players.find(
+        (p) =>
+          p.playerId === payload.userId ||
+          (payload.seat !== undefined && payload.seat !== null && Number(p.seat) === Number(payload.seat))
+      );
+      const senderName = payload.senderName || senderPlayer?.username || 'لاعب';
+      const seat =
+        payload.seat !== undefined && payload.seat !== null
+          ? Number(payload.seat)
+          : senderPlayer
+          ? Number(senderPlayer.seat)
+          : null;
+
+      setActiveChats((prev) => [...prev, { id, userId: payload.userId, senderName, text, seat, createdAt: payload.timestamp }]);
+      playSound('pop');
+      setTimeout(() => {
+        setActiveChats((prev) => prev.filter((c) => c.id !== id));
+      }, 4600);
+    };
+
+    const onReaction = (payload: EmoteReactionBroadcastPayload) => {
+      // Avoid duplicate display if already added optimistically for local user
+      if (payload.userId === myUserId) return;
+
+      const id = `${payload.userId}-${payload.timestamp}`;
+      const senderPlayer = players.find(
+        (p) =>
+          p.playerId === payload.userId ||
+          (payload.seat !== undefined && payload.seat !== null && Number(p.seat) === Number(payload.seat))
+      );
+      const senderName = payload.senderName || senderPlayer?.username || 'لاعب';
+      const seat =
+        payload.seat !== undefined && payload.seat !== null
+          ? Number(payload.seat)
+          : senderPlayer
+          ? Number(senderPlayer.seat)
+          : null;
+
+      setActiveReactions((prev) => [
+        ...prev,
+        { id, userId: payload.userId, senderName, emoji: payload.emoji, seat, createdAt: payload.timestamp },
+      ]);
+      playSound('pop');
+      setTimeout(() => {
+        setActiveReactions((prev) => prev.filter((r) => r.id !== id));
+      }, 4600);
+    };
+
+    socket.on(ServerEvents.QUICK_CHAT_BROADCAST, onQuickChat);
+    socket.on(ServerEvents.EMOTE_REACTION_BROADCAST, onReaction);
+
+    return () => {
+      socket.off(ServerEvents.QUICK_CHAT_BROADCAST, onQuickChat);
+      socket.off(ServerEvents.EMOTE_REACTION_BROADCAST, onReaction);
+    };
+  }, [socket, myUserId, players, playSound]);
+
+  const handleSendChat = (text: string) => {
+    if (!quickChatEnabled) {
+      alert('الشات محظور في هذه الغرفة من إعدادات الأدمن 🚫');
+      return;
+    }
+    const myPlayer = players.find(
+      (p) => p.playerId === myUserId || (mySeat !== null && mySeat !== undefined && Number(p.seat) === Number(mySeat))
+    );
+    if (isChatMuted || myPlayer?.isChatMuted) {
+      alert('الشات محظور عنك حالياً بقرار من حكم المباراة ⚖️');
+      return;
+    }
+    const timestamp = Date.now();
+    const id = `${myUserId}-${timestamp}`;
+    const senderName = myPlayer?.username || 'أنت';
+    const seat = mySeat !== null && mySeat !== undefined ? Number(mySeat) : myPlayer ? Number(myPlayer.seat) : 0;
+
+    // Instant optimistic display on local screen
+    setActiveChats((prev) => [...prev, { id, userId: myUserId, senderName, text, seat, createdAt: timestamp }]);
+    playSound('pop');
+    setTimeout(() => {
+      setActiveChats((prev) => prev.filter((c) => c.id !== id));
+    }, 4600);
+
+    if (socket) {
+      socket.emit(ClientEvents.QUICK_CHAT, { roomId, messageId: text });
+    }
+    setIsOpen(false);
+  };
+
+  const handleSendReaction = (emoji: string) => {
+    if (!reactionsEnabled) {
+      alert('التفاعلات محظورة في هذه الغرفة من إعدادات الأدمن 🚫');
+      return;
+    }
+    const myPlayer = players.find(
+      (p) => p.playerId === myUserId || (mySeat !== null && mySeat !== undefined && Number(p.seat) === Number(mySeat))
+    );
+    if (isReactionsMuted || myPlayer?.isReactionsMuted) {
+      alert('التفاعلات محظورة عنك حالياً بقرار من حكم المباراة ⚖️');
+      return;
+    }
+    const timestamp = Date.now();
+    const id = `${myUserId}-${timestamp}`;
+    const senderName = myPlayer?.username || 'أنت';
+    const seat = mySeat !== null && mySeat !== undefined ? Number(mySeat) : myPlayer ? Number(myPlayer.seat) : 0;
+
+    // Instant optimistic display on local screen
+    setActiveReactions((prev) => [...prev, { id, userId: myUserId, senderName, emoji, seat, createdAt: timestamp }]);
+    playSound('pop');
+    setTimeout(() => {
+      setActiveReactions((prev) => prev.filter((r) => r.id !== id));
+    }, 4600);
+
+    if (socket) {
+      socket.emit(ClientEvents.EMOTE_REACTION, { roomId, emoji });
+    }
+    setIsOpen(false);
+  };
+
+  const getPositionStyles = (
+    seat: number | null | undefined
+  ): { containerStyle: React.CSSProperties; tailStyle?: React.CSSProperties } => {
+    const rel = getRelativeSeat(seat);
+    switch (rel) {
+      case 'BOTTOM':
+        return {
+          containerStyle: {
+            bottom: '8px',
+            right: 'calc(50% + 115px)',
+          },
+          tailStyle: {
+            position: 'absolute',
+            top: '50%',
+            right: '-7px',
+            transform: 'translateY(-50%)',
+            width: 0,
+            height: 0,
+            borderTop: '6px solid transparent',
+            borderBottom: '6px solid transparent',
+            borderLeft: '7px solid var(--baffa-gold-primary)',
+          },
+        };
+      case 'TOP':
+        return {
+          containerStyle: {
+            top: '8px',
+            right: 'calc(50% + 115px)',
+          },
+          tailStyle: {
+            position: 'absolute',
+            top: '50%',
+            right: '-7px',
+            transform: 'translateY(-50%)',
+            width: 0,
+            height: 0,
+            borderTop: '6px solid transparent',
+            borderBottom: '6px solid transparent',
+            borderLeft: '7px solid var(--baffa-gold-primary)',
+          },
+        };
+      case 'RIGHT':
+        return {
+          containerStyle: {
+            top: '50%',
+            right: '95px',
+            transform: 'translateY(-50%)',
+          },
+          tailStyle: {
+            position: 'absolute',
+            top: '50%',
+            right: '-7px',
+            transform: 'translateY(-50%)',
+            width: 0,
+            height: 0,
+            borderTop: '6px solid transparent',
+            borderBottom: '6px solid transparent',
+            borderLeft: '7px solid var(--baffa-gold-primary)',
+          },
+        };
+      case 'LEFT':
+        return {
+          containerStyle: {
+            top: '50%',
+            left: '95px',
+            transform: 'translateY(-50%)',
+          },
+          tailStyle: {
+            position: 'absolute',
+            top: '50%',
+            left: '-7px',
+            transform: 'translateY(-50%)',
+            width: 0,
+            height: 0,
+            borderTop: '6px solid transparent',
+            borderBottom: '6px solid transparent',
+            borderRight: '7px solid var(--baffa-gold-primary)',
+          },
+        };
+      default:
+        return {
+          containerStyle: {
+            bottom: '8px',
+            right: 'calc(50% + 115px)',
+          },
+        };
+    }
+  };
+
+  return (
+    <>
+      {/* Floating Chat & Emoji Toggle Button */}
+      <div style={{ position: 'absolute', bottom: '22px', left: '22px', zIndex: 60 }}>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            backgroundColor: isOpen
+              ? 'var(--baffa-gold-primary)'
+              : (!quickChatEnabled && !reactionsEnabled) || (isChatMuted && isReactionsMuted)
+              ? 'rgba(239, 68, 68, 0.2)'
+              : 'rgba(18, 29, 45, 0.92)',
+            color: isOpen
+              ? '#000'
+              : (!quickChatEnabled && !reactionsEnabled) || (isChatMuted && isReactionsMuted)
+              ? '#fca5a5'
+              : 'var(--baffa-gold-primary)',
+            border: (!quickChatEnabled && !reactionsEnabled) || (isChatMuted && isReactionsMuted)
+              ? '2px solid rgba(239, 68, 68, 0.6)'
+              : '2px solid var(--baffa-gold-primary)',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.65), 0 0 15px rgba(245, 158, 11, 0.35)',
+            backdropFilter: 'blur(10px)',
+            cursor: 'pointer',
+            transition: 'all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
+          }}
+          title={
+            isOpen
+              ? 'إغلاق'
+              : !quickChatEnabled && !reactionsEnabled
+              ? 'الدردشة والتفاعلات محظورة 🚫'
+              : isChatMuted && isReactionsMuted
+              ? 'الدردشة محظورة بقرار الحكم ⚖️'
+              : 'الرسائل والتفاعلات'
+          }
+        >
+          {isOpen ? (
+            <X size={22} />
+          ) : (!quickChatEnabled && !reactionsEnabled) || (isChatMuted && isReactionsMuted) ? (
+            <MessageSquareOff size={22} />
+          ) : quickChatEnabled ? (
+            <MessageSquare size={22} />
+          ) : (
+            <Smile size={22} />
+          )}
+        </button>
+      </div>
+
+      {/* Chat & Emoji Menu Popup */}
+      {isOpen && (
+        <div
+          className="animate-float"
+          style={{
+            position: 'absolute',
+            bottom: '76px',
+            left: '22px',
+            width: '320px',
+            backgroundColor: 'rgba(10, 18, 30, 0.96)',
+            backdropFilter: 'blur(16px)',
+            borderRadius: '24px',
+            border: '1.5px solid var(--baffa-gold-primary)',
+            padding: '18px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.85), 0 0 25px rgba(245, 158, 11, 0.35)',
+            zIndex: 65,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            maxHeight: '65vh',
+            overflowY: 'auto',
+          }}
+        >
+          {/* Emojis / Reactions Section */}
+          <div>
+            <div
+              className="arabic-font"
+              style={{
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                color: !reactionsEnabled || isReactionsMuted ? '#f87171' : 'var(--baffa-gold-primary)',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Smile size={16} />
+                <span>إيموجيز وتفاعلات</span>
+              </div>
+              {!reactionsEnabled ? (
+                <span style={{ fontSize: '0.72rem', color: '#f87171', fontWeight: 700 }}>
+                  (محظور من الأدمن 🚫)
+                </span>
+              ) : isReactionsMuted ? (
+                <span style={{ fontSize: '0.72rem', color: '#f87171', fontWeight: 700 }}>
+                  (محظور بقرار الحكم ⚖️)
+                </span>
+              ) : null}
+            </div>
+
+            {!reactionsEnabled ? (
+              <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', fontSize: '0.78rem', textAlign: 'center' }}>
+                تم تعطيل التفاعلات في هذه الغرفة من إعدادات الأدمن 🚫
+              </div>
+            ) : isReactionsMuted ? (
+              <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', fontSize: '0.78rem', textAlign: 'center' }}>
+                تم حظر إرسال التفاعلات عنك بقرار من حكم المباراة ⚖️
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                {EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => handleSendReaction(emoji)}
+                    style={{
+                      fontSize: '1.7rem',
+                      padding: '8px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      borderRadius: '14px',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.22)';
+                      e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)';
+                      e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Chat Section */}
+          <div>
+            <div
+              className="arabic-font"
+              style={{
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                color: !quickChatEnabled || isChatMuted ? '#f87171' : 'var(--baffa-gold-primary)',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <MessageSquare size={16} />
+                <span>رسائل سريعة</span>
+              </div>
+              {!quickChatEnabled ? (
+                <span style={{ fontSize: '0.72rem', color: '#f87171', fontWeight: 700 }}>
+                  (محظور من الأدمن 🚫)
+                </span>
+              ) : isChatMuted ? (
+                <span style={{ fontSize: '0.72rem', color: '#f87171', fontWeight: 700 }}>
+                  (محظور بقرار الحكم ⚖️)
+                </span>
+              ) : null}
+            </div>
+
+            {!quickChatEnabled ? (
+              <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', fontSize: '0.78rem', textAlign: 'center' }}>
+                تم تعطيل الشات في هذه الغرفة من إعدادات الأدمن 🚫
+              </div>
+            ) : isChatMuted ? (
+              <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', fontSize: '0.78rem', textAlign: 'center' }}>
+                تم حظر إرسال الرسائل عنك بقرار من حكم المباراة ⚖️
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {QUICK_CHATS.map((chat) => (
+                  <button
+                    key={chat}
+                    onClick={() => handleSendChat(chat)}
+                    className="arabic-font"
+                    style={{
+                      textAlign: 'right',
+                      padding: '9px 14px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      color: 'var(--baffa-text-primary)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.18s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)';
+                      e.currentTarget.style.color = 'var(--baffa-gold-primary)';
+                      e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.color = 'var(--baffa-text-primary)';
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                    }}
+                  >
+                    {chat}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* RENDER ACTIVE CHATS & REACTIONS ANCHORED BESIDE SENDER BADGE WITHOUT REPEATING NAME */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 55, overflow: 'hidden' }}>
+        {activeChats.map((chat) => {
+          const { containerStyle, tailStyle } = getPositionStyles(chat.seat);
+          return (
+            <div
+              key={chat.id}
+              className="animate-bubble-life arabic-font"
+              style={{
+                position: 'absolute',
+                ...containerStyle,
+                padding: '8px 16px',
+                background: 'linear-gradient(135deg, rgba(14, 26, 42, 0.96) 0%, rgba(20, 36, 58, 0.94) 100%)',
+                border: '2px solid var(--baffa-gold-primary)',
+                borderRadius: '18px',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.85), 0 0 20px rgba(245, 158, 11, 0.45)',
+                backdropFilter: 'blur(10px)',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 60,
+              }}
+            >
+              {tailStyle && <div style={tailStyle} />}
+              <span
+                style={{
+                  fontSize: '1rem',
+                  fontWeight: 900,
+                  color: '#fff',
+                  textAlign: 'center',
+                }}
+              >
+                {chat.text}
+              </span>
+            </div>
+          );
+        })}
+
+        {activeReactions.map((reaction) => {
+          const { containerStyle } = getPositionStyles(reaction.seat);
+          return (
+            <div
+              key={reaction.id}
+              className="animate-emoji-life"
+              style={{
+                position: 'absolute',
+                ...containerStyle,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 60,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '3.4rem',
+                  filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.85)) drop-shadow(0 0 16px rgba(245, 158, 11, 0.45))',
+                  lineHeight: 1,
+                  display: 'inline-block',
+                }}
+              >
+                {reaction.emoji}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+};

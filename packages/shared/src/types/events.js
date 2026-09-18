@@ -1,0 +1,34 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ServerEvents = exports.ClientEvents = void 0;
+var ClientEvents;
+(function (ClientEvents) {
+    ClientEvents["JOIN_LOBBY"] = "client:join_lobby";
+    ClientEvents["LEAVE_LOBBY"] = "client:leave_lobby";
+    ClientEvents["CREATE_ROOM"] = "client:create_room";
+    ClientEvents["JOIN_ROOM"] = "client:join_room";
+    ClientEvents["LEAVE_ROOM"] = "client:leave_room";
+    ClientEvents["SELECT_SEAT"] = "client:select_seat";
+    ClientEvents["TOGGLE_READY"] = "client:toggle_ready";
+    ClientEvents["ADMIN_MOVE_SEAT"] = "client:admin_move_seat";
+    ClientEvents["ADMIN_UPDATE_SETTINGS"] = "client:admin_update_settings";
+    ClientEvents["ADMIN_KICK_PLAYER"] = "client:admin_kick_player";
+    ClientEvents["ADMIN_TOGGLE_BOT"] = "client:admin_toggle_bot";
+    ClientEvents["ADMIN_START_MATCH"] = "client:admin_start_match";
+    ClientEvents["PLAY_TILE"] = "client:play_tile";
+    ClientEvents["PASS_TURN"] = "client:pass_turn";
+    ClientEvents["REQUEST_NEXT_ROUND"] = "client:request_next_round";
+})(ClientEvents || (exports.ClientEvents = ClientEvents = {}));
+var ServerEvents;
+(function (ServerEvents) {
+    ServerEvents["ROOM_SYNC"] = "server:room_sync";
+    ServerEvents["ROOM_ERROR"] = "server:room_error";
+    ServerEvents["GAME_STATE_SYNC"] = "server:game_state_sync";
+    ServerEvents["GAME_STARTED"] = "server:game_started";
+    ServerEvents["TILE_PLAYED"] = "server:tile_played";
+    ServerEvents["TURN_CHANGED"] = "server:turn_changed";
+    ServerEvents["PLAYER_PASSED"] = "server:player_passed";
+    ServerEvents["ROUND_ENDED"] = "server:round_ended";
+    ServerEvents["MATCH_ENDED"] = "server:match_ended";
+    ServerEvents["MOVE_REJECTED"] = "server:move_rejected";
+})(ServerEvents || (exports.ServerEvents = ServerEvents = {}));

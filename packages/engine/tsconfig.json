@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "paths": {
+      "@baffa/shared": ["../shared/dist/index.d.ts"],
+      "@baffa/shared/*": ["../shared/dist/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}

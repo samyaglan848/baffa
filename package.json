@@ -1,0 +1,28 @@
+{
+  "name": "baffa-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BAFFA (بَفّة) — Production-quality Egyptian Domino Platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --workspace=@baffa/shared && npm run build --workspace=@baffa/web",
+    "build:server": "npm run build --workspace=@baffa/shared && npm run build --workspace=@baffa/engine && npm run build --workspace=@baffa/server",
+    "dev:server": "npm run dev --workspace=@baffa/server",
+    "dev:web": "npm run dev --workspace=@baffa/web",
+    "dev": "concurrently -n \"SERVER,WEB\" -c \"cyan.bold,yellow.bold\" \"npm run dev:server\" \"npm run dev:web\"",
+    "test:engine": "npm run test --workspace=@baffa/engine",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5"
+  }
+}

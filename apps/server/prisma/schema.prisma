@@ -1,0 +1,273 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String     @id @default(uuid())
+  username            String     @unique
+  normalizedUsername  String?    @unique
+  email               String?    @unique
+  normalizedEmail     String?    @unique
+  phone               String?    @unique
+  normalizedPhone     String?    @unique
+  googleId            String?    @unique
+  passwordHash        String?
+  displayName         String?
+  avatarUrl           String     @default("avatar-1")
+  avatarId            String?    @default("avatar-1")
+  customAvatarUrl     String?
+  gender              String?    // MALE, FEMALE, PREFER_NOT_TO_SAY
+  bio                 String?
+  age                 Int?
+  challengeSlogan     String?
+  city                String?
+  playStyle           String?
+  favoriteTile        String?
+  emailVerified       Boolean    @default(false)
+  phoneVerified       Boolean    @default(false)
+  accountStatus       String     @default("ACTIVE") // ACTIVE, SUSPENDED, DEACTIVATED
+  failedLoginAttempts Int        @default(0)
+  lockoutUntil        DateTime?
+  lastLoginAt         DateTime?
+  lastActiveAt        DateTime?
+  preferredLanguage   String     @default("ar")
+  timezone            String     @default("Africa/Cairo")
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  profile             Profile?
+  roomsCreated        Room[]     @relation("RoomOwner")
+  roomPlayers         RoomPlayer[]
+  matchParticipants   MatchParticipant[]
+  sessions            Session[]
+  otpVerifications    OtpVerification[]
+  auditLogs           AuditLog[]
+  cheatingEventsReported CheatingEvent[] @relation("JudgeReports")
+
+  @@index([username])
+  @@index([normalizedUsername])
+  @@index([email])
+  @@index([normalizedEmail])
+  @@index([phone])
+}
+
+model Profile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName       String
+  bio               String?
+  gender            String?
+  age               Int?
+  challengeSlogan   String?
+  city              String?
+  playStyle         String?
+  favoriteTile      String?
+  avatarId          String?  @default("avatar-1")
+  customAvatarUrl   String?
+  totalMatches      Int      @default(0)
+  matchesWon        Int      @default(0)
+  matchesLost       Int      @default(0)
+  totalRounds       Int      @default(0)
+  roundsWon         Int      @default(0)
+  totalPipsScored   Int      @default(0)
+  currentStreak     Int      @default(0)
+  bestStreak        Int      @default(0)
+  humanMatchesWon   Int      @default(0)
+  humanMatchesLost  Int      @default(0)
+  botMatchesWon     Int      @default(0)
+  botMatchesLost    Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Session {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String
+  ipAddress        String?
+  userAgent        String?
+  isRevoked        Boolean  @default(false)
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  @@index([userId])
+}
+
+model OtpVerification {
+  id          String    @id @default(uuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  target      String    // email or phone
+  purpose     String    // EMAIL_VERIFICATION, PASSWORD_RESET, PHONE_VERIFICATION, ACCOUNT_RECOVERY
+  channel     String    @default("EMAIL") // EMAIL, WHATSAPP
+  codeHash    String    // SHA-256 hash of OTP code (never plaintext)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  consumed    Boolean   @default(false)
+  consumedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([target, purpose])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Room {
+  id                  String       @id @default(uuid())
+  code                String       @unique
+  name                String
+  ownerId             String
+  owner               User         @relation("RoomOwner", fields: [ownerId], references: [id])
+  targetScore         Int          @default(101) // 101 or 151
+  maxPlayers          Int          @default(4)   // 2 or 4
+  fillWithBots        Boolean      @default(true)
+  allowJudge          Boolean      @default(true)
+  allowSpectator      Boolean      @default(true)
+  status              String       @default("LOBBY") // LOBBY, PLAYING, FINISHED
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  players             RoomPlayer[]
+  matches             Match[]
+  auditLogs           AuditLog[]
+
+  @@index([code])
+  @@index([ownerId])
+}
+
+model RoomPlayer {
+  id         String   @id @default(uuid())
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  seat       Int      // 0, 1, 2, 3
+  team       Int      // 1 or 2
+  role       String   @default("PLAYER") // PLAYER, JUDGE, SPECTATOR
+  isBot      Boolean  @default(false)
+  botId      String?
+  isReady    Boolean  @default(false)
+  joinedAt   DateTime @default(now())
+
+  @@unique([roomId, seat])
+  @@index([roomId])
+}
+
+model Match {
+  id              String             @id @default(uuid())
+  roomId          String?
+  room            Room?              @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  targetScore     Int                @default(101)
+  winningTeam     Int?               // 1 or 2
+  team1Score      Int                @default(0)
+  team2Score      Int                @default(0)
+  status          String             @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED
+  durationSeconds Int                @default(0)
+  isFinalized     Boolean            @default(false)
+  startedAt       DateTime           @default(now())
+  endedAt         DateTime?
+
+  rounds          Round[]
+  participants    MatchParticipant[]
+  auditLogs       AuditLog[]
+
+  @@index([startedAt])
+  @@index([roomId])
+  @@index([status])
+}
+
+model MatchParticipant {
+  id         String   @id @default(uuid())
+  matchId    String
+  match      Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  seat       Int
+  team       Int
+  isBot      Boolean  @default(false)
+  botId      String?
+  pipsScored Int      @default(0)
+
+  @@unique([matchId, seat])
+  @@index([userId])
+  @@index([matchId])
+}
+
+model Round {
+  id           String      @id @default(uuid())
+  matchId      String
+  match        Match       @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  roundNumber  Int
+  starterSeat  Int
+  winningTeam  Int
+  roundScore   Int
+  reason       String      // EMPTY_HAND, BLOCKED, JUDGE_CHEATING_PENALTY
+  team1Pips    Int
+  team2Pips    Int
+  createdAt    DateTime    @default(now())
+
+  events       GameEvent[]
+  cheatingEvents CheatingEvent[]
+
+  @@index([matchId])
+  @@index([roundNumber])
+}
+
+model GameEvent {
+  id          String   @id @default(uuid())
+  roundId     String
+  round       Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  seat        Int
+  eventType   String   // PLAY, PASS, BLOCK, CHEATING_PENALTY
+  tilePlayed  String?  // e.g. "6|6"
+  chainEnd    String?  // LEFT, RIGHT, START
+  timestamp   DateTime @default(now())
+
+  @@index([roundId])
+}
+
+model CheatingEvent {
+  id            String   @id @default(uuid())
+  roundId       String
+  round         Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  judgeId       String
+  judge         User     @relation("JudgeReports", fields: [judgeId], references: [id])
+  offendingSeat Int
+  offendingTeam Int
+  penaltyScore  Int
+  reason        String
+  createdAt     DateTime @default(now())
+
+  @@index([roundId])
+  @@index([judgeId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  roomId    String?
+  room      Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  matchId   String?
+  match     Match?   @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  action    String
+  metadata  String?  // JSON serialized details
+  ipAddress String?
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([roomId])
+  @@index([action])
+  @@index([timestamp])
+}
