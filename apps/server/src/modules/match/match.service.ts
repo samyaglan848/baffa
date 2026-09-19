@@ -59,7 +59,7 @@ export class MatchService {
     const hasBots = players.some((p) => p.isBot);
 
     try {
-      await this.prisma.$transaction(async (tx) => {
+      await this.prisma.$transaction(async (tx: any) => {
         // Database check inside transaction to guarantee strict idempotency
         const existing = await tx.match.findUnique({
           where: { id: matchId },
@@ -383,8 +383,8 @@ export class MatchService {
         }),
       ]);
 
-      const formatted: MatchHistoryItem[] = matches.map((m) => {
-        const hasBots = m.participants.some((p) => p.isBot);
+      const formatted: MatchHistoryItem[] = matches.map((m: any) => {
+        const hasBots = m.participants.some((p: any) => p.isBot);
         return {
           id: m.id,
           roomId: m.roomId,
@@ -394,7 +394,7 @@ export class MatchService {
           team2Score: m.team2Score,
           hasBots,
           roundsCount: m.rounds.length || 1,
-          participants: m.participants.map((p) => ({
+          participants: m.participants.map((p: any) => ({
             userId: p.userId,
             username: p.user?.displayName || p.user?.username || (p.isBot ? `Bot (${p.botId || 'Samy'})` : `Seat ${p.seat + 1}`),
             avatar: p.user?.avatarUrl || (p.isBot ? 'bot-samy' : 'avatar-1'),
@@ -482,8 +482,8 @@ export class MatchService {
       });
 
       if (m) {
-        const hasBots = m.participants.some((p) => p.isBot);
-        const rounds: RoundDetailItem[] = m.rounds.map((r) => ({
+        const hasBots = (m as any).participants.some((p: any) => p.isBot);
+        const rounds: RoundDetailItem[] = (m as any).rounds.map((r: any) => ({
           roundNumber: r.roundNumber,
           starterSeat: r.starterSeat as PlayerSeat,
           winningTeam: r.winningTeam as TeamId,
@@ -503,8 +503,8 @@ export class MatchService {
           team1Score: m.team1Score,
           team2Score: m.team2Score,
           hasBots,
-          roundsCount: m.rounds.length,
-          participants: m.participants.map((p) => ({
+          roundsCount: (m as any).rounds.length,
+          participants: (m as any).participants.map((p: any) => ({
             userId: p.userId,
             username: p.user?.displayName || p.user?.username || (p.isBot ? 'Bot' : `Seat ${p.seat + 1}`),
             avatar: p.user?.avatarUrl || 'avatar-1',
@@ -588,15 +588,15 @@ export class MatchService {
         let user2RoundsWon = 0;
         let totalRounds = 0;
 
-        sharedMatches.forEach((m) => {
-          const p1 = m.participants.find((p) => p.userId === userId1);
-          const p2 = m.participants.find((p) => p.userId === userId2);
+        sharedMatches.forEach((m: any) => {
+          const p1 = m.participants.find((p: any) => p.userId === userId1);
+          const p2 = m.participants.find((p: any) => p.userId === userId2);
 
           if (p1 && p2) {
             if (p1.team === m.winningTeam) user1Wins++;
             if (p2.team === m.winningTeam) user2Wins++;
 
-            m.rounds.forEach((r) => {
+            m.rounds.forEach((r: any) => {
               totalRounds++;
               if (r.winningTeam === p1.team) user1RoundsWon++;
               if (r.winningTeam === p2.team) user2RoundsWon++;
@@ -606,15 +606,15 @@ export class MatchService {
 
         const totalMatches = sharedMatches.length;
 
-        const formattedLastMatches: MatchHistoryItem[] = sharedMatches.slice(0, 5).map((m) => ({
+        const formattedLastMatches: MatchHistoryItem[] = sharedMatches.slice(0, 5).map((m: any) => ({
           id: m.id,
           targetScore: (m.targetScore === 151 ? 151 : 101) as any,
           winningTeam: (m.winningTeam || 1) as TeamId,
           team1Score: m.team1Score,
           team2Score: m.team2Score,
-          hasBots: m.participants.some((p) => p.isBot),
+          hasBots: m.participants.some((p: any) => p.isBot),
           roundsCount: m.rounds.length,
-          participants: m.participants.map((p) => ({
+          participants: m.participants.map((p: any) => ({
             userId: p.userId,
             username: p.user?.displayName || p.user?.username || 'Player',
             avatar: p.user?.avatarUrl || 'avatar-1',

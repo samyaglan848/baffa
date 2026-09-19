@@ -3,9 +3,10 @@
   "compilerOptions": {
     "outDir": "./dist",
     "paths": {
-      "@baffa/shared": ["../shared/dist/index.d.ts"],
-      "@baffa/shared/*": ["../shared/dist/*"]
+      "@baffa/shared": ["../shared/src/index.ts", "../shared/dist/index.d.ts"],
+      "@baffa/shared/*": ["../shared/src/*", "../shared/dist/*"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/tests/**/*", "**/*.spec.ts"]
 }

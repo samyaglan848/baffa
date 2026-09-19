@@ -8,9 +8,9 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build:server",
     "build:web": "npm run build --workspace=@baffa/shared && npm run build --workspace=@baffa/web",
-    "build:server": "npm run build --workspace=@baffa/shared && npm run build --workspace=@baffa/engine && npm run build --workspace=@baffa/server",
+    "build:server": "npm run build --workspace=@baffa/shared && npm run build --workspace=@baffa/engine && npm run prisma:generate --workspace=@baffa/server && npm run build --workspace=@baffa/server",
     "dev:server": "npm run dev --workspace=@baffa/server",
     "dev:web": "npm run dev --workspace=@baffa/web",
     "dev": "concurrently -n \"SERVER,WEB\" -c \"cyan.bold,yellow.bold\" \"npm run dev:server\" \"npm run dev:web\"",
