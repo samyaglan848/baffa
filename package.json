@@ -8,9 +8,10 @@
     "apps/*"
   ],
   "scripts": {
+    "start": "node apps/server/dist/main.js",
     "build": "npm run build:server",
     "build:web": "npm run build --workspace=@baffa/shared && npm run build --workspace=@baffa/web",
-    "build:server": "npm run build --workspace=@baffa/shared && npm run build --workspace=@baffa/engine && npm run prisma:generate --workspace=@baffa/server && npm run build --workspace=@baffa/server",
+    "build:server": "npm run build --workspace=@baffa/shared && npm run build --workspace=@baffa/engine && npm run prisma:generate --workspace=@baffa/server && npm run build --workspace=@baffa/server && node -e \"if (!require('fs').existsSync('apps/server/dist/main.js')) { console.error('ERROR: apps/server/dist/main.js was not generated!'); process.exit(1); } else { console.log('SUCCESS: apps/server/dist/main.js verified.'); }\"",
     "dev:server": "npm run dev --workspace=@baffa/server",
     "dev:web": "npm run dev --workspace=@baffa/web",
     "dev": "concurrently -n \"SERVER,WEB\" -c \"cyan.bold,yellow.bold\" \"npm run dev:server\" \"npm run dev:web\"",
