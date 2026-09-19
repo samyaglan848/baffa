@@ -56,7 +56,7 @@ export class MatchService {
 
     const sanitizedState = engine.getSanitizedState(null, 'SPECTATOR');
     const players = sanitizedState.players;
-    const hasBots = players.some((p) => p.isBot);
+    const hasBots = players.some((p: any) => p.isBot);
 
     try {
       await this.prisma.$transaction(async (tx: any) => {
@@ -201,7 +201,7 @@ export class MatchService {
         team2Score: scores.team2,
         status: 'COMPLETED',
         durationSeconds: Math.floor(Math.random() * 300) + 180,
-        participants: players.map((p, idx) => ({
+        participants: players.map((p: any, idx: number) => ({
           userId: p.playerId || `bot_${p.botId || idx}`,
           team: p.team,
           seatIndex: p.seat,
@@ -269,7 +269,7 @@ export class MatchService {
       try {
         const sanitizedState = engine.getSanitizedState(null, 'SPECTATOR');
         const players = sanitizedState.players;
-        const hasBots = players.some((p) => p.isBot);
+        const hasBots = players.some((p: any) => p.isBot);
 
         this.persistence.saveMatch({
           id: matchId,
@@ -280,7 +280,7 @@ export class MatchService {
           team2Score: scores.team2,
           status: 'COMPLETED',
           durationSeconds: Math.floor(Math.random() * 300) + 180,
-          participants: players.map((p, idx) => ({
+          participants: players.map((p: any, idx: number) => ({
             userId: p.playerId || `bot_${p.botId || idx}`,
             team: p.team,
             seatIndex: p.seat,
