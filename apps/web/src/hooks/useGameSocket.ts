@@ -1051,17 +1051,76 @@ export function useGameSocket() {
       const targetRoomId = room?.id || gameState?.roomId || activeRoomIdRef.current;
       if (!targetRoomId) return;
 
-      // Optimistic instant feedback: remove tile from hand and advance turn immediately
+      // Optimistic instant feedback: remove tile from hand and place on table chain immediately (0ms latency)
       setGameState((prev) => {
         if (!prev) return prev;
         const newHand = prev.myHand.filter(
           (t) => !( (t[0] === tile[0] && t[1] === tile[1]) || (t[0] === tile[1] && t[1] === tile[0]) )
         );
         const nextTurn = (((prev.currentTurnSeat ?? 0) + 1) % 4) as PlayerSeat;
+
+        let newTiles = [...prev.chain.tiles];
+        let newLeft = prev.chain.leftEndValue;
+        let newRight = prev.chain.rightEndValue;
+
+        if (newTiles.length === 0) {
+          newTiles = [
+            {
+              tile: [tile[0], tile[1]],
+              playedBySeat: (prev.mySeat ?? 0) as PlayerSeat,
+              end: 'START',
+              flipped: false,
+              isDouble: tile[0] === tile[1],
+              order: 1,
+            },
+          ];
+          newLeft = tile[0];
+          newRight = tile[1];
+        } else {
+          const targetEnd: ChainEnd =
+            end ||
+            (prev.chain.leftEndValue !== null && (tile[0] === prev.chain.leftEndValue || tile[1] === prev.chain.leftEndValue)
+              ? 'LEFT'
+              : 'RIGHT');
+
+          if (targetEnd === 'LEFT') {
+            const flipped = tile[1] !== prev.chain.leftEndValue;
+            const placedTile: DominoTile = flipped ? [tile[1], tile[0]] : [tile[0], tile[1]];
+            newLeft = flipped ? tile[1] : tile[0];
+            const placement = {
+              tile: placedTile,
+              playedBySeat: (prev.mySeat ?? 0) as PlayerSeat,
+              end: 'LEFT' as const,
+              flipped,
+              isDouble: tile[0] === tile[1],
+              order: newTiles.length + 1,
+            };
+            newTiles = [placement, ...newTiles];
+          } else {
+            const flipped = tile[0] !== prev.chain.rightEndValue;
+            const placedTile: DominoTile = flipped ? [tile[1], tile[0]] : [tile[0], tile[1]];
+            newRight = flipped ? tile[0] : tile[1];
+            const placement = {
+              tile: placedTile,
+              playedBySeat: (prev.mySeat ?? 0) as PlayerSeat,
+              end: 'RIGHT' as const,
+              flipped,
+              isDouble: tile[0] === tile[1],
+              order: newTiles.length + 1,
+            };
+            newTiles = [...newTiles, placement];
+          }
+        }
+
         return {
           ...prev,
           myHand: newHand,
           currentTurnSeat: nextTurn,
+          chain: {
+            tiles: newTiles,
+            leftEndValue: newLeft,
+            rightEndValue: newRight,
+          },
         };
       });
 

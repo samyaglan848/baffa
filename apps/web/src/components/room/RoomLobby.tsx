@@ -12,6 +12,7 @@ import {
 } from '@baffa/shared';
 import { CurrentUser } from '../../hooks/useGameSocket';
 import { UserAvatar } from '../common/UserAvatar';
+import { useGameAudio } from '../../hooks/useGameAudio';
 import {
   Copy,
   Check,
@@ -64,6 +65,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
   onJoinAsSpectator,
   onLeaveRoom,
 }) => {
+  const { playSound } = useGameAudio(true);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [swapFromSeat, setSwapFromSeat] = useState<PlayerSeat | null>(null);
@@ -86,6 +88,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
   }, [room.matchStatus, errorMessage]);
 
   const handleStartMatch = () => {
+    playSound('click');
     setIsStarting(true);
     onAdminStartMatch();
     const timer = setTimeout(() => {

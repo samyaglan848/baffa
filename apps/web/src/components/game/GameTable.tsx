@@ -608,11 +608,9 @@ export const GameTable: React.FC<GameTableProps> = ({
     }
 
     // Play tile directly without popup prompt (user uses drag & drop to choose specific end)
-    lastTileSoundTimeRef.current = Date.now();
-    playSound('tile');
     onPlayTile(legal.tile, legal.validEnds[0]);
     setSelectedTileIndex(null);
-  }, [isMyTurn, myLegalMoves, onPlayTile, playSound, triggerInvalid]);
+  }, [isMyTurn, myLegalMoves, onPlayTile, triggerInvalid]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -792,8 +790,6 @@ export const GameTable: React.FC<GameTableProps> = ({
 
       // First tile opening move
       if (gameState.chain.tiles.length === 0) {
-        lastTileSoundTimeRef.current = Date.now();
-        playSound('tile');
         onPlayTile(current.tile, 'LEFT');
         setSelectedTileIndex(null);
         return;
@@ -801,8 +797,6 @@ export const GameTable: React.FC<GameTableProps> = ({
 
       // Only one valid end
       if (current.validEnds.length === 1) {
-        lastTileSoundTimeRef.current = Date.now();
-        playSound('tile');
         onPlayTile(current.tile, current.validEnds[0]);
         setSelectedTileIndex(null);
         return;
@@ -826,8 +820,6 @@ export const GameTable: React.FC<GameTableProps> = ({
       );
 
       const targetEnd: ChainEnd = distToRight <= distToLeft ? 'RIGHT' : 'LEFT';
-      lastTileSoundTimeRef.current = Date.now();
-      playSound('tile');
       onPlayTile(current.tile, targetEnd);
       setSelectedTileIndex(null);
     };
