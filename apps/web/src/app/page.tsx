@@ -232,13 +232,21 @@ export default function App() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('baffa_user');
       localStorage.removeItem('baffa_token');
+      sessionStorage.removeItem('baffa_user');
+      sessionStorage.removeItem('baffa_token');
+      sessionStorage.removeItem('baffa_active_room_code');
     }
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
     const guestUser: CurrentUser = {
-      id: 'guest_' + Math.random().toString(36).substring(2, 9),
-      username: 'ضيف_' + Math.floor(1000 + Math.random() * 9000),
+      id: `user_guest_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      username: `لاعب_${randomNum}`,
       avatar: 'avatar-1',
       token: undefined,
     };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('baffa_user', JSON.stringify(guestUser));
+      sessionStorage.setItem('baffa_user', JSON.stringify(guestUser));
+    }
     setAuthSession(guestUser, '');
     setCurrentView('HOME');
     setShowAuthModal(true);

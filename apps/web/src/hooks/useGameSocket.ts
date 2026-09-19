@@ -31,14 +31,17 @@ export interface CurrentUser {
 
 function getStoredUser(): CurrentUser {
   if (typeof window !== 'undefined') {
-    // 1. Check if a real authenticated account exists in localStorage first
+    // 1. Check if a real authenticated account or valid guest exists in localStorage first
     const saved = localStorage.getItem('baffa_user');
     const token = localStorage.getItem('baffa_token') || undefined;
-    let localParsed: any = null;
     if (saved) {
       try {
-        localParsed = JSON.parse(saved);
-        if (token) localParsed.token = token;
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id && parsed.id !== 'default_user') {
+          if (token) parsed.token = token;
+          sessionStorage.setItem('baffa_user', JSON.stringify(parsed));
+          return parsed;
+        }
       } catch {}
     }
 
@@ -47,36 +50,22 @@ function getStoredUser(): CurrentUser {
     if (sessionSaved) {
       try {
         const parsed = JSON.parse(sessionSaved);
-        if (parsed.id && parsed.id !== 'default_user') {
-          // If localParsed has an uploaded photo or newer avatar, synchronize it into session
-          if (localParsed && (localParsed.customAvatarUrl || localParsed.avatar?.startsWith('http') || localParsed.avatar?.startsWith('/uploads'))) {
-            parsed.avatar = localParsed.customAvatarUrl || localParsed.avatar;
-            parsed.username = localParsed.displayName || localParsed.username || parsed.username;
-            sessionStorage.setItem('baffa_user', JSON.stringify(parsed));
-          }
+        if (parsed && parsed.id && parsed.id !== 'default_user') {
           return parsed;
         }
       } catch {}
     }
 
-    if (localParsed && token && localParsed.id && localParsed.id !== 'default_user') {
-      sessionStorage.setItem('baffa_user', JSON.stringify(localParsed));
-      return localParsed;
-    }
-
-    // 3. Generate unique guest user for this tab
+    // 3. Generate a clean, unique guest user and store in both localStorage & sessionStorage
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     const newUser: CurrentUser = {
-      id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      username: `Player_${randomNum}`,
+      id: `user_guest_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      username: `لاعب_${randomNum}`,
       avatar: `avatar-${(randomNum % 4) + 1}`,
-      token,
     };
     try {
+      localStorage.setItem('baffa_user', JSON.stringify(newUser));
       sessionStorage.setItem('baffa_user', JSON.stringify(newUser));
-      if (!saved) {
-        localStorage.setItem('baffa_user', JSON.stringify(newUser));
-      }
     } catch {}
     return newUser;
   }

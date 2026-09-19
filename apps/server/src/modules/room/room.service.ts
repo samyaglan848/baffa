@@ -348,6 +348,35 @@ export class RoomService {
 
     // New unseated user
     if (room.matchStatus !== 'LOBBY') {
+      // Check if there is an available BOT seat that the joining player can take over to PLAY!
+      let availableBotSeat = room.seats.find((s) => s.isBot && s.occupied);
+      if (!availableBotSeat) {
+        availableBotSeat = room.seats.find((s) => !s.occupied);
+      }
+
+      if (availableBotSeat) {
+        availableBotSeat.occupied = true;
+        availableBotSeat.playerId = user.id;
+        availableBotSeat.username = user.username;
+        availableBotSeat.avatar = user.avatar;
+        availableBotSeat.isBot = false;
+        delete availableBotSeat.botId;
+        availableBotSeat.isReady = true;
+        availableBotSeat.isConnected = true;
+        availableBotSeat.presence = 'IN_ROOM';
+        availableBotSeat.isTemporarilyBotControlled = false;
+        playerSeat = availableBotSeat;
+
+        if (connected) {
+          connected.roomId = roomId;
+          connected.seat = playerSeat.seat;
+          connected.role = 'PLAYER';
+        }
+        this.logger.log(`Live match takeover: ${user.username} took over seat ${playerSeat.seat} in room ${roomId}`);
+        return room;
+      }
+
+      // If all 4 seats are already occupied by human players, join as spectator
       if (room.settings.allowSpectator) {
         try {
           return this.joinAsSpectator(roomId, socketId, user);
