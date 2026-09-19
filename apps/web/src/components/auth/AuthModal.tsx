@@ -23,6 +23,7 @@ import {
   Link2,
 } from 'lucide-react';
 import { CurrentUser } from '../../hooks/useGameSocket';
+import { API_URL } from '@/config/api';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -167,7 +168,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       : { usernameOrEmailOrPhone: username.trim(), password };
 
     try {
-      const res = await fetch(`http://localhost:4000${endpoint}`, {
+      const res = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -221,7 +222,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:4000/api/auth/google', {
+      const res = await fetch(`${API_URL}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -320,7 +321,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:4000/api/auth/google/link', {
+      const res = await fetch(`${API_URL}/api/auth/google/link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -376,7 +377,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     resetMessages();
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/auth/forgot-password', {
+      const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: recoveryIdentifier.trim() }),
@@ -402,7 +403,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     resetMessages();
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/auth/verify-reset-code', {
+      const res = await fetch(`${API_URL}/api/auth/verify-reset-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -435,7 +436,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/auth/reset-password', {
+      const res = await fetch(`${API_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -468,7 +469,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     resetMessages();
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/auth/verify-email', {
+      const res = await fetch(`${API_URL}/api/auth/verify-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -496,7 +497,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     resetMessages();
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/auth/resend-verification', {
+      const res = await fetch(`${API_URL}/api/auth/resend-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: verifyEmailAddress.trim() }),

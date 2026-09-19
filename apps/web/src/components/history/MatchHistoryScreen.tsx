@@ -5,6 +5,7 @@ import { MatchHistoryItem, PaginatedMatchHistory } from '@baffa/shared';
 import { MatchDetailsModal } from './MatchDetailsModal';
 import { History, ChevronLeft, ChevronRight, Trophy, Bot, User, Layers } from 'lucide-react';
 import { CurrentUser } from '../../hooks/useGameSocket';
+import { API_URL } from '@/config/api';
 
 interface MatchHistoryScreenProps {
   currentUser: CurrentUser;
@@ -24,7 +25,7 @@ export const MatchHistoryScreen: React.FC<MatchHistoryScreenProps> = ({
     async function fetchHistory() {
       try {
         setLoading(true);
-        const res = await fetch(`http://localhost:4000/api/matches/history?page=${page}&limit=8`);
+        const res = await fetch(`${API_URL}/api/matches/history?page=${page}&limit=8`);
         if (!res.ok) throw new Error('Failed to load history');
         const data = await res.json();
         setHistoryData(data);

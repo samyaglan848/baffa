@@ -31,6 +31,7 @@ import {
   Dice5,
 } from 'lucide-react';
 import { CurrentUser } from '../../hooks/useGameSocket';
+import { API_URL } from '@/config/api';
 
 interface ProfileScreenProps {
   currentUser: CurrentUser;
@@ -67,7 +68,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setLogoutLoading(true);
     try {
       if (currentUser.token) {
-        await fetch('http://localhost:4000/api/auth/logout', {
+        await fetch(`${API_URL}/api/auth/logout`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${currentUser.token}`,
@@ -116,7 +117,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       // Attempt to fetch from authenticated /api/profile/me
       let data: UserProfile | null = null;
       if (effectiveToken) {
-        const resMe = await fetch('http://localhost:4000/api/profile/me', {
+        const resMe = await fetch(`${API_URL}/api/profile/me`, {
           headers: {
             Authorization: `Bearer ${effectiveToken}`,
           },
@@ -128,7 +129,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       // Fallback to public profile endpoint
       if (!data && currentUser.id) {
-        const resPub = await fetch(`http://localhost:4000/api/profile/public/${currentUser.id}`);
+        const resPub = await fetch(`${API_URL}/api/profile/public/${currentUser.id}`);
         if (resPub.ok) {
           data = await resPub.json();
         }
@@ -136,7 +137,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       // Final fallback to match profile
       if (!data && currentUser.id) {
-        const res = await fetch(`http://localhost:4000/api/matches/profile/${currentUser.id}`);
+        const res = await fetch(`${API_URL}/api/matches/profile/${currentUser.id}`);
         if (res.ok) {
           data = await res.json();
         }
@@ -213,7 +214,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const handleSelectAvatar = async (avatarId: string) => {
     const token = getAuthToken();
-    const res = await fetch('http://localhost:4000/api/profile/me', {
+    const res = await fetch(`${API_URL}/api/profile/me`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -232,7 +233,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const handleUploadImage = async (base64Data: string, mimeType: string) => {
     const token = getAuthToken();
-    const res = await fetch('http://localhost:4000/api/profile/me/avatar', {
+    const res = await fetch(`${API_URL}/api/profile/me/avatar`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -251,7 +252,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const handleRemoveCustomImage = async () => {
     const token = getAuthToken();
-    const res = await fetch('http://localhost:4000/api/profile/me/avatar', {
+    const res = await fetch(`${API_URL}/api/profile/me/avatar`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -278,7 +279,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
     setSecurityLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/auth/change-password', {
+      const res = await fetch(`${API_URL}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -315,7 +316,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       const payload: any = { newEmail: newEmailAddress.trim() };
       if (emailStep === 2) payload.code = emailOtpCode.trim();
 
-      const res = await fetch('http://localhost:4000/api/auth/change-email', {
+      const res = await fetch(`${API_URL}/api/auth/change-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -348,7 +349,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     if (!confirm('هل أنت متأكد من رغبتك في تسجيل الخروج من جميع الأجهزة المتصلة؟')) return;
     setSecurityLoading(true);
     try {
-      await fetch('http://localhost:4000/api/auth/logout-all', {
+      await fetch(`${API_URL}/api/auth/logout-all`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${currentUser.token || ''}`,

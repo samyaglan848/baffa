@@ -42,6 +42,7 @@ import {
   Eye,
   X,
 } from 'lucide-react';
+import { API_URL } from '@/config/api';
 
 // Persistent registry of announced rounds
 const globalAnnouncedRounds = new Set<string>();
@@ -663,7 +664,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
     // 3. HTTP endpoint fallback
     if (typeof window !== 'undefined') {
-      const apiUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+      const apiUrl = API_URL;
       fetch(`${apiUrl}/api/matches/rematch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

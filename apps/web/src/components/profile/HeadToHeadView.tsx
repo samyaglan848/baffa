@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { HeadToHeadStats } from '@baffa/shared';
 import { Swords, Search, Trophy, History } from 'lucide-react';
+import { API_URL } from '@/config/api';
 
 interface HeadToHeadViewProps {
   currentUserId: string;
@@ -22,7 +23,7 @@ export const HeadToHeadView: React.FC<HeadToHeadViewProps> = ({ currentUserId })
     setSearched(true);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/matches/head-to-head?userId1=${currentUserId}&userId2=${opponentId.trim()}`
+        `${API_URL}/api/matches/head-to-head?userId1=${currentUserId}&userId2=${opponentId.trim()}`
       );
       if (res.ok) {
         const data = await res.json();

@@ -19,6 +19,7 @@ import {
   MapPin,
   Dice5,
 } from 'lucide-react';
+import { API_URL } from '@/config/api';
 
 interface PublicProfileModalProps {
   identifier: string; // username or userId
@@ -47,7 +48,7 @@ export const PublicProfileModal: React.FC<PublicProfileModalProps> = ({
 
       try {
         // 1. Fetch Public Profile
-        const res = await fetch(`http://localhost:4000/api/profile/public/${encodeURIComponent(identifier)}`);
+        const res = await fetch(`${API_URL}/api/profile/public/${encodeURIComponent(identifier)}`);
         if (!res.ok) {
           const errData = await res.json();
           throw new Error(errData.message || 'لم يتم العثور على الملف الشخصي');
@@ -58,7 +59,7 @@ export const PublicProfileModal: React.FC<PublicProfileModalProps> = ({
         // 2. If viewer is logged in and not looking at themselves, fetch Head-to-Head
         if (currentUserId && token && data.id !== currentUserId) {
           try {
-            const h2hRes = await fetch(`http://localhost:4000/api/profile/head-to-head/${data.id}`, {
+            const h2hRes = await fetch(`${API_URL}/api/profile/head-to-head/${data.id}`, {
               headers: {
                 Authorization: `Bearer ${token}`,
               },

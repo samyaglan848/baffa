@@ -1,4 +1,5 @@
 import { AvatarCatalogItem } from '@baffa/shared';
+import { API_URL } from '@/config/api';
 
 export const BAFFA_AVATARS: AvatarCatalogItem[] = [
   { id: 'avatar-1', name: 'doctor', titleAr: 'الدكتور', descriptionAr: 'حكيم الطاولة وحاسب البناط بالمللي', color: '#06b6d4', emoji: '👨‍⚕️' },
@@ -31,7 +32,7 @@ export function resolveAvatarUrl(avatar?: string | null): string | null {
     return trimmed;
   }
   if (trimmed.startsWith('/uploads')) {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+    const apiBase = API_URL;
     return `${apiBase.replace(/\/$/, '')}${trimmed}`;
   }
   return null;

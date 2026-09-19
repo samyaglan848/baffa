@@ -20,9 +20,7 @@ import {
   TeamId,
   UserRole,
 } from '@baffa/shared';
-
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+import { API_URL, SOCKET_URL } from '@/config/api';
 
 export interface CurrentUser {
   id: string;
@@ -222,7 +220,7 @@ export function useGameSocket() {
 
       // Infallible keepalive HTTP beacon fallback (zero lag, survives background throttling)
       if (typeof window !== 'undefined') {
-        const apiUrl = SOCKET_URL || 'http://localhost:4000';
+        const apiUrl = API_URL;
         fetch(`${apiUrl}/api/matches/visibility`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -255,7 +253,7 @@ export function useGameSocket() {
 
       // Infallible keepalive HTTP beacon fallback
       if (typeof window !== 'undefined') {
-        const apiUrl = SOCKET_URL || 'http://localhost:4000';
+        const apiUrl = API_URL;
         fetch(`${apiUrl}/api/matches/visibility`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -568,7 +566,7 @@ export function useGameSocket() {
     const rId = targetRoomId || room?.id || gameState?.roomId || activeRoomIdRef.current;
     if (!rId) return;
     try {
-      const apiUrl = SOCKET_URL || 'http://localhost:4000';
+      const apiUrl = API_URL;
       const role = myRoleRef.current;
       const uName = encodeURIComponent(currentUserRef.current.username || '');
       const res = await fetch(
@@ -602,7 +600,7 @@ export function useGameSocket() {
 
     const syncState = async () => {
       try {
-        const apiUrl = SOCKET_URL || 'http://localhost:4000';
+        const apiUrl = API_URL;
         const role = myRoleRef.current;
         const uName = encodeURIComponent(currentUserRef.current.username || '');
         const res = await fetch(
@@ -914,7 +912,7 @@ export function useGameSocket() {
       socketRef.current.emit('client:trigger_bot', { roomId: rId, forceImmediate: Boolean(forceImmediate) });
     }
     if (typeof window !== 'undefined') {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+      const apiUrl = API_URL;
       fetch(`${apiUrl}/api/matches/trigger-bot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1022,7 +1020,7 @@ export function useGameSocket() {
 
     // 2. HTTP fallback for 100% guarantee
     if (typeof window !== 'undefined') {
-      const apiUrl = SOCKET_URL || 'http://localhost:4000';
+      const apiUrl = API_URL;
       fetch(`${apiUrl}/api/matches/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1736,7 +1734,7 @@ export function useGameSocket() {
 
       // Also HTTP fallback for 100% guarantee
       if (typeof window !== 'undefined') {
-        const apiUrl = SOCKET_URL || 'http://localhost:4000';
+        const apiUrl = API_URL;
         fetch(`${apiUrl}/api/matches/rematch`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1764,7 +1762,7 @@ export function useGameSocket() {
       });
     }
     if (targetRoomId && typeof window !== 'undefined') {
-      const apiUrl = SOCKET_URL || 'http://localhost:4000';
+      const apiUrl = API_URL;
       fetch(`${apiUrl}/api/matches/leave`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

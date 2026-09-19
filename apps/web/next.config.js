@@ -4,7 +4,8 @@ const nextConfig = {
   swcMinify: true,
   transpilePackages: ['@baffa/shared', '@baffa/engine'],
   env: {
-    NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000',
+    NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || 'https://baffa-z8mz.onrender.com',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://baffa-z8mz.onrender.com',
   },
 };
 

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { MatchDetailsResponse } from '@baffa/shared';
 import { X, Trophy, AlertTriangle, ShieldCheck, Clock, Layers } from 'lucide-react';
+import { API_URL } from '@/config/api';
 
 interface MatchDetailsModalProps {
   matchId: string;
@@ -21,7 +22,7 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
     async function fetchDetails() {
       try {
         setLoading(true);
-        const res = await fetch(`http://localhost:4000/api/matches/details/${matchId}`);
+        const res = await fetch(`${API_URL}/api/matches/details/${matchId}`);
         if (!res.ok) throw new Error('Failed to load match details');
         const data = await res.json();
         setDetails(data);

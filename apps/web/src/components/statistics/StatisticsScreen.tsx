@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { UserStatistics } from '@baffa/shared';
 import { BarChart3, Trophy, Flame, Zap, Bot, Users, ArrowLeft, Clock } from 'lucide-react';
 import { CurrentUser } from '../../hooks/useGameSocket';
+import { API_URL } from '@/config/api';
 
 interface StatisticsScreenProps {
   currentUser: CurrentUser;
@@ -21,7 +22,7 @@ export const StatisticsScreen: React.FC<StatisticsScreenProps> = ({
     async function fetchStats() {
       try {
         setLoading(true);
-        const res = await fetch(`http://localhost:4000/api/matches/stats/${currentUser.id}`);
+        const res = await fetch(`${API_URL}/api/matches/stats/${currentUser.id}`);
         if (res.ok) {
           const data = await res.json();
           setStats(data);

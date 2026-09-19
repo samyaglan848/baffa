@@ -22,6 +22,7 @@ import {
   Calendar,
   AlertTriangle,
 } from 'lucide-react';
+import { API_URL } from '@/config/api';
 
 interface EditProfileModalProps {
   profile: UserProfile;
@@ -92,7 +93,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       }
       if (!effectiveToken) effectiveToken = profile.id;
 
-      const res = await fetch('http://localhost:4000/api/profile/me', {
+      const res = await fetch(`${API_URL}/api/profile/me`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
