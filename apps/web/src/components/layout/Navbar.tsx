@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CurrentUser } from '../../hooks/useGameSocket';
 import { UserAvatar } from '../common/UserAvatar';
 import {
@@ -34,13 +34,23 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLeaveRoom,
   inRoom = false,
 }) => {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <header
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '10px 20px',
+        padding: isMobile ? '8px 12px' : '10px 20px',
         backgroundColor: 'var(--baffa-bg-base)',
         borderBottom: '1px solid var(--baffa-surface-glass-border)',
         backdropFilter: 'blur(12px)',
@@ -132,11 +142,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Navigation Tabs (Only when not actively inside a game table) */}
         {!inRoom && (
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '12px' }}>
+          <nav style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '2px' : '4px', marginLeft: isMobile ? '4px' : '12px' }}>
             <button
               onClick={() => onNavigate('HOME')}
               style={{
-                padding: '6px 12px',
+                padding: isMobile ? '6px 8px' : '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
                 backgroundColor: currentView === 'HOME' ? 'var(--baffa-bg-elevated)' : 'transparent',
                 color: currentView === 'HOME' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
@@ -144,16 +154,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
               }}
+              title="العب"
             >
-              <Play size={14} /> Play (العب)
+              <Play size={14} /> {!isMobile && 'Play (العب)'}
             </button>
 
             <button
               onClick={() => onNavigate('HISTORY')}
               style={{
-                padding: '6px 12px',
+                padding: isMobile ? '6px 8px' : '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
                 backgroundColor: currentView === 'HISTORY' ? 'var(--baffa-bg-elevated)' : 'transparent',
                 color: currentView === 'HISTORY' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
@@ -161,16 +172,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
               }}
+              title="السجل"
             >
-              <History size={14} /> History (السجل)
+              <History size={14} /> {!isMobile && 'History (السجل)'}
             </button>
 
             <button
               onClick={() => onNavigate('STATS')}
               style={{
-                padding: '6px 12px',
+                padding: isMobile ? '6px 8px' : '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
                 backgroundColor: currentView === 'STATS' ? 'var(--baffa-bg-elevated)' : 'transparent',
                 color: currentView === 'STATS' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
@@ -178,16 +190,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
               }}
+              title="الإحصائيات"
             >
-              <BarChart3 size={14} /> Stats (الإحصائيات)
+              <BarChart3 size={14} /> {!isMobile && 'Stats (الإحصائيات)'}
             </button>
 
             <button
               onClick={() => onNavigate('PROFILE')}
               style={{
-                padding: '6px 12px',
+                padding: isMobile ? '6px 8px' : '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
                 backgroundColor: currentView === 'PROFILE' ? 'var(--baffa-bg-elevated)' : 'transparent',
                 color: currentView === 'PROFILE' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
@@ -195,10 +208,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
               }}
+              title="حسابي"
             >
-              <UserIcon size={14} /> Profile (حسابي)
+              <UserIcon size={14} /> {!isMobile && 'Profile (حسابي)'}
             </button>
           </nav>
         )}
@@ -222,24 +236,24 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* User Controls & Presence */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '12px' }}>
         {/* Connection status badge */}
         <div
           title={isConnected ? 'Connected to BAFFA Server' : 'Disconnected'}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            padding: '4px 10px',
+            gap: isMobile ? '3px' : '6px',
+            padding: isMobile ? '3px 7px' : '4px 10px',
             borderRadius: 'var(--baffa-radius-full)',
             backgroundColor: isConnected ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)',
             border: `1px solid ${isConnected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)'}`,
-            fontSize: '0.75rem',
+            fontSize: isMobile ? '0.68rem' : '0.75rem',
             color: isConnected ? 'var(--baffa-success)' : 'var(--baffa-error)',
           }}
         >
-          {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
-          <span style={{ fontWeight: 600 }}>{isConnected ? 'ONLINE' : 'OFFLINE'}</span>
+          {isConnected ? <Wifi size={isMobile ? 12 : 14} /> : <WifiOff size={isMobile ? 12 : 14} />}
+          {!isMobile && <span style={{ fontWeight: 600 }}>{isConnected ? 'ONLINE' : 'OFFLINE'}</span>}
         </div>
 
         {/* Settings button */}

@@ -8,7 +8,7 @@ interface DominoTileProps {
   isVertical?: boolean;
   isPlayable?: boolean;
   isSelected?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   onClick?: () => void;
   onInvalidClick?: () => void;
   disabled?: boolean;
@@ -44,6 +44,7 @@ export const DominoTile: React.FC<DominoTileProps> = ({
 
   // Dimensions based on size and orientation
   const sizeStyles = {
+    xs: isVertical ? { width: '26px', height: '52px' } : { width: '52px', height: '26px' },
     sm: isVertical ? { width: '32px', height: '64px' } : { width: '64px', height: '32px' },
     md: isVertical ? { width: '44px', height: '88px' } : { width: '88px', height: '44px' },
     lg: isVertical ? { width: '56px', height: '112px' } : { width: '112px', height: '56px' },
@@ -81,7 +82,7 @@ export const DominoTile: React.FC<DominoTileProps> = ({
           gridTemplateRows: 'repeat(3, 1fr)',
           width: '100%',
           height: '100%',
-          padding: size === 'sm' ? '3px' : '5px',
+          padding: size === 'xs' ? '2px' : size === 'sm' ? '3px' : '5px',
           boxSizing: 'border-box',
           alignItems: 'center',
           justifyItems: 'center',
@@ -91,8 +92,8 @@ export const DominoTile: React.FC<DominoTileProps> = ({
           <div
             key={idx}
             style={{
-              width: size === 'sm' ? '5px' : size === 'md' ? '7px' : '9px',
-              height: size === 'sm' ? '5px' : size === 'md' ? '7px' : '9px',
+              width: size === 'xs' ? '4px' : size === 'sm' ? '5px' : size === 'md' ? '7px' : '9px',
+              height: size === 'xs' ? '4px' : size === 'sm' ? '5px' : size === 'md' ? '7px' : '9px',
               borderRadius: '50%',
               backgroundColor: activeIndices.includes(idx) ? pipColors[value] : 'transparent',
               boxShadow: activeIndices.includes(idx) ? 'inset 0 1px 1px rgba(0,0,0,0.4)' : 'none',
@@ -115,7 +116,7 @@ export const DominoTile: React.FC<DominoTileProps> = ({
         flexDirection: isVertical ? 'column' : 'row',
         background: 'var(--baffa-domino-grad)',
         backgroundColor: 'var(--baffa-domino-bg)',
-        borderRadius: size === 'sm' ? '6px' : '10px',
+        borderRadius: size === 'xs' ? '4px' : size === 'sm' ? '6px' : '10px',
         border: isSelected
           ? '2px solid var(--baffa-gold-primary)'
           : isPlayable
@@ -130,6 +131,7 @@ export const DominoTile: React.FC<DominoTileProps> = ({
         transform: isSelected ? 'translateY(-8px) scale(1.04)' : isPlayable ? 'translateY(-2px)' : 'none',
         transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease',
         userSelect: 'none',
+        touchAction: 'manipulation',
         position: 'relative',
         flexShrink: 0,
       }}

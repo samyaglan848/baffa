@@ -150,15 +150,27 @@ export const GameTable: React.FC<GameTableProps> = ({
     validEnds: ChainEnd[];
   } | null>(null);
   const isDraggingRef = useRef(false);
+
+  // Responsive device state for mobile screen optimization
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Dynamic scale factor so all tiles stay perfectly visible on felt table
   const boardWidth = Math.max(bounds.maxX - bounds.minX + 140, 200);
   const boardHeight = Math.max(bounds.maxY - bounds.minY + 140, 200);
-  const availW = boardSize.width > 0 ? boardSize.width : 600;
-  const availH = boardSize.height > 0 ? boardSize.height : 300;
+  const availW = boardSize.width > 0 ? boardSize.width : (isMobile ? 320 : 600);
+  const availH = boardSize.height > 0 ? boardSize.height : (isMobile ? 220 : 300);
   const hasTurned = bounds.minY !== 0 || bounds.maxY !== 0;
   const turnScaleMultiplier = hasTurned ? 0.92 : 1.0;
-  const fitScale = Math.min(1, Math.max(0.75, Math.min(availW / boardWidth, availH / boardHeight))) * turnScaleMultiplier;
+  const minScaleFloor = isMobile ? 0.32 : 0.55;
+  const fitScale = Math.min(1, Math.max(minScaleFloor, Math.min(availW / boardWidth, availH / boardHeight))) * turnScaleMultiplier;
   
   const animatedRoundKeyRef = useRef<string | null>(null);
   const roundEndTimersRef = useRef<NodeJS.Timeout[]>([]);
@@ -1307,7 +1319,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       : '';
 
     return (
-      <div style={{ display: 'flex', flexDirection: orientation, gap: '4px' }}>
+      <div style={{ display: 'flex', flexDirection: orientation, gap: isMobile ? '2px' : '4px' }}>
         {Array.from({ length: tileCount }).map((_, idx) => (
           <div
             key={idx}
@@ -1316,7 +1328,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               animationDelay: isDealingRound ? `${idx * 90}ms` : undefined,
             }}
           >
-            <DominoTile tile={[0, 0]} isFaceDown={true} size="sm" isVertical={orientation === 'row'} />
+            <DominoTile tile={[0, 0]} isFaceDown={true} size={isMobile ? 'xs' : 'sm'} isVertical={orientation === 'row'} />
           </div>
         ))}
       </div>
@@ -1629,14 +1641,16 @@ export const GameTable: React.FC<GameTableProps> = ({
         <span className="arabic-font" style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>بَفّة</span>
       </div>
 
-      {/* Floating Voice Audio Controls - Lowered down and positioned cleanly to avoid overlapping any player badges/names */}
+      {/* Floating Voice Audio Controls */}
       <div
         style={{
           position: 'absolute',
-          top: '64px',
-          right: '18px',
+          top: isMobile ? '8px' : '64px',
+          right: isMobile ? '8px' : '18px',
           zIndex: 45,
           pointerEvents: 'auto',
+          transform: isMobile ? 'scale(0.85)' : 'none',
+          transformOrigin: 'top right',
         }}
       >
         <VoiceControls
@@ -1652,7 +1666,9 @@ export const GameTable: React.FC<GameTableProps> = ({
       <div style={{
         flex: 1, 
         position: 'relative',
-        padding: isJudge ? '14px 70px 20px 70px' : '26px 80px 30px 80px',
+        padding: isMobile 
+          ? (isJudge ? '8px 8px 12px 8px' : '8px 8px 10px 8px') 
+          : (isJudge ? '14px 70px 20px 70px' : '26px 80px 30px 80px'),
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
@@ -1669,14 +1685,14 @@ export const GameTable: React.FC<GameTableProps> = ({
             'row'
           )}
         </div>
-        <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
+        <div style={{ position: 'absolute', left: isMobile ? 2 : 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
           {renderBadgeOnly(
             relativePlayers.LEFT,
             getTeamLabel(relativePlayers.LEFT?.team ?? 2),
             'column'
           )}
         </div>
-        <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
+        <div style={{ position: 'absolute', right: isMobile ? 2 : 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
           {renderBadgeOnly(
             relativePlayers.RIGHT,
             getTeamLabel(relativePlayers.RIGHT?.team ?? 2),
@@ -1702,12 +1718,12 @@ export const GameTable: React.FC<GameTableProps> = ({
           display: 'grid',
           gridTemplateColumns: 'auto 1fr auto',
           gridTemplateRows: 'auto 1fr auto',
-          gap: '10px',
+          gap: isMobile ? '4px' : '10px',
           background: 'radial-gradient(circle at center, #1b4d3e 0%, #0c261e 100%)', // Real green casino felt
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,1)',
-          border: '12px solid #3b2818', // Wooden table border
-          borderRadius: '40px',
-          padding: '16px',
+          border: isMobile ? '5px solid #3b2818' : '12px solid #3b2818', // Wooden table border
+          borderRadius: isMobile ? '18px' : '40px',
+          padding: isMobile ? '6px' : '16px',
           minHeight: 0
         }}>
             {/* Sleek Score Badge in North-East (Top-Right) corner of Table */}
@@ -1716,15 +1732,15 @@ export const GameTable: React.FC<GameTableProps> = ({
               className={roundEndStage === 'SCORE_PULSE' ? 'animate-score-glow' : ''}
               style={{
                 position: 'absolute',
-                top: 14,
-                right: 20,
+                top: isMobile ? 6 : 14,
+                right: isMobile ? 8 : 20,
                 zIndex: 45,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
+                gap: isMobile ? '6px' : '12px',
                 backgroundColor: 'rgba(10, 24, 20, 0.85)',
                 backdropFilter: 'blur(8px)',
-                padding: '6px 16px',
+                padding: isMobile ? '3px 10px' : '6px 16px',
                 borderRadius: '24px',
                 border: '1px solid rgba(245, 158, 11, 0.35)',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
@@ -1804,22 +1820,32 @@ export const GameTable: React.FC<GameTableProps> = ({
               {/* In RTL, gridColumn 3 is visually on the LEFT. The Left opponent should sit here. */}
               {renderHiddenCards(relativePlayers.LEFT, 'column', 'LEFT')}
             </div>
-            <div style={{ gridColumn: '2 / 3', gridRow: '3', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ gridColumn: '2 / 3', gridRow: '3', display: 'flex', justifyContent: 'center', width: '100%', maxWidth: '100%' }}>
               {(myRole === 'PLAYER' || myRole === 'ADMIN') && mySeat !== null ? (
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', position: 'relative', zIndex: 30 }}>
+                <div style={{ 
+                  display: 'flex', 
+                  gap: isMobile ? '4px' : '8px', 
+                  flexWrap: 'nowrap', 
+                  justifyContent: 'center', 
+                  position: 'relative', 
+                  zIndex: 30,
+                  maxWidth: '100%',
+                  overflowX: 'auto',
+                  padding: '6px 2px',
+                }}>
                     {isMyTurn && !isRoundOver && (
                       <div
                         style={{
                           position: 'absolute',
                           bottom: '106%',
                           right: '8px',
-                          padding: '4px 12px',
+                          padding: isMobile ? '2px 8px' : '4px 12px',
                           borderRadius: '16px',
-                          backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                          backgroundColor: 'rgba(15, 23, 42, 0.85)',
                           border: '1px solid rgba(245, 158, 11, 0.4)',
                           color: '#fde68a',
                           fontWeight: 700,
-                          fontSize: '0.78rem',
+                          fontSize: isMobile ? '0.7rem' : '0.78rem',
                           backdropFilter: 'blur(8px)',
                           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.35)',
                           display: 'flex',
@@ -1827,7 +1853,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                           gap: '6px',
                           whiteSpace: 'nowrap',
                           zIndex: 60,
-                          opacity: 0.85,
+                          opacity: 0.9,
                         }}
                       >
                         <span
@@ -1853,6 +1879,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                             ? gameState.myHand
                             : (lastRound?.revealedHands?.find((h) => Number(h.seat) === mySeatNum)?.tiles || []))
                         : gameState.myHand;
+
+                      const responsiveTileSize = isMobile ? (myTilesToRender.length > 5 ? 'xs' : 'sm') : 'md';
 
                       return myTilesToRender.map((tile, index) => {
                         const isPlayable = isMyTurn && !isRoundOver && !!myLegalMoves.find(m => (m.tile[0] === tile[0] && m.tile[1] === tile[1]) || (m.tile[0] === tile[1] && m.tile[1] === tile[0]));
@@ -1915,7 +1943,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                           >
                             <DominoTile
                               tile={tile}
-                              size="md"
+                              size={responsiveTileSize}
                               isPlayable={isPlayable}
                               isSelected={isSelected}
                               isVertical={true}

@@ -83,12 +83,14 @@ export function useDominoLayout(tiles: BoardTilePlacement[], containerWidth: num
     // Determine effective available width between left and right player cards.
     // containerWidth is measured directly from the board container via ResizeObserver.
     const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1000;
-    const availableWidth = containerWidth > 0 ? containerWidth : Math.max(screenWidth - 400, 300);
-    const availableHeight = containerHeight > 0 ? containerHeight : 300;
+    const isSmallScreen = screenWidth < 768;
+    const availableWidth = containerWidth > 0 ? containerWidth : (isSmallScreen ? Math.max(screenWidth - 60, 280) : Math.max(screenWidth - 400, 300));
+    const availableHeight = containerHeight > 0 ? containerHeight : (isSmallScreen ? 240 : 300);
 
-    // Change direction 55 pixels before reaching player cards on left/right and top/bottom edges
-    const maxXPx = Math.max((availableWidth / 2) - 55, 60);
-    const maxYPx = Math.max((availableHeight / 2) - 55, 60);
+    // Change direction before reaching player cards on left/right and top/bottom edges
+    const margin = isSmallScreen ? 30 : 55;
+    const maxXPx = Math.max((availableWidth / 2) - margin, 45);
+    const maxYPx = Math.max((availableHeight / 2) - margin, 45);
 
     const MAX_X = maxXPx / U;
     const MAX_Y = maxYPx / U;

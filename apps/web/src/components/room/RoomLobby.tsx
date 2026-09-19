@@ -70,6 +70,17 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
   const [editingBotSeat, setEditingBotSeat] = useState<PlayerSeat | null>(null);
   const [isStarting, setIsStarting] = useState(false);
 
+  // Responsive device state for mobile screen optimization
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     setIsStarting(false);
   }, [room.matchStatus, errorMessage]);
@@ -170,14 +181,15 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
     const botProfile = seatInfo.botId ? OFFICIAL_BAFFA_BOTS[seatInfo.botId] : undefined;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flex: isMobile ? '1 1 0' : undefined, minWidth: 0, width: isMobile ? '100%' : 'auto' }}>
         <div
           onClick={() => handleSeatClick(seatInfo.seat)}
           style={{
-            width: '200px',
-            minHeight: '155px',
-            padding: '14px',
-            borderRadius: 'var(--baffa-radius-xl)',
+            width: isMobile ? '100%' : '200px',
+            maxWidth: isMobile ? '170px' : '200px',
+            minHeight: isMobile ? '120px' : '155px',
+            padding: isMobile ? '10px 8px' : '14px',
+            borderRadius: isMobile ? 'var(--baffa-radius-md)' : 'var(--baffa-radius-xl)',
             backgroundColor: seatInfo.occupied ? 'rgba(15, 23, 42, 0.92)' : 'rgba(11, 20, 32, 0.5)',
             border: isSwapSource
               ? '2px solid var(--baffa-gold-primary)'
@@ -933,12 +945,12 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
       <div
         className="baffa-card"
         style={{
-          padding: '32px 24px',
+          padding: isMobile ? '16px 8px' : '32px 24px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '24px',
+          gap: isMobile ? '12px' : '24px',
           position: 'relative',
           backgroundColor: 'var(--baffa-bg-table)',
           border: '1px solid var(--baffa-bg-table-border)',
@@ -962,7 +974,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
             justifyContent: 'space-between',
             width: '100%',
             maxWidth: '750px',
-            gap: '16px',
+            gap: isMobile ? '6px' : '16px',
           }}
         >
           {renderSeatCard(
@@ -976,24 +988,25 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
 
           <div
             style={{
-              flex: 1,
-              height: '120px',
-              borderRadius: 'var(--baffa-radius-xl)',
+              flex: isMobile ? '0 1 70px' : 1,
+              height: isMobile ? '70px' : '120px',
+              borderRadius: isMobile ? '10px' : 'var(--baffa-radius-xl)',
               border: '2px dashed rgba(245, 158, 11, 0.2)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '12px',
+              padding: isMobile ? '4px' : '12px',
               textAlign: 'center',
               backgroundColor: 'rgba(6, 9, 14, 0.4)',
+              minWidth: isMobile ? '50px' : '120px',
             }}
           >
-            <span className="arabic-font" style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--baffa-gold-hover)' }}>
+            <span className="arabic-font" style={{ fontSize: isMobile ? '1.05rem' : '1.4rem', fontWeight: 900, color: 'var(--baffa-gold-hover)' }}>
               بَفّة
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '4px' }}>
-              فريق 1 ضد فريق 2
+            <span style={{ fontSize: isMobile ? '0.62rem' : '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '2px' }}>
+              فريق 1 ضد 2
             </span>
           </div>
 
