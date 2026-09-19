@@ -152,25 +152,64 @@ export const GameTable: React.FC<GameTableProps> = ({
   } | null>(null);
   const isDraggingRef = useRef(false);
 
-  // Responsive device state for mobile screen optimization
-  const [isMobile, setIsMobile] = useState(false);
+  // Responsive device & orientation state for mobile and landscape screen optimization
+  const [screenMode, setScreenMode] = useState<{
+    isMobile: boolean;
+    isLandscape: boolean;
+    isPortraitMobile: boolean;
+    isShortScreen: boolean;
+  }>({
+    isMobile: false,
+    isLandscape: false,
+    isPortraitMobile: false,
+    isShortScreen: false,
+  });
+
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    const updateScreen = () => {
+      if (typeof window === 'undefined') return;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      
+      const isShort = h <= 540;
+      const isLand = w > h && isShort;
+      const isMob = w < 768 || isShort || (isTouch && Math.max(w, h) <= 1024);
+      const isPortMob = isMob && !isLand;
+
+      setScreenMode({
+        isMobile: isMob,
+        isLandscape: isLand,
+        isPortraitMobile: isPortMob,
+        isShortScreen: isShort,
+      });
     };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    updateScreen();
+    window.addEventListener('resize', updateScreen);
+    window.addEventListener('orientationchange', updateScreen);
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener('change', updateScreen);
+    }
+    return () => {
+      window.removeEventListener('resize', updateScreen);
+      window.removeEventListener('orientationchange', updateScreen);
+      if (window.screen?.orientation) {
+        window.screen.orientation.removeEventListener('change', updateScreen);
+      }
+    };
   }, []);
+
+  const { isMobile, isLandscape, isPortraitMobile, isShortScreen } = screenMode;
   
-  // Dynamic scale factor so all tiles stay perfectly visible on felt table
+  // Dynamic scale factor so all tiles stay perfectly visible on felt table without overflowing
   const boardWidth = Math.max(bounds.maxX - bounds.minX + 140, 200);
   const boardHeight = Math.max(bounds.maxY - bounds.minY + 140, 200);
-  const availW = boardSize.width > 0 ? boardSize.width : (isMobile ? 320 : 600);
-  const availH = boardSize.height > 0 ? boardSize.height : (isMobile ? 220 : 300);
+  const availW = boardSize.width > 0 ? boardSize.width : (isLandscape ? 520 : isMobile ? 320 : 600);
+  const availH = boardSize.height > 0 ? boardSize.height : (isLandscape ? 170 : isMobile ? 220 : 300);
   const hasTurned = bounds.minY !== 0 || bounds.maxY !== 0;
   const turnScaleMultiplier = hasTurned ? 0.92 : 1.0;
-  const minScaleFloor = isMobile ? 0.32 : 0.55;
+  const minScaleFloor = isLandscape ? 0.25 : isMobile ? 0.32 : 0.55;
   const fitScale = Math.min(1, Math.max(minScaleFloor, Math.min(availW / boardWidth, availH / boardHeight))) * turnScaleMultiplier;
   
   const animatedRoundKeyRef = useRef<string | null>(null);
@@ -1015,12 +1054,14 @@ export const GameTable: React.FC<GameTableProps> = ({
         )}
 
         <div style={{
-          padding: orientation === 'column' ? '5px 8px' : '4px 10px',
-          borderRadius: '12px',
+          padding: orientation === 'column'
+            ? (isLandscape ? '2px 4px' : '5px 8px')
+            : (isLandscape ? '2px 6px' : '4px 10px'),
+          borderRadius: isLandscape ? '8px' : '12px',
           backgroundColor: isCurrentTurn ? 'rgba(245, 158, 11, 0.15)' : 'rgba(18, 29, 45, 0.82)',
           border: isCurrentTurn ? '2px solid var(--baffa-gold-primary)' : '1px solid var(--baffa-surface-glass-border)',
           boxShadow: isCurrentTurn ? 'var(--baffa-shadow-glow-gold)' : '0 4px 12px rgba(0,0,0,0.5)',
-          display: 'flex', flexDirection: orientation, alignItems: 'center', gap: '6px', transition: 'all 0.3s ease',
+          display: 'flex', flexDirection: orientation, alignItems: 'center', gap: isLandscape ? '4px' : '6px', transition: 'all 0.3s ease',
           backdropFilter: 'blur(4px)',
           position: 'relative',
         }}>
@@ -1033,9 +1074,9 @@ export const GameTable: React.FC<GameTableProps> = ({
               backgroundColor: turnSecondsLeft <= 5 ? '#ef4444' : '#f59e0b',
               color: '#000',
               fontWeight: 900,
-              fontSize: '0.7rem',
+              fontSize: isLandscape ? '0.62rem' : '0.7rem',
               borderRadius: '12px',
-              padding: '1px 6px',
+              padding: '1px 5px',
               boxShadow: turnSecondsLeft <= 5 ? '0 0 12px rgba(239, 68, 68, 0.9)' : '0 0 10px rgba(245, 158, 11, 0.7)',
               zIndex: 35,
               display: 'flex',
@@ -1050,7 +1091,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
           {/* Player Avatar */}
           <div style={{
-            width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--baffa-bg-elevated)',
+            width: isLandscape ? '22px' : '28px', height: isLandscape ? '22px' : '28px', borderRadius: '50%', backgroundColor: 'var(--baffa-bg-elevated)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: isCurrentTurn ? '2px solid var(--baffa-gold-primary)' : '1px solid rgba(255,255,255,0.15)',
             boxShadow: isCurrentTurn ? '0 0 10px rgba(245, 158, 11, 0.7), inset 0 0 6px rgba(245, 158, 11, 0.3)' : 'none',
@@ -1062,7 +1103,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               username={player.username}
               isBot={player.isBot}
               botId={player.botId}
-              size={28}
+              size={isLandscape ? 22 : 28}
             />
           </div>
 
@@ -1070,13 +1111,13 @@ export const GameTable: React.FC<GameTableProps> = ({
           {!player.isBot && (
             <div
               style={{
-                width: '20px',
-                height: '20px',
+                width: isLandscape ? '16px' : '20px',
+                height: isLandscape ? '16px' : '20px',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '10px',
+                fontSize: isLandscape ? '8px' : '10px',
                 backgroundColor: isPlayerSpeaking
                   ? 'rgba(34, 197, 94, 0.35)'
                   : player.isVoiceMuted
@@ -1108,7 +1149,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
           {/* Player Name and Role/Warnings */}
           <div style={{ textAlign: orientation === 'column' ? 'center' : 'left' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ fontSize: isLandscape ? '0.7rem' : isMobile ? '0.75rem' : '0.8rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span>{player.username}</span>
               {isAway && (
                 <span
@@ -1285,8 +1326,8 @@ export const GameTable: React.FC<GameTableProps> = ({
               >
                 <DominoTile
                   tile={tile}
-                  size="sm"
-                  isVertical={orientation === 'row'}
+                  size={isLandscape ? 'xs' : isMobile ? 'xs' : 'sm'}
+                  isVertical={isLandscape && orientation === 'row' ? false : orientation === 'row'}
                   isFaceDown={false}
                   disabled={true}
                 />
@@ -1312,7 +1353,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       : '';
 
     return (
-      <div style={{ display: 'flex', flexDirection: orientation, gap: isMobile ? '2px' : '4px' }}>
+      <div style={{ display: 'flex', flexDirection: orientation, gap: isLandscape ? '2px' : isMobile ? '2px' : '4px' }}>
         {Array.from({ length: tileCount }).map((_, idx) => (
           <div
             key={idx}
@@ -1321,7 +1362,12 @@ export const GameTable: React.FC<GameTableProps> = ({
               animationDelay: isDealingRound ? `${idx * 90}ms` : undefined,
             }}
           >
-            <DominoTile tile={[0, 0]} isFaceDown={true} size={isMobile ? 'xs' : 'sm'} isVertical={orientation === 'row'} />
+            <DominoTile
+              tile={[0, 0]}
+              isFaceDown={true}
+              size={isLandscape ? 'xs' : isMobile ? 'xs' : 'sm'}
+              isVertical={isLandscape && orientation === 'row' ? false : orientation === 'row'}
+            />
           </div>
         ))}
       </div>
@@ -1329,7 +1375,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#090d13', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxHeight: '100dvh', width: '100vw', maxWidth: '100vw', backgroundColor: '#090d13', overflow: 'hidden' }}>
       {isJudge && (
         <div style={{ zIndex: 40, width: '100%', padding: '2px 8px 0', display: 'flex', justifyContent: 'center' }}>
           <RefereeControlHub
@@ -1581,8 +1627,6 @@ export const GameTable: React.FC<GameTableProps> = ({
         </div>
       )}
 
-
-
       <ChatAndReactions
         socket={socket}
         roomId={gameState.roomId}
@@ -1593,6 +1637,8 @@ export const GameTable: React.FC<GameTableProps> = ({
         isReactionsMuted={isJudgeReactionsMuted}
         players={gameState.players}
         mySeat={gameState.mySeat}
+        isMobile={isMobile}
+        isLandscape={isLandscape}
       />
 
       {/* Smart In-Game Microphone Permission Guidance for Mobile & PC */}
@@ -1605,11 +1651,11 @@ export const GameTable: React.FC<GameTableProps> = ({
       {/* Top Floating Controls (Exit & Brand) */}
       <div style={{
         position: 'absolute',
-        top: 12,
-        left: 16,
+        top: isLandscape ? 4 : 12,
+        left: isLandscape ? 8 : 16,
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
+        gap: isLandscape ? '6px' : '12px',
         zIndex: 40,
         pointerEvents: 'auto'
       }}>
@@ -1621,28 +1667,28 @@ export const GameTable: React.FC<GameTableProps> = ({
             backdropFilter: 'blur(6px)',
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: '50%',
-            width: '34px',
-            height: '34px',
+            width: isLandscape ? '28px' : '34px',
+            height: isLandscape ? '28px' : '34px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer'
           }}
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={isLandscape ? 14 : 18} />
         </button>
-        <span className="arabic-font" style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>بَفّة</span>
+        <span className="arabic-font" style={{ fontSize: isLandscape ? '1.05rem' : '1.3rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>بَفّة</span>
       </div>
 
       {/* Floating Voice Audio Controls */}
       <div
         style={{
           position: 'absolute',
-          top: isMobile ? '8px' : '64px',
-          right: isMobile ? '8px' : '18px',
+          top: isLandscape ? '4px' : isMobile ? '8px' : '64px',
+          right: isLandscape ? '6px' : isMobile ? '8px' : '18px',
           zIndex: 45,
           pointerEvents: 'auto',
-          transform: isMobile ? 'scale(0.85)' : 'none',
+          transform: isLandscape ? 'scale(0.72)' : isMobile ? 'scale(0.85)' : 'none',
           transformOrigin: 'top right',
         }}
       >
@@ -1659,48 +1705,55 @@ export const GameTable: React.FC<GameTableProps> = ({
       <div style={{
         flex: 1, 
         position: 'relative',
-        padding: isMobile 
-          ? (isJudge ? '8px 8px 12px 8px' : '8px 8px 10px 8px') 
+        padding: isLandscape
+          ? '2px 8px 2px 8px'
+          : isMobile 
+          ? (isJudge ? '4px 4px 6px 4px' : '4px 4px 6px 4px') 
           : (isJudge ? '14px 70px 20px 70px' : '26px 80px 30px 80px'),
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
         boxSizing: 'border-box',
+        overflow: 'hidden',
       }}>
         
-        {/* Badges OUTSIDE the table */}
-        <div style={{ position: 'absolute', top: 4, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 20 }}>
-          {renderBadgeOnly(
-            relativePlayers.TOP,
-            isObserver
-              ? getTeamLabel(relativePlayers.TOP?.team ?? 1)
-              : (mySeat !== null ? 'زميلك' : getTeamLabel(relativePlayers.TOP?.team ?? 1)),
-            'row'
-          )}
-        </div>
-        <div style={{ position: 'absolute', left: isMobile ? 2 : 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
-          {renderBadgeOnly(
-            relativePlayers.LEFT,
-            getTeamLabel(relativePlayers.LEFT?.team ?? 2),
-            'column'
-          )}
-        </div>
-        <div style={{ position: 'absolute', right: isMobile ? 2 : 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
-          {renderBadgeOnly(
-            relativePlayers.RIGHT,
-            getTeamLabel(relativePlayers.RIGHT?.team ?? 2),
-            'column'
-          )}
-        </div>
-        <div style={{ position: 'absolute', bottom: 4, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 20 }}>
-          {renderBadgeOnly(
-            relativePlayers.BOTTOM,
-            isObserver
-              ? getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)
-              : (mySeat !== null && !relativePlayers.BOTTOM?.isBot ? 'أنت' : getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)),
-            'row'
-          )}
-        </div>
+        {/* Badges OUTSIDE the table - for Desktop only */}
+        {!isMobile && !isLandscape && (
+          <>
+            <div style={{ position: 'absolute', top: 4, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 20 }}>
+              {renderBadgeOnly(
+                relativePlayers.TOP,
+                isObserver
+                  ? getTeamLabel(relativePlayers.TOP?.team ?? 1)
+                  : (mySeat !== null ? 'زميلك' : getTeamLabel(relativePlayers.TOP?.team ?? 1)),
+                'row'
+              )}
+            </div>
+            <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
+              {renderBadgeOnly(
+                relativePlayers.LEFT,
+                getTeamLabel(relativePlayers.LEFT?.team ?? 2),
+                'column'
+              )}
+            </div>
+            <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
+              {renderBadgeOnly(
+                relativePlayers.RIGHT,
+                getTeamLabel(relativePlayers.RIGHT?.team ?? 2),
+                'column'
+              )}
+            </div>
+            <div style={{ position: 'absolute', bottom: 4, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 20 }}>
+              {renderBadgeOnly(
+                relativePlayers.BOTTOM,
+                isObserver
+                  ? getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)
+                  : (mySeat !== null && !relativePlayers.BOTTOM?.isBot ? 'أنت' : getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)),
+                'row'
+              )}
+            </div>
+          </>
+        )}
 
         {/* INNER WOODEN TABLE */}
         <div 
@@ -1711,13 +1764,14 @@ export const GameTable: React.FC<GameTableProps> = ({
           display: 'grid',
           gridTemplateColumns: 'auto 1fr auto',
           gridTemplateRows: 'auto 1fr auto',
-          gap: isMobile ? '4px' : '10px',
+          gap: isLandscape ? '2px' : isMobile ? '4px' : '10px',
           background: 'radial-gradient(circle at center, #1b4d3e 0%, #0c261e 100%)', // Real green casino felt
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,1)',
-          border: isMobile ? '5px solid #3b2818' : '12px solid #3b2818', // Wooden table border
-          borderRadius: isMobile ? '18px' : '40px',
-          padding: isMobile ? '6px' : '16px',
-          minHeight: 0
+          border: isLandscape ? '3px solid #3b2818' : isMobile ? '5px solid #3b2818' : '12px solid #3b2818', // Wooden table border
+          borderRadius: isLandscape ? '14px' : isMobile ? '18px' : '40px',
+          padding: isLandscape ? '2px 6px' : isMobile ? '4px 6px' : '16px',
+          minHeight: 0,
+          overflow: 'hidden',
         }}>
             {/* Sleek Score Badge in North-East (Top-Right) corner of Table */}
             <div
@@ -1725,15 +1779,15 @@ export const GameTable: React.FC<GameTableProps> = ({
               className={roundEndStage === 'SCORE_PULSE' ? 'animate-score-glow' : ''}
               style={{
                 position: 'absolute',
-                top: isMobile ? 6 : 14,
-                right: isMobile ? 8 : 20,
+                top: isLandscape ? 3 : isMobile ? 6 : 14,
+                right: isLandscape ? 6 : isMobile ? 8 : 20,
                 zIndex: 45,
                 display: 'flex',
                 alignItems: 'center',
-                gap: isMobile ? '6px' : '12px',
+                gap: isLandscape ? '4px' : isMobile ? '6px' : '12px',
                 backgroundColor: 'rgba(10, 24, 20, 0.85)',
                 backdropFilter: 'blur(8px)',
-                padding: isMobile ? '3px 10px' : '6px 16px',
+                padding: isLandscape ? '2px 8px' : isMobile ? '3px 10px' : '6px 16px',
                 borderRadius: '24px',
                 border: '1px solid rgba(245, 158, 11, 0.35)',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
@@ -1751,8 +1805,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                     backgroundColor: isMyTeamWinner ? 'var(--baffa-gold-primary)' : '#ef4444',
                     color: '#080d1a',
                     fontWeight: 900,
-                    fontSize: '0.82rem',
-                    padding: '2px 10px',
+                    fontSize: isLandscape ? '0.72rem' : '0.82rem',
+                    padding: isLandscape ? '1px 8px' : '2px 10px',
                     borderRadius: '12px',
                     boxShadow: '0 0 15px rgba(245, 158, 11, 0.8)',
                     whiteSpace: 'nowrap',
@@ -1765,26 +1819,26 @@ export const GameTable: React.FC<GameTableProps> = ({
 
               {isObserver ? (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="arabic-font" style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>{getTeamLabel(1)}</span>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--baffa-team1-color)' }}>{gameState.team1Score}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '6px' }}>
+                    <span className="arabic-font" style={{ fontSize: isLandscape ? '0.68rem' : '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>{getTeamLabel(1)}</span>
+                    <span style={{ fontSize: isLandscape ? '0.95rem' : '1.1rem', fontWeight: 900, color: 'var(--baffa-team1-color)' }}>{gameState.team1Score}</span>
                   </div>
-                  <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900, fontSize: '0.85rem' }}>:</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--baffa-team2-color)' }}>{gameState.team2Score}</span>
-                    <span className="arabic-font" style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>{getTeamLabel(2)}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900, fontSize: isLandscape ? '0.75rem' : '0.85rem' }}>:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '6px' }}>
+                    <span style={{ fontSize: isLandscape ? '0.95rem' : '1.1rem', fontWeight: 900, color: 'var(--baffa-team2-color)' }}>{gameState.team2Score}</span>
+                    <span className="arabic-font" style={{ fontSize: isLandscape ? '0.68rem' : '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>{getTeamLabel(2)}</span>
                   </div>
                 </>
               ) : (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="arabic-font" style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>فريقك</span>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--baffa-team1-color)' }}>{myTeamScore}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '6px' }}>
+                    <span className="arabic-font" style={{ fontSize: isLandscape ? '0.68rem' : '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>فريقك</span>
+                    <span style={{ fontSize: isLandscape ? '0.95rem' : '1.1rem', fontWeight: 900, color: 'var(--baffa-team1-color)' }}>{myTeamScore}</span>
                   </div>
-                  <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900, fontSize: '0.85rem' }}>:</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--baffa-error)' }}>{opponentScore}</span>
-                    <span className="arabic-font" style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>الخصم</span>
+                  <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900, fontSize: isLandscape ? '0.75rem' : '0.85rem' }}>:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '6px' }}>
+                    <span style={{ fontSize: isLandscape ? '0.95rem' : '1.1rem', fontWeight: 900, color: 'var(--baffa-error)' }}>{opponentScore}</span>
+                    <span className="arabic-font" style={{ fontSize: isLandscape ? '0.68rem' : '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>الخصم</span>
                   </div>
                 </>
               )}
@@ -1794,56 +1848,107 @@ export const GameTable: React.FC<GameTableProps> = ({
                 backgroundColor: 'rgba(245, 158, 11, 0.15)',
                 border: '1px solid rgba(245, 158, 11, 0.25)',
                 color: 'var(--baffa-gold-primary)',
-                fontSize: '0.72rem',
+                fontSize: isLandscape ? '0.65rem' : '0.72rem',
                 fontWeight: 800
               }}>
                 إلى {gameState.targetScore}
               </div>
             </div>
             
-            {/* Cards INSIDE the table edges */}
-            <div style={{ gridColumn: '2 / 3', gridRow: '1', display: 'flex', justifyContent: 'center' }}>
-              {renderHiddenCards(relativePlayers.TOP, 'row', 'TOP')}
+            {/* Cards and Badges INSIDE the table edges */}
+            <div style={{ gridColumn: '2 / 3', gridRow: '1', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              {(isMobile || isLandscape) ? (
+                <div style={{ display: 'flex', flexDirection: isLandscape ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', gap: isLandscape ? '8px' : '2px' }}>
+                  {renderBadgeOnly(
+                    relativePlayers.TOP,
+                    isObserver
+                      ? getTeamLabel(relativePlayers.TOP?.team ?? 1)
+                      : (mySeat !== null ? 'زميلك' : getTeamLabel(relativePlayers.TOP?.team ?? 1)),
+                    'row'
+                  )}
+                  {renderHiddenCards(relativePlayers.TOP, 'row', 'TOP')}
+                </div>
+              ) : (
+                renderHiddenCards(relativePlayers.TOP, 'row', 'TOP')
+              )}
             </div>
-            <div style={{ gridColumn: '1 / 2', gridRow: '2', display: 'flex', alignItems: 'center' }}>
-            {/* In RTL, gridColumn 1 is visually on the RIGHT. The Right opponent should sit here. */}
-               {renderHiddenCards(relativePlayers.RIGHT, 'column', 'RIGHT')}
+            <div style={{ gridColumn: '1 / 2', gridRow: '2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* In RTL, gridColumn 1 is visually on the RIGHT. The Right opponent should sit here. */}
+              {(isMobile || isLandscape) ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  {renderBadgeOnly(
+                    relativePlayers.RIGHT,
+                    getTeamLabel(relativePlayers.RIGHT?.team ?? 2),
+                    'column'
+                  )}
+                  {renderHiddenCards(relativePlayers.RIGHT, 'column', 'RIGHT')}
+                </div>
+              ) : (
+                renderHiddenCards(relativePlayers.RIGHT, 'column', 'RIGHT')
+              )}
             </div>
-            <div style={{ gridColumn: '3 / 4', gridRow: '2', display: 'flex', alignItems: 'center' }}>
+            <div style={{ gridColumn: '3 / 4', gridRow: '2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {/* In RTL, gridColumn 3 is visually on the LEFT. The Left opponent should sit here. */}
-              {renderHiddenCards(relativePlayers.LEFT, 'column', 'LEFT')}
+              {(isMobile || isLandscape) ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  {renderBadgeOnly(
+                    relativePlayers.LEFT,
+                    getTeamLabel(relativePlayers.LEFT?.team ?? 2),
+                    'column'
+                  )}
+                  {renderHiddenCards(relativePlayers.LEFT, 'column', 'LEFT')}
+                </div>
+              ) : (
+                renderHiddenCards(relativePlayers.LEFT, 'column', 'LEFT')
+              )}
             </div>
-            <div style={{ gridColumn: '2 / 3', gridRow: '3', display: 'flex', justifyContent: 'center', width: '100%', maxWidth: '100%' }}>
+            <div style={{ gridColumn: '2 / 3', gridRow: '3', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: '100%' }}>
               {(myRole === 'PLAYER' || myRole === 'ADMIN') && mySeat !== null ? (
-                <div style={{ 
-                  display: 'flex', 
-                  gap: isMobile ? '4px' : '8px', 
-                  flexWrap: 'nowrap', 
-                  justifyContent: 'center', 
-                  position: 'relative', 
-                  zIndex: 30,
+                <div style={{
+                  display: 'flex',
+                  flexDirection: isLandscape ? 'row' : (isMobile ? 'column' : 'row'),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: isLandscape ? '8px' : isMobile ? '2px' : '8px',
                   maxWidth: '100%',
-                  overflowX: 'auto',
-                  padding: '6px 2px',
                 }}>
+                  {/* In landscape mode, bottom player badge sits beside the hand */}
+                  {isLandscape && renderBadgeOnly(
+                    relativePlayers.BOTTOM,
+                    isObserver
+                      ? getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)
+                      : (mySeat !== null && !relativePlayers.BOTTOM?.isBot ? 'أنت' : getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)),
+                    'row'
+                  )}
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: isLandscape ? '3px' : isMobile ? '4px' : '8px', 
+                    flexWrap: 'nowrap', 
+                    justifyContent: 'center', 
+                    position: 'relative', 
+                    zIndex: 30,
+                    maxWidth: '100%',
+                    overflowX: 'auto',
+                    padding: isLandscape ? '2px 0' : '4px 2px',
+                  }}>
                     {isMyTurn && !isRoundOver && (
                       <div
                         style={{
                           position: 'absolute',
                           bottom: '106%',
                           right: '8px',
-                          padding: isMobile ? '2px 8px' : '4px 12px',
+                          padding: isLandscape ? '1px 6px' : isMobile ? '2px 8px' : '4px 12px',
                           borderRadius: '16px',
                           backgroundColor: 'rgba(15, 23, 42, 0.85)',
                           border: '1px solid rgba(245, 158, 11, 0.4)',
                           color: '#fde68a',
                           fontWeight: 700,
-                          fontSize: isMobile ? '0.7rem' : '0.78rem',
+                          fontSize: isLandscape ? '0.62rem' : isMobile ? '0.7rem' : '0.78rem',
                           backdropFilter: 'blur(8px)',
                           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.35)',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '6px',
+                          gap: '4px',
                           whiteSpace: 'nowrap',
                           zIndex: 60,
                           opacity: 0.9,
@@ -1851,8 +1956,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                       >
                         <span
                           style={{
-                            width: '7px',
-                            height: '7px',
+                            width: '6px',
+                            height: '6px',
                             borderRadius: '50%',
                             backgroundColor: '#f59e0b',
                             boxShadow: '0 0 6px #f59e0b',
@@ -1873,7 +1978,11 @@ export const GameTable: React.FC<GameTableProps> = ({
                             : (lastRound?.revealedHands?.find((h) => Number(h.seat) === mySeatNum)?.tiles || []))
                         : gameState.myHand;
 
-                      const responsiveTileSize = isMobile ? (myTilesToRender.length > 5 ? 'xs' : 'sm') : 'md';
+                      const responsiveTileSize = isLandscape
+                        ? (myTilesToRender.length > 5 ? 'xs' : 'sm')
+                        : isMobile
+                        ? (myTilesToRender.length > 5 ? 'xs' : 'sm')
+                        : 'md';
 
                       return myTilesToRender.map((tile, index) => {
                         const isPlayable = isMyTurn && !isRoundOver && !!myLegalMoves.find(m => (m.tile[0] === tile[0] && m.tile[1] === tile[1]) || (m.tile[0] === tile[1] && m.tile[1] === tile[0]));
@@ -1947,9 +2056,31 @@ export const GameTable: React.FC<GameTableProps> = ({
                         );
                       });
                     })()}
+                  </div>
+                  {/* In portrait mobile mode, bottom player badge sits below the hand */}
+                  {isPortraitMobile && renderBadgeOnly(
+                    relativePlayers.BOTTOM,
+                    isObserver
+                      ? getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)
+                      : (mySeat !== null && !relativePlayers.BOTTOM?.isBot ? 'أنت' : getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)),
+                    'row'
+                  )}
                 </div>
               ) : (
-                renderHiddenCards(relativePlayers.BOTTOM, 'row', 'BOTTOM')
+                (isMobile || isLandscape) ? (
+                  <div style={{ display: 'flex', flexDirection: isLandscape ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                    {renderBadgeOnly(
+                      relativePlayers.BOTTOM,
+                      isObserver
+                        ? getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)
+                        : (mySeat !== null && !relativePlayers.BOTTOM?.isBot ? 'أنت' : getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)),
+                      'row'
+                    )}
+                    {renderHiddenCards(relativePlayers.BOTTOM, 'row', 'BOTTOM')}
+                  </div>
+                ) : (
+                  renderHiddenCards(relativePlayers.BOTTOM, 'row', 'BOTTOM')
+                )
               )}
             </div>
 
@@ -2159,31 +2290,31 @@ export const GameTable: React.FC<GameTableProps> = ({
                 className="arabic-font animate-float"
                 style={{
                   position: 'absolute',
-                  bottom: '16px',
-                  right: '22px',
+                  bottom: isLandscape ? '6px' : '16px',
+                  right: isLandscape ? '8px' : '22px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '10px',
+                  gap: isLandscape ? '4px' : '10px',
                   zIndex: 40,
                 }}
               >
                 <div
                   style={{
-                    padding: '8px 20px',
+                    padding: isLandscape ? '3px 10px' : '8px 20px',
                     background: 'linear-gradient(135deg, var(--baffa-gold-primary) 0%, #d97706 100%)',
                     color: '#000',
                     borderRadius: '30px',
                     fontWeight: 900,
-                    fontSize: '1.05rem',
+                    fontSize: isLandscape ? '0.78rem' : '1.05rem',
                     boxShadow: '0 4px 18px rgba(245, 158, 11, 0.45)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: isLandscape ? '4px' : '8px',
                     userSelect: 'none',
                     pointerEvents: 'none',
                   }}
                 >
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#000', display: 'inline-block' }} />
+                  <span style={{ width: isLandscape ? '6px' : '8px', height: isLandscape ? '6px' : '8px', borderRadius: '50%', backgroundColor: '#000', display: 'inline-block' }} />
                   <span>دورك للعب!</span>
                 </div>
               </div>
@@ -2194,17 +2325,17 @@ export const GameTable: React.FC<GameTableProps> = ({
               <div
                 style={{
                   position: 'absolute',
-                  bottom: '90px',
+                  bottom: isLandscape ? '44px' : '90px',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   zIndex: 65,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '14px',
+                  gap: isLandscape ? '8px' : '14px',
                   backgroundColor: 'rgba(8, 16, 26, 0.94)',
                   backdropFilter: 'blur(12px)',
                   border: '1.5px solid var(--baffa-gold-primary)',
-                  padding: '8px 22px',
+                  padding: isLandscape ? '4px 14px' : '8px 22px',
                   borderRadius: '30px',
                   boxShadow: '0 8px 30px rgba(0,0,0,0.85), 0 0 25px rgba(245,158,11,0.4)',
                   animation: 'drop-in-bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',

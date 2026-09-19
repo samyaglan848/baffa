@@ -331,19 +331,24 @@ export default function App() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh',
+        height: isPlayingGame ? '100dvh' : undefined,
+        minHeight: isPlayingGame ? undefined : '100vh',
+        maxHeight: isPlayingGame ? '100dvh' : undefined,
+        overflow: isPlayingGame ? 'hidden' : 'auto',
         backgroundColor: 'var(--baffa-bg-canvas)',
       }}
     >
-      <Navbar
-        isConnected={isConnected}
-        currentUser={currentUser}
-        currentView={currentView}
-        onNavigate={(view) => setCurrentView(view)}
-        onOpenSettings={() => setShowSettings(true)}
-        onLeaveRoom={handleLeaveRoom}
-        inRoom={!!room}
-      />
+      {!isPlayingGame && (
+        <Navbar
+          isConnected={isConnected}
+          currentUser={currentUser}
+          currentView={currentView}
+          onNavigate={(view) => setCurrentView(view)}
+          onOpenSettings={() => setShowSettings(true)}
+          onLeaveRoom={handleLeaveRoom}
+          inRoom={!!room}
+        />
+      )}
 
       {/* Global Error Banner */}
       {errorMessage &&
@@ -371,7 +376,7 @@ export default function App() {
           className="animate-float arabic-font"
           style={{
             position: 'fixed',
-            top: '76px',
+            top: isPlayingGame ? '16px' : '76px',
             left: '50%',
             transform: 'translateX(-50%)',
             padding: '12px 24px',
@@ -441,7 +446,7 @@ export default function App() {
       )}
 
       {/* Main Content View Switcher */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, height: isPlayingGame ? '100%' : undefined, overflow: isPlayingGame ? 'hidden' : 'auto' }}>
         {/* If in Room Lobby */}
         {room && !isPlayingGame && (
           <RoomLobby

@@ -56,6 +56,8 @@ interface ChatAndReactionsProps {
   isReactionsMuted?: boolean;
   players?: SanitizedPlayerState[];
   mySeat?: PlayerSeat | null;
+  isMobile?: boolean;
+  isLandscape?: boolean;
 }
 
 export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
@@ -68,6 +70,8 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
   isReactionsMuted = false,
   players = [],
   mySeat = null,
+  isMobile = false,
+  isLandscape = false,
 }) => {
   const { playSound } = useGameAudio();
   const [isOpen, setIsOpen] = useState(false);
@@ -314,15 +318,15 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
   return (
     <>
       {/* Floating Chat & Emoji Toggle Button */}
-      <div style={{ position: 'absolute', bottom: '22px', left: '22px', zIndex: 60 }}>
+      <div style={{ position: 'absolute', bottom: isLandscape ? '8px' : isMobile ? '12px' : '22px', left: isLandscape ? '8px' : isMobile ? '12px' : '22px', zIndex: 60 }}>
         <button
           onClick={() => setIsOpen(!isOpen)}
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: '46px',
-            height: '46px',
+            width: isLandscape ? '34px' : isMobile ? '38px' : '46px',
+            height: isLandscape ? '34px' : isMobile ? '38px' : '46px',
             borderRadius: '50%',
             backgroundColor: isOpen
               ? 'var(--baffa-gold-primary)'
@@ -353,13 +357,13 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
           }
         >
           {isOpen ? (
-            <X size={22} />
+            <X size={isLandscape ? 17 : isMobile ? 19 : 22} />
           ) : (!quickChatEnabled && !reactionsEnabled) || (isChatMuted && isReactionsMuted) ? (
-            <MessageSquareOff size={22} />
+            <MessageSquareOff size={isLandscape ? 17 : isMobile ? 19 : 22} />
           ) : quickChatEnabled ? (
-            <MessageSquare size={22} />
+            <MessageSquare size={isLandscape ? 17 : isMobile ? 19 : 22} />
           ) : (
-            <Smile size={22} />
+            <Smile size={isLandscape ? 17 : isMobile ? 19 : 22} />
           )}
         </button>
       </div>
@@ -370,20 +374,20 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
           className="animate-float"
           style={{
             position: 'absolute',
-            bottom: '76px',
-            left: '22px',
-            width: '320px',
+            bottom: isLandscape ? '46px' : isMobile ? '56px' : '76px',
+            left: isLandscape ? '8px' : isMobile ? '12px' : '22px',
+            width: isLandscape ? '280px' : isMobile ? '290px' : '320px',
             backgroundColor: 'rgba(10, 18, 30, 0.96)',
             backdropFilter: 'blur(16px)',
             borderRadius: '24px',
             border: '1.5px solid var(--baffa-gold-primary)',
-            padding: '18px',
+            padding: isLandscape ? '12px' : '18px',
             boxShadow: '0 12px 40px rgba(0,0,0,0.85), 0 0 25px rgba(245, 158, 11, 0.35)',
             zIndex: 65,
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
-            maxHeight: '65vh',
+            gap: isLandscape ? '10px' : '16px',
+            maxHeight: isLandscape ? '75vh' : '65vh',
             overflowY: 'auto',
           }}
         >
