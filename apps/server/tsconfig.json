@@ -12,11 +12,12 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
+    "rootDir": "./src",
     "paths": {
-      "@baffa/shared": ["../../packages/shared/src/index.ts", "../../packages/shared/dist/index.d.ts"],
-      "@baffa/shared/*": ["../../packages/shared/src/*", "../../packages/shared/dist/*"],
-      "@baffa/engine": ["../../packages/engine/src/index.ts", "../../packages/engine/dist/index.d.ts"],
-      "@baffa/engine/*": ["../../packages/engine/src/*", "../../packages/engine/dist/*"]
+      "@baffa/shared": ["../../packages/shared/dist/index.d.ts"],
+      "@baffa/shared/*": ["../../packages/shared/dist/*"],
+      "@baffa/engine": ["../../packages/engine/dist/index.d.ts"],
+      "@baffa/engine/*": ["../../packages/engine/dist/*"]
     }
   },
   "include": ["src/**/*"]
