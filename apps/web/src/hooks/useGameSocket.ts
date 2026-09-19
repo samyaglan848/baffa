@@ -305,12 +305,13 @@ export function useGameSocket() {
     prevSocketUserIdRef.current = currentUser.id;
 
     const socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
+      upgrade: false,
       reconnection: true,
       reconnectionAttempts: 30,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 4000,
-      timeout: 15000,
+      reconnectionDelay: 800,
+      reconnectionDelayMax: 3000,
+      timeout: 10000,
       auth: {
         token: currentUser.token,
         userId: currentUser.id,
@@ -599,6 +600,8 @@ export function useGameSocket() {
     let isSubscribed = true;
 
     const syncState = async () => {
+      // When WebSocket is connected, updates are pushed in real time — skip HTTP polling!
+      if (socketRef.current && socketRef.current.connected) return;
       try {
         const apiUrl = API_URL;
         const role = myRoleRef.current;
@@ -645,8 +648,7 @@ export function useGameSocket() {
     };
 
     syncState();
-    const interval = setInterval(syncState, 1500);
-
+    const interval = setInterval(syncState, 5000);
     return () => {
       isSubscribed = false;
       clearInterval(interval);
@@ -1049,6 +1051,20 @@ export function useGameSocket() {
       const targetRoomId = room?.id || gameState?.roomId || activeRoomIdRef.current;
       if (!targetRoomId) return;
 
+      // Optimistic instant feedback: remove tile from hand and advance turn immediately
+      setGameState((prev) => {
+        if (!prev) return prev;
+        const newHand = prev.myHand.filter(
+          (t) => !( (t[0] === tile[0] && t[1] === tile[1]) || (t[0] === tile[1] && t[1] === tile[0]) )
+        );
+        const nextTurn = (((prev.currentTurnSeat ?? 0) + 1) % 4) as PlayerSeat;
+        return {
+          ...prev,
+          myHand: newHand,
+          currentTurnSeat: nextTurn,
+        };
+      });
+
       if (socketRef.current) {
         if (!socketRef.current.connected) {
           socketRef.current.connect();
@@ -1081,6 +1097,16 @@ export function useGameSocket() {
   const passTurn = useCallback(() => {
     const targetRoomId = room?.id || gameState?.roomId || activeRoomIdRef.current;
     if (!targetRoomId) return;
+
+    // Optimistic turn advance
+    setGameState((prev) => {
+      if (!prev) return prev;
+      const nextTurn = (((prev.currentTurnSeat ?? 0) + 1) % 4) as PlayerSeat;
+      return {
+        ...prev,
+        currentTurnSeat: nextTurn,
+      };
+    });
 
     if (socketRef.current) {
       if (!socketRef.current.connected) {

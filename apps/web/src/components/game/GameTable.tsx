@@ -492,7 +492,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
       // Stage 1: Reveal cards immediately in place
       setRoundEndStage('REVEALED');
-      setNextRoundCountdown(5);
+      setNextRoundCountdown(2);
 
       // Stage 2: Keep cards revealed for 4.2s total before flying so players comfortably inspect tiles
       const t1 = setTimeout(() => {
@@ -521,7 +521,7 @@ export const GameTable: React.FC<GameTableProps> = ({
         });
         setFlyingVectors(vectors);
         setRoundEndStage('FLYING');
-      }, 4200);
+      }, 1000);
 
       // Stage 3: Hit scoreboard, pulse score delta badge, update score & play sound
       const t2 = setTimeout(() => {
@@ -537,7 +537,7 @@ export const GameTable: React.FC<GameTableProps> = ({
         } else {
           playSound('win');
         }
-      }, 6200);
+      }, 1700);
 
       // Stage 4: Settled, show next round countdown & button
       const t3 = setTimeout(() => {
@@ -545,7 +545,7 @@ export const GameTable: React.FC<GameTableProps> = ({
         if (gameState.status === 'MATCH_FINISHED') {
           setShowMatchTrophyModal(true);
         }
-      }, 7600);
+      }, 2300);
 
       roundEndTimersRef.current = [t1, t2, t3];
     } else {

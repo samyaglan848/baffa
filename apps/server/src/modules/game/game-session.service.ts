@@ -349,7 +349,7 @@ export class GameSessionService {
         this.startTurnTimer(roomId);
       } else if (engine.getStatus() === 'ROUND_FINISHED') {
         // Auto-advance for bot/judge matches (normal win condition)
-        this.autoAdvanceRoundIfBotMatch(roomId, 8500);
+        this.autoAdvanceRoundIfBotMatch(roomId, 2200);
       }
 
       this.callbacks?.broadcastStateToRoom(roomId);
@@ -398,7 +398,7 @@ export class GameSessionService {
         this.startTurnTimer(roomId);
       } else if (engine.getStatus() === 'ROUND_FINISHED') {
         // Auto-advance for bot/judge matches (blocked round)
-        this.autoAdvanceRoundIfBotMatch(roomId, 8500);
+        this.autoAdvanceRoundIfBotMatch(roomId, 2200);
       }
 
       this.callbacks?.broadcastStateToRoom(roomId);
@@ -445,8 +445,8 @@ export class GameSessionService {
       } else {
         // Broadcast updated (ROUND_FINISHED) state first so clients see the penalty result
         this.callbacks?.broadcastStateToRoom(roomId);
-        // For bot/judge matches: auto-advance to next round after generous display window
-        this.autoAdvanceRoundIfBotMatch(roomId, 9500);
+        // For bot/judge matches: auto-advance to next round after display window
+        this.autoAdvanceRoundIfBotMatch(roomId, 2500);
       }
     }
 
@@ -498,9 +498,9 @@ export class GameSessionService {
           this.callbacks?.broadcastStatsUpdated(roomId);
           this.callbacks?.broadcastStateToRoom(roomId);
         } else {
-          // Broadcast the ROUND_FINISHED state, then auto-advance after ample time for players to digest
+          // Broadcast the ROUND_FINISHED state, then auto-advance
           this.callbacks?.broadcastStateToRoom(roomId);
-          this.autoAdvanceRoundIfBotMatch(roomId, 9500);
+          this.autoAdvanceRoundIfBotMatch(roomId, 2500);
         }
       } else {
         // Warning 1 only — broadcast and keep game running
@@ -550,9 +550,9 @@ export class GameSessionService {
         this.callbacks?.broadcastStatsUpdated(roomId);
         this.callbacks?.broadcastStateToRoom(roomId);
       } else {
-        // Broadcast the ROUND_FINISHED state, then auto-advance for bot/judge matches after display window
+        // Broadcast the ROUND_FINISHED state, then auto-advance for bot/judge matches
         this.callbacks?.broadcastStateToRoom(roomId);
-        this.autoAdvanceRoundIfBotMatch(roomId, 9500);
+        this.autoAdvanceRoundIfBotMatch(roomId, 2500);
       }
     }
 
@@ -837,9 +837,8 @@ export class GameSessionService {
       this.botTimeouts.delete(roomId);
     }
 
-    // Exact, uniform 2-second (2000ms) delay across ALL bot moves:
-    // Round start opening tile, mid-round plays, passes, and bot takeover seats.
-    const delayMs = forceImmediate ? 150 : 2000;
+    // Fast, responsive, snappy delay for bot moves (300ms - 500ms):
+    const delayMs = forceImmediate ? 60 : Math.floor(300 + Math.random() * 200);
 
     const resolvedBotId = seatInfo?.botId || enginePlayer?.botId || 'EL_SAMY';
     const timeout = setTimeout(() => {
@@ -953,7 +952,7 @@ export class GameSessionService {
         this.startTurnTimer(roomId);
       } else if (engine.getStatus() === 'ROUND_FINISHED') {
         // Auto-advance to next round for bot/judge matches
-        this.autoAdvanceRoundIfBotMatch(roomId, 8500);
+        this.autoAdvanceRoundIfBotMatch(roomId, 2200);
       }
 
       this.callbacks?.broadcastStateToRoom(roomId);
@@ -1039,7 +1038,7 @@ export class GameSessionService {
       this.checkAndTriggerBotTurn(roomId);
     } else if (engine.getStatus() === 'ROUND_FINISHED') {
       this.clearTurnTimer(roomId);
-      this.autoAdvanceRoundIfBotMatch(roomId, 8500);
+      this.autoAdvanceRoundIfBotMatch(roomId, 2200);
     } else {
       this.clearTurnTimer(roomId);
     }
