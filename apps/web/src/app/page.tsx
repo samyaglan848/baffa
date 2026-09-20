@@ -447,11 +447,11 @@ export default function App() {
           className="animate-float arabic-font"
           style={{
             position: 'fixed',
-            top: isPlayingGame ? '16px' : '76px',
+            top: isPlayingGame ? '46px' : '76px',
             left: '50%',
             transform: 'translateX(-50%)',
-            padding: '12px 24px',
-            borderRadius: '24px',
+            padding: '7px 16px',
+            borderRadius: '20px',
             backgroundColor:
               latestNotification.type === 'ALERT'
                 ? 'rgba(239, 68, 68, 0.98)'
@@ -461,21 +461,21 @@ export default function App() {
                 ? 'rgba(16, 185, 129, 0.98)'
                 : 'rgba(15, 23, 42, 0.98)',
             color: '#fff',
-            fontSize: '1.05rem',
+            fontSize: '0.82rem',
             fontWeight: 800,
             zIndex: 999999,
-            border: '2px solid rgba(255, 255, 255, 0.4)',
-            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.75)',
+            border: '1.5px solid rgba(255, 255, 255, 0.4)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.75)',
             backdropFilter: 'blur(16px)',
             pointerEvents: 'auto',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
+            gap: '8px',
             textAlign: 'center',
             maxWidth: '92vw',
           }}
         >
-          <span style={{ fontSize: '1.3rem' }}>
+          <span style={{ fontSize: '1.05rem' }}>
             {latestNotification.type === 'ALERT'
               ? '🚨'
               : latestNotification.type === 'WARNING'
@@ -495,14 +495,14 @@ export default function App() {
               border: '1.5px solid rgba(255, 255, 255, 0.7)',
               borderRadius: '50%',
               color: '#fff',
-              width: '28px',
-              height: '28px',
+              width: '22px',
+              height: '22px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              marginLeft: '8px',
-              fontSize: '0.95rem',
+              marginLeft: '6px',
+              fontSize: '0.75rem',
               fontWeight: 900,
               boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
               transition: 'all 0.2s ease',

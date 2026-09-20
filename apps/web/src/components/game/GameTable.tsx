@@ -1466,29 +1466,30 @@ export const GameTable: React.FC<GameTableProps> = ({
                   pointerEvents: 'auto',
                   backgroundColor: '#0a101f',
                   border: `2px solid ${themeColor}`,
-                  borderRadius: '18px',
+                  borderRadius: isMobile ? '12px' : '18px',
                   boxShadow: `0 20px 50px rgba(0, 0, 0, 0.98), 0 0 30px ${themeGlow}`,
                   direction: 'rtl',
                   color: '#fff',
                   overflow: 'hidden',
                   position: 'relative',
-                  padding: '14px 18px 12px',
+                  padding: isMobile ? '8px 12px 6px' : '14px 18px 12px',
+                  maxWidth: isMobile ? '92vw' : '480px',
                 }}
               >
                 {/* Header Row: Emoji Badge, Decision Title & Close */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '4px' : '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px' }}>
                     <div
                       style={{
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '12px',
+                        width: isMobile ? '28px' : '38px',
+                        height: isMobile ? '28px' : '38px',
+                        borderRadius: isMobile ? '8px' : '12px',
                         backgroundColor: 'rgba(255, 255, 255, 0.08)',
                         border: `1.5px solid ${themeColor}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '1.4rem',
+                        fontSize: isMobile ? '1.0rem' : '1.4rem',
                         boxShadow: `0 0 14px ${themeGlow}`,
                         flexShrink: 0,
                       }}
@@ -1496,17 +1497,17 @@ export const GameTable: React.FC<GameTableProps> = ({
                       {badgeEmoji}
                     </div>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: themeColor }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: isMobile ? '0.64rem' : '0.72rem', fontWeight: 900, color: themeColor }}>
                           ⚖️ قرار تحكيمي رسمي ({latestRefereeDecision.judgeName || 'الحكم'})
                         </span>
                         <span
                           style={{
                             display: 'inline-block',
-                            padding: '1px 6px',
-                            borderRadius: '6px',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
                             backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            fontSize: '0.65rem',
+                            fontSize: isMobile ? '0.58rem' : '0.65rem',
                             fontWeight: 800,
                             color: '#94a3b8',
                           }}
@@ -1514,7 +1515,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                           6 ثوانٍ ⏱️
                         </span>
                       </div>
-                      <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#fff', lineHeight: 1.2 }}>
+                      <div style={{ fontSize: isMobile ? '0.86rem' : '1.15rem', fontWeight: 900, color: '#fff', lineHeight: 1.2 }}>
                         {latestRefereeDecision.title}
                       </div>
                     </div>
@@ -1523,8 +1524,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                   <button
                     onClick={onDismissRefereeDecision}
                     style={{
-                      width: '28px',
-                      height: '28px',
+                      width: isMobile ? '22px' : '28px',
+                      height: isMobile ? '22px' : '28px',
                       borderRadius: '50%',
                       background: 'rgba(255, 255, 255, 0.08)',
                       border: '1px solid rgba(255, 255, 255, 0.15)',
@@ -1533,7 +1534,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      fontSize: '0.85rem',
+                      fontSize: isMobile ? '0.72rem' : '0.85rem',
                       transition: 'all 0.2s ease',
                     }}
                     title="إغلاق التنبيه"
@@ -1542,18 +1543,18 @@ export const GameTable: React.FC<GameTableProps> = ({
                   </button>
                 </div>
 
-                {/* Details Card: Target & Reason (Completely Opaque / Solid Background) */}
+                {/* Details Card: Target & Reason */}
                 <div
                   style={{
                     backgroundColor: '#111827',
-                    borderRadius: '12px',
+                    borderRadius: isMobile ? '8px' : '12px',
                     border: '1.5px solid rgba(255, 255, 255, 0.15)',
-                    padding: '8px 12px',
+                    padding: isMobile ? '5px 8px' : '8px 12px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '6px',
-                    marginBottom: '8px',
-                    fontSize: '0.85rem',
+                    gap: isMobile ? '3px' : '6px',
+                    marginBottom: isMobile ? '4px' : '8px',
+                    fontSize: isMobile ? '0.74rem' : '0.85rem',
                   }}
                 >
                   {/* Target Player / Team */}
@@ -1578,7 +1579,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
                   {/* Optional Arabic Message if distinct */}
                   {latestRefereeDecision.arabicMessage && latestRefereeDecision.arabicMessage !== latestRefereeDecision.reason && (
-                    <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.75)', lineHeight: 1.35 }}>
+                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.78rem', color: 'rgba(255, 255, 255, 0.75)', lineHeight: 1.3 }}>
                       {latestRefereeDecision.arabicMessage}
                     </div>
                   )}
@@ -1586,7 +1587,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
                 {/* Action button if round is finished */}
                 {gameState.status === 'ROUND_FINISHED' && onRequestNextRound && (
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: isMobile ? '4px' : '8px' }}>
                     <button
                       onClick={() => {
                         onDismissRefereeDecision?.();
@@ -1594,8 +1595,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                       }}
                       className="baffa-btn-primary"
                       style={{
-                        padding: '6px 16px',
-                        fontSize: '0.82rem',
+                        padding: isMobile ? '4px 12px' : '6px 16px',
+                        fontSize: isMobile ? '0.74rem' : '0.82rem',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
@@ -2301,31 +2302,31 @@ export const GameTable: React.FC<GameTableProps> = ({
                 className="arabic-font animate-float"
                 style={{
                   position: 'absolute',
-                  bottom: isLandscape ? '6px' : '16px',
-                  right: isLandscape ? '8px' : '22px',
+                  bottom: isLandscape ? '6px' : isMobile ? '8px' : '16px',
+                  right: isLandscape ? '8px' : isMobile ? '10px' : '22px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: isLandscape ? '4px' : '10px',
+                  gap: isLandscape ? '4px' : isMobile ? '6px' : '10px',
                   zIndex: 40,
                 }}
               >
                 <div
                   style={{
-                    padding: isLandscape ? '3px 10px' : '8px 20px',
+                    padding: isLandscape ? '3px 10px' : isMobile ? '4px 12px' : '8px 20px',
                     background: 'linear-gradient(135deg, var(--baffa-gold-primary) 0%, #d97706 100%)',
                     color: '#000',
                     borderRadius: '30px',
                     fontWeight: 900,
-                    fontSize: isLandscape ? '0.78rem' : '1.05rem',
+                    fontSize: isLandscape ? '0.75rem' : isMobile ? '0.78rem' : '1.05rem',
                     boxShadow: '0 4px 18px rgba(245, 158, 11, 0.45)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: isLandscape ? '4px' : '8px',
+                    gap: isLandscape ? '4px' : isMobile ? '5px' : '8px',
                     userSelect: 'none',
                     pointerEvents: 'none',
                   }}
                 >
-                  <span style={{ width: isLandscape ? '6px' : '8px', height: isLandscape ? '6px' : '8px', borderRadius: '50%', backgroundColor: '#000', display: 'inline-block' }} />
+                  <span style={{ width: isLandscape || isMobile ? '6px' : '8px', height: isLandscape || isMobile ? '6px' : '8px', borderRadius: '50%', backgroundColor: '#000', display: 'inline-block' }} />
                   <span>دورك للعب!</span>
                 </div>
               </div>

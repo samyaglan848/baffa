@@ -48,6 +48,16 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
   const [selectedSpectatorId, setSelectedSpectatorId] = useState<string>('');
   const [selectedBotId, setSelectedBotId] = useState<BotId>('EL_RAYEQ');
 
+  const [isMobile, setIsMobile] = useState(false);
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (!isOpen || !targetPlayer) return null;
 
   const currentWarnings = targetPlayer.warnings || 0;
@@ -109,7 +119,7 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
         {/* Header */}
         <div
           style={{
-            padding: '16px 20px',
+            padding: isMobile ? '10px 14px' : '16px 20px',
             background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(12, 19, 34, 0.95) 100%)',
             borderBottom: '1px solid rgba(245, 158, 11, 0.25)',
             display: 'flex',
@@ -117,54 +127,54 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
             justifyContent: 'space-between',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px' }}>
             <div
               style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '12px',
+                width: isMobile ? '32px' : '42px',
+                height: isMobile ? '32px' : '42px',
+                borderRadius: isMobile ? '8px' : '12px',
                 backgroundColor: 'rgba(245, 158, 11, 0.15)',
                 border: '1.5px solid var(--baffa-gold-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.4rem',
+                fontSize: isMobile ? '1.1rem' : '1.4rem',
                 boxShadow: '0 0 12px rgba(245, 158, 11, 0.3)',
               }}
             >
               ⚖️
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span
                   className="arabic-font"
                   style={{
-                    fontSize: '0.75rem',
+                    fontSize: isMobile ? '0.68rem' : '0.75rem',
                     fontWeight: 800,
                     color: 'var(--baffa-gold-primary)',
                     backgroundColor: 'rgba(245, 158, 11, 0.12)',
                     border: '1px solid rgba(245, 158, 11, 0.3)',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
+                    padding: '1px 6px',
+                    borderRadius: '8px',
                   }}
                 >
                   لوحة قرارات الحكم
                 </span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>
+                <span style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'var(--baffa-text-muted)' }}>
                   فريق {targetPlayer.team}
                 </span>
               </div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 900, marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontSize: isMobile ? '0.95rem' : '1.15rem', fontWeight: 900, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span>{targetPlayer.username}</span>
                 {targetPlayer.isBot && (
                   <span
                     style={{
-                      fontSize: '0.7rem',
+                      fontSize: '0.65rem',
                       fontWeight: 800,
                       backgroundColor: 'rgba(6, 182, 212, 0.15)',
                       border: '1px solid rgba(6, 182, 212, 0.4)',
                       color: '#38bdf8',
-                      padding: '1px 6px',
+                      padding: '1px 5px',
                       borderRadius: '4px',
                     }}
                   >
@@ -178,13 +188,13 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
           <button
             onClick={onClose}
             style={{
-              width: '32px',
-              height: '32px',
+              width: isMobile ? '28px' : '32px',
+              height: isMobile ? '28px' : '32px',
               borderRadius: '8px',
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.12)',
               color: 'var(--baffa-text-muted)',
-              fontSize: '1rem',
+              fontSize: '0.9rem',
               fontWeight: 800,
               display: 'flex',
               alignItems: 'center',
@@ -201,19 +211,19 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
         {/* Disciplinary Status Strip */}
         <div
           style={{
-            padding: '10px 20px',
+            padding: isMobile ? '6px 14px' : '10px 20px',
             backgroundColor: 'rgba(6, 10, 18, 0.6)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontSize: '0.8rem',
+            fontSize: isMobile ? '0.72rem' : '0.8rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: 'var(--baffa-text-muted)' }}>سجل الإنذارات:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ color: 'var(--baffa-text-muted)' }}>الإنذارات:</span>
             {currentWarnings === 0 && (
-              <span style={{ color: '#4ade80', fontWeight: 800 }}>سجل نظيف (0/2)</span>
+              <span style={{ color: '#4ade80', fontWeight: 800 }}>نظيف (0/2)</span>
             )}
             {currentWarnings === 1 && (
               <span
@@ -222,11 +232,11 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                   fontWeight: 900,
                   backgroundColor: 'rgba(245, 158, 11, 0.15)',
                   border: '1px solid rgba(245, 158, 11, 0.4)',
-                  padding: '2px 8px',
-                  borderRadius: '6px',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
                 }}
               >
-                🟨 كارت أصفر أول (1/2) - متبقي إنذار
+                🟨 كارت أصفر (1/2)
               </span>
             )}
             {currentWarnings >= 2 && (
@@ -236,29 +246,29 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                   fontWeight: 900,
                   backgroundColor: 'rgba(239, 68, 68, 0.15)',
                   border: '1px solid rgba(239, 68, 68, 0.4)',
-                  padding: '2px 8px',
-                  borderRadius: '6px',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
                 }}
               >
-                🟥 إنذاران (2/2) - حالة غش معتمدة
+                🟥 إنذاران (2/2) - غش
               </span>
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             {targetPlayer.isVoiceMuted && (
-              <span style={{ fontSize: '0.7rem', color: '#f87171', backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                الصوت مكتوم 🔇
+              <span style={{ fontSize: '0.65rem', color: '#f87171', backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: '1px 5px', borderRadius: '4px' }}>
+                صوت 🔇
               </span>
             )}
             {targetPlayer.isChatMuted && (
-              <span style={{ fontSize: '0.7rem', color: '#fb923c', backgroundColor: 'rgba(249, 115, 22, 0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                الشات مكتوم 💬
+              <span style={{ fontSize: '0.65rem', color: '#fb923c', backgroundColor: 'rgba(249, 115, 22, 0.15)', padding: '1px 5px', borderRadius: '4px' }}>
+                شات 💬
               </span>
             )}
             {targetPlayer.isReactionsMuted && (
-              <span style={{ fontSize: '0.7rem', color: '#facc15', backgroundColor: 'rgba(234, 179, 8, 0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                الإيموجي مكتوم 🙂
+              <span style={{ fontSize: '0.65rem', color: '#facc15', backgroundColor: 'rgba(234, 179, 8, 0.15)', padding: '1px 5px', borderRadius: '4px' }}>
+                إيموجي 🙂
               </span>
             )}
           </div>
@@ -268,8 +278,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
         <div
           style={{
             display: 'flex',
-            padding: '6px 12px',
-            gap: '8px',
+            padding: isMobile ? '4px 8px' : '6px 12px',
+            gap: isMobile ? '4px' : '8px',
             backgroundColor: 'rgba(8, 13, 26, 0.8)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           }}
@@ -278,16 +288,16 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
             onClick={() => setActiveTab('CARDS')}
             style={{
               flex: 1,
-              padding: '8px 12px',
-              borderRadius: '10px',
+              padding: isMobile ? '6px 8px' : '8px 12px',
+              borderRadius: isMobile ? '8px' : '10px',
               border: 'none',
-              fontSize: '0.85rem',
+              fontSize: isMobile ? '0.74rem' : '0.85rem',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
+              gap: '4px',
               transition: 'all 0.2s ease',
               backgroundColor: activeTab === 'CARDS' ? 'var(--baffa-gold-primary)' : 'transparent',
               color: activeTab === 'CARDS' ? '#080d1a' : 'var(--baffa-text-muted)',
@@ -295,23 +305,23 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
             }}
           >
             <span>🟨🟥</span>
-            <span className="arabic-font">الإنذارات والكروت</span>
+            <span className="arabic-font">{isMobile ? 'الكروت' : 'الإنذارات والكروت'}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('MUTE')}
             style={{
               flex: 1,
-              padding: '8px 12px',
-              borderRadius: '10px',
+              padding: isMobile ? '6px 8px' : '8px 12px',
+              borderRadius: isMobile ? '8px' : '10px',
               border: 'none',
-              fontSize: '0.85rem',
+              fontSize: isMobile ? '0.74rem' : '0.85rem',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
+              gap: '4px',
               transition: 'all 0.2s ease',
               backgroundColor: activeTab === 'MUTE' ? 'var(--baffa-gold-primary)' : 'transparent',
               color: activeTab === 'MUTE' ? '#080d1a' : 'var(--baffa-text-muted)',
@@ -319,23 +329,23 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
             }}
           >
             <span>🔇</span>
-            <span className="arabic-font">الكتم والمايك</span>
+            <span className="arabic-font">{isMobile ? 'الكتم' : 'الكتم والمايك'}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('SUB')}
             style={{
               flex: 1,
-              padding: '8px 12px',
-              borderRadius: '10px',
+              padding: isMobile ? '6px 8px' : '8px 12px',
+              borderRadius: isMobile ? '8px' : '10px',
               border: 'none',
-              fontSize: '0.85rem',
+              fontSize: isMobile ? '0.74rem' : '0.85rem',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
+              gap: '4px',
               transition: 'all 0.2s ease',
               backgroundColor: activeTab === 'SUB' ? 'var(--baffa-gold-primary)' : 'transparent',
               color: activeTab === 'SUB' ? '#080d1a' : 'var(--baffa-text-muted)',
@@ -343,20 +353,20 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
             }}
           >
             <span>🤖</span>
-            <span className="arabic-font">التبديل والطرد</span>
+            <span className="arabic-font">{isMobile ? 'التبديل' : 'التبديل والطرد'}</span>
           </button>
         </div>
 
         {/* Tab Content */}
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto' }}>
+        <div style={{ padding: isMobile ? '12px 14px' : '20px', display: 'flex', flexDirection: 'column', gap: isMobile ? '12px' : '16px', maxHeight: isMobile ? '62vh' : '420px', overflowY: 'auto' }}>
           {/* TAB 1: CARDS & CHEATING */}
           {activeTab === 'CARDS' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '16px' }}>
               <div>
-                <label className="arabic-font" style={{ fontSize: '0.85rem', color: 'var(--baffa-text-muted)', marginBottom: '8px', display: 'block' }}>
+                <label className="arabic-font" style={{ fontSize: isMobile ? '0.76rem' : '0.85rem', color: 'var(--baffa-text-muted)', marginBottom: isMobile ? '4px' : '8px', display: 'block' }}>
                   سبب القرار / نوع المخالفة:
                 </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? '4px' : '6px', marginBottom: isMobile ? '6px' : '10px' }}>
                   {QUICK_REASONS.map((reason) => (
                     <button
                       key={reason}
@@ -365,9 +375,9 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                         setCustomReason('');
                       }}
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        fontSize: '0.78rem',
+                        padding: isMobile ? '4px 8px' : '6px 12px',
+                        borderRadius: isMobile ? '6px' : '8px',
+                        fontSize: isMobile ? '0.72rem' : '0.78rem',
                         fontWeight: 700,
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
@@ -388,12 +398,12 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                   onChange={(e) => setCustomReason(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '9px 12px',
-                    borderRadius: '8px',
+                    padding: isMobile ? '7px 10px' : '9px 12px',
+                    borderRadius: isMobile ? '6px' : '8px',
                     backgroundColor: 'rgba(15, 23, 42, 0.8)',
                     border: '1px solid rgba(255, 255, 255, 0.15)',
                     color: '#fff',
-                    fontSize: '0.85rem',
+                    fontSize: isMobile ? '0.78rem' : '0.85rem',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
@@ -401,13 +411,13 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '10px', marginTop: '4px' }}>
                 {/* Yellow Card Button */}
                 <button
                   onClick={handleWarn}
                   style={{
-                    padding: '12px 16px',
-                    borderRadius: '12px',
+                    padding: isMobile ? '8px 12px' : '12px 16px',
+                    borderRadius: isMobile ? '10px' : '12px',
                     backgroundColor: 'rgba(245, 158, 11, 0.15)',
                     border: '1.5px solid var(--baffa-gold-primary)',
                     color: '#fde68a',
@@ -418,28 +428,28 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '1.4rem' }}>🟨</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px' }}>
+                    <span style={{ fontSize: isMobile ? '1.1rem' : '1.4rem' }}>🟨</span>
                     <div style={{ textAlign: 'right' }}>
-                      <div className="arabic-font" style={{ fontSize: '0.95rem', fontWeight: 900, color: '#fbbf24' }}>
+                      <div className="arabic-font" style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 900, color: '#fbbf24' }}>
                         {currentWarnings === 0 ? 'توجيه إنذار رسمي (كارت أصفر أول)' : 'توجيه إنذار ثانٍ (احتساب غش تلقائي)'}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'rgba(253, 230, 138, 0.7)' }}>
+                      <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'rgba(253, 230, 138, 0.7)' }}>
                         {currentWarnings === 0
                           ? 'الإنذار الأول تحذير رسمي على الطاولة دون إنهاء الجولة.'
                           : 'الإنذار الثاني يؤدي فوراً لاحتساب غش وإنهاء الجولة ومنح نقاطها للمنافس.'}
                       </div>
                     </div>
                   </div>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>تنفيذ ⚡</span>
+                  <span style={{ fontSize: isMobile ? '0.75rem' : '0.9rem', fontWeight: 900 }}>تنفيذ ⚡</span>
                 </button>
 
                 {/* Direct Red Card Button */}
                 <button
                   onClick={handleDirectRed}
                   style={{
-                    padding: '12px 16px',
-                    borderRadius: '12px',
+                    padding: isMobile ? '8px 12px' : '12px 16px',
+                    borderRadius: isMobile ? '10px' : '12px',
                     backgroundColor: 'rgba(220, 38, 38, 0.15)',
                     border: '1.5px solid #ef4444',
                     color: '#fca5a5',
@@ -450,18 +460,18 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '1.4rem' }}>🟥</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px' }}>
+                    <span style={{ fontSize: isMobile ? '1.1rem' : '1.4rem' }}>🟥</span>
                     <div style={{ textAlign: 'right' }}>
-                      <div className="arabic-font" style={{ fontSize: '0.95rem', fontWeight: 900, color: '#f87171' }}>
+                      <div className="arabic-font" style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 900, color: '#f87171' }}>
                         كارت أحمر مباشر (احتساب غش فوري)
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'rgba(252, 165, 165, 0.7)' }}>
+                      <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'rgba(252, 165, 165, 0.7)' }}>
                         إنهاء الجولة فوراً، واعتماد حالة غش رسمية وحساب نقاط اليدين للفريق الآخر.
                       </div>
                     </div>
                   </div>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>تأكيد ⚠️</span>
+                  <span style={{ fontSize: isMobile ? '0.75rem' : '0.9rem', fontWeight: 900 }}>تأكيد ⚠️</span>
                 </button>
               </div>
             </div>
@@ -469,16 +479,16 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
 
           {/* TAB 2: MUTES & DISCIPLINE */}
           {activeTab === 'MUTE' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <p style={{ fontSize: '0.8rem', color: 'var(--baffa-text-muted)', margin: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '12px' }}>
+              <p style={{ fontSize: isMobile ? '0.72rem' : '0.8rem', color: 'var(--baffa-text-muted)', margin: 0 }}>
                 تحكم فوري في قنوات التواصل الخاصة بهذا اللاعب لمنع التلميحات أو السلوك غير اللائق:
               </p>
 
               {/* Voice Mute Row */}
               <div
                 style={{
-                  padding: '12px 16px',
-                  borderRadius: '12px',
+                  padding: isMobile ? '8px 12px' : '12px 16px',
+                  borderRadius: isMobile ? '10px' : '12px',
                   backgroundColor: 'rgba(15, 23, 42, 0.6)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   display: 'flex',
@@ -486,13 +496,13 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                   justifyContent: 'space-between',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '1.3rem' }}>🎙️</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px' }}>
+                  <span style={{ fontSize: isMobile ? '1.1rem' : '1.3rem' }}>🎙️</span>
                   <div>
-                    <div className="arabic-font" style={{ fontSize: '0.9rem', fontWeight: 800 }}>
+                    <div className="arabic-font" style={{ fontSize: isMobile ? '0.82rem' : '0.9rem', fontWeight: 800 }}>
                       الميكروفون والصوت
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>
+                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'var(--baffa-text-muted)' }}>
                       {targetPlayer.isVoiceMuted ? 'المايك مكتوم حالياً بقرار من الحكم' : 'المايك مفتوح ويمكنه التحدث'}
                     </div>
                   </div>
@@ -503,10 +513,10 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                     onClose();
                   }}
                   style={{
-                    padding: '6px 14px',
+                    padding: isMobile ? '4px 10px' : '6px 14px',
                     borderRadius: '8px',
                     border: 'none',
-                    fontSize: '0.8rem',
+                    fontSize: isMobile ? '0.72rem' : '0.8rem',
                     fontWeight: 800,
                     cursor: 'pointer',
                     backgroundColor: targetPlayer.isVoiceMuted ? '#22c55e' : '#ef4444',
@@ -520,8 +530,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               {/* Chat Mute Row */}
               <div
                 style={{
-                  padding: '12px 16px',
-                  borderRadius: '12px',
+                  padding: isMobile ? '8px 12px' : '12px 16px',
+                  borderRadius: isMobile ? '10px' : '12px',
                   backgroundColor: 'rgba(15, 23, 42, 0.6)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   display: 'flex',
@@ -529,13 +539,13 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                   justifyContent: 'space-between',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '1.3rem' }}>💬</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px' }}>
+                  <span style={{ fontSize: isMobile ? '1.1rem' : '1.3rem' }}>💬</span>
                   <div>
-                    <div className="arabic-font" style={{ fontSize: '0.9rem', fontWeight: 800 }}>
+                    <div className="arabic-font" style={{ fontSize: isMobile ? '0.82rem' : '0.9rem', fontWeight: 800 }}>
                       الدردشة والرسائل السريعة
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>
+                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'var(--baffa-text-muted)' }}>
                       {targetPlayer.isChatMuted ? 'الشات محظور عنه حالياً' : 'يمكنه كتابة الرسائل السريعة'}
                     </div>
                   </div>
@@ -546,10 +556,10 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                     onClose();
                   }}
                   style={{
-                    padding: '6px 14px',
+                    padding: isMobile ? '4px 10px' : '6px 14px',
                     borderRadius: '8px',
                     border: 'none',
-                    fontSize: '0.8rem',
+                    fontSize: isMobile ? '0.72rem' : '0.8rem',
                     fontWeight: 800,
                     cursor: 'pointer',
                     backgroundColor: targetPlayer.isChatMuted ? '#22c55e' : '#ef4444',
@@ -563,8 +573,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               {/* Reactions Mute Row */}
               <div
                 style={{
-                  padding: '12px 16px',
-                  borderRadius: '12px',
+                  padding: isMobile ? '8px 12px' : '12px 16px',
+                  borderRadius: isMobile ? '10px' : '12px',
                   backgroundColor: 'rgba(15, 23, 42, 0.6)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   display: 'flex',
@@ -572,13 +582,13 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                   justifyContent: 'space-between',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '1.3rem' }}>🙂</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px' }}>
+                  <span style={{ fontSize: isMobile ? '1.1rem' : '1.3rem' }}>🙂</span>
                   <div>
-                    <div className="arabic-font" style={{ fontSize: '0.9rem', fontWeight: 800 }}>
+                    <div className="arabic-font" style={{ fontSize: isMobile ? '0.82rem' : '0.9rem', fontWeight: 800 }}>
                       التفاعلات والإيموجي
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>
+                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'var(--baffa-text-muted)' }}>
                       {targetPlayer.isReactionsMuted ? 'التفاعلات محظورة عنه حالياً' : 'يمكنه إرسال الإيموجيز'}
                     </div>
                   </div>
@@ -589,10 +599,10 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                     onClose();
                   }}
                   style={{
-                    padding: '6px 14px',
+                    padding: isMobile ? '4px 10px' : '6px 14px',
                     borderRadius: '8px',
                     border: 'none',
-                    fontSize: '0.8rem',
+                    fontSize: isMobile ? '0.72rem' : '0.8rem',
                     fontWeight: 800,
                     cursor: 'pointer',
                     backgroundColor: targetPlayer.isReactionsMuted ? '#22c55e' : '#ef4444',
@@ -607,26 +617,26 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
 
           {/* TAB 3: SUBSTITUTION & SPECTATOR MANAGEMENT */}
           {activeTab === 'SUB' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '14px' }}>
               {/* Current Seat Occupant Context */}
               <div
                 style={{
-                  padding: '12px 14px',
-                  borderRadius: '12px',
+                  padding: isMobile ? '8px 10px' : '12px 14px',
+                  borderRadius: isMobile ? '10px' : '12px',
                   backgroundColor: targetPlayer.isBot ? 'rgba(6, 182, 212, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                   border: targetPlayer.isBot ? '1px solid rgba(6, 182, 212, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
+                  gap: isMobile ? '8px' : '12px',
                 }}
               >
-                <div style={{ fontSize: '1.6rem' }}>{targetPlayer.isBot ? '🤖' : '👤'}</div>
+                <div style={{ fontSize: isMobile ? '1.2rem' : '1.6rem' }}>{targetPlayer.isBot ? '🤖' : '👤'}</div>
                 <div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 900, color: targetPlayer.isBot ? '#38bdf8' : '#fca5a5' }}>
+                  <div style={{ fontSize: isMobile ? '0.78rem' : '0.9rem', fontWeight: 900, color: targetPlayer.isBot ? '#38bdf8' : '#fca5a5' }}>
                     {targetPlayer.isBot ? 'المقعد يشغله حالياً بوت:' : 'المقعد يشغله لاعب حقيقي:'}{' '}
                     <span style={{ color: '#fff' }}>{targetPlayer.username}</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)', marginTop: '2px' }}>
+                  <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'rgba(255, 255, 255, 0.7)', marginTop: '2px' }}>
                     {targetPlayer.isBot
                       ? 'يمكنك تبديل هذا البوت ببوت مصري آخر فوراً وسيلعب مباشرة دون إضافته للمشاهدين.'
                       : 'سيتم نقل اللاعب إلى مقاعد المشاهدين فوراً واستبداله بالبوت المختار، ويمكنك إعادته للطاولة متى أردت.'}
@@ -637,20 +647,20 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               {/* Egyptian Bot Selection Grid */}
               <div
                 style={{
-                  padding: '14px',
-                  borderRadius: '14px',
+                  padding: isMobile ? '10px' : '14px',
+                  borderRadius: isMobile ? '10px' : '14px',
                   backgroundColor: 'rgba(15, 23, 42, 0.75)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px',
+                  gap: isMobile ? '8px' : '10px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div className="arabic-font" style={{ fontSize: '0.92rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>
+                  <div className="arabic-font" style={{ fontSize: isMobile ? '0.82rem' : '0.92rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>
                     🤖 اختر البوت المصري الذي تريده أن يلعب:
                   </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--baffa-text-muted)' }}>
+                  <span style={{ fontSize: isMobile ? '0.66rem' : '0.72rem', color: 'var(--baffa-text-muted)' }}>
                     البوت المختار: <b style={{ color: '#fbbf24' }}>{OFFICIAL_BAFFA_BOTS[selectedBotId]?.arabicName}</b>
                   </span>
                 </div>
@@ -658,9 +668,9 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                    gap: '8px',
-                    maxHeight: '200px',
+                    gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(110px, 1fr))' : 'repeat(auto-fill, minmax(140px, 1fr))',
+                    gap: isMobile ? '6px' : '8px',
+                    maxHeight: isMobile ? '160px' : '200px',
                     overflowY: 'auto',
                     padding: '2px',
                   }}
@@ -694,8 +704,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'flex-start',
-                          padding: '8px 10px',
-                          borderRadius: '10px',
+                          padding: isMobile ? '6px 8px' : '8px 10px',
+                          borderRadius: isMobile ? '8px' : '10px',
                           backgroundColor: isSelected ? 'rgba(245, 158, 11, 0.2)' : 'rgba(30, 41, 59, 0.7)',
                           border: isSelected ? '2px solid var(--baffa-gold-primary)' : '1px solid rgba(255, 255, 255, 0.1)',
                           cursor: 'pointer',
@@ -704,26 +714,26 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                           boxShadow: isSelected ? '0 0 12px rgba(245, 158, 11, 0.35)' : 'none',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '1.2rem' }}>{botEmojis[bId] || '🤖'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '3px' }}>
+                          <span style={{ fontSize: isMobile ? '1rem' : '1.2rem' }}>{botEmojis[bId] || '🤖'}</span>
                           <span
                             style={{
-                              fontSize: '0.65rem',
+                              fontSize: isMobile ? '0.6rem' : '0.65rem',
                               fontWeight: 800,
                               backgroundColor: diff.bg,
                               color: diff.text,
-                              padding: '1px 5px',
+                              padding: '1px 4px',
                               borderRadius: '4px',
                             }}
                           >
                             {diff.label}
                           </span>
                         </div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 900, color: isSelected ? 'var(--baffa-gold-primary)' : '#fff' }}>
+                        <div style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 900, color: isSelected ? 'var(--baffa-gold-primary)' : '#fff' }}>
                           {bot.arabicName}
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '2px', lineHeight: 1.2 }}>
-                          {bot.personality.slice(0, 32)}...
+                        <div style={{ fontSize: isMobile ? '0.62rem' : '0.68rem', color: '#94a3b8', marginTop: '2px', lineHeight: 1.2 }}>
+                          {bot.personality.slice(0, 24)}...
                         </div>
                       </button>
                     );
@@ -736,18 +746,18 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                   onClick={handleKickToSpectator}
                   style={{
                     marginTop: '4px',
-                    padding: '11px 16px',
-                    borderRadius: '10px',
+                    padding: isMobile ? '8px 12px' : '11px 16px',
+                    borderRadius: isMobile ? '8px' : '10px',
                     backgroundColor: targetPlayer.isBot ? '#0284c7' : '#e11d48',
                     color: '#fff',
                     border: 'none',
-                    fontSize: '0.88rem',
+                    fontSize: isMobile ? '0.78rem' : '0.88rem',
                     fontWeight: 900,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '8px',
+                    gap: '6px',
                     boxShadow: targetPlayer.isBot
                       ? '0 4px 14px rgba(2, 132, 199, 0.4)'
                       : '0 4px 14px rgba(225, 29, 72, 0.4)',
@@ -757,8 +767,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                   <span>{targetPlayer.isBot ? '🔄' : '⚡'}</span>
                   <span>
                     {targetPlayer.isBot
-                      ? `استبدال البوت الحالي بـ (${OFFICIAL_BAFFA_BOTS[selectedBotId]?.arabicName})`
-                      : `طرد اللاعب للمشاهدين واستبداله بـ (${OFFICIAL_BAFFA_BOTS[selectedBotId]?.arabicName})`}
+                      ? `استبدال بـ (${OFFICIAL_BAFFA_BOTS[selectedBotId]?.arabicName})`
+                      : `طرد للمشاهدين واستبدال بـ (${OFFICIAL_BAFFA_BOTS[selectedBotId]?.arabicName})`}
                   </span>
                 </button>
               </div>
@@ -766,27 +776,27 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               {/* Spectator Restoration Section */}
               <div
                 style={{
-                  padding: '14px',
-                  borderRadius: '14px',
+                  padding: isMobile ? '10px' : '14px',
+                  borderRadius: isMobile ? '10px' : '14px',
                   backgroundColor: 'rgba(15, 23, 42, 0.75)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px',
+                  gap: isMobile ? '8px' : '10px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div className="arabic-font" style={{ fontSize: '0.92rem', fontWeight: 900, color: '#38bdf8' }}>
+                  <div className="arabic-font" style={{ fontSize: isMobile ? '0.82rem' : '0.92rem', fontWeight: 900, color: '#38bdf8' }}>
                     👥 قائمة المشاهدين وإعادتهم للمقعد ({spectators.length})
                   </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--baffa-text-muted)' }}>
+                  <span style={{ fontSize: isMobile ? '0.66rem' : '0.72rem', color: 'var(--baffa-text-muted)' }}>
                     المقعد المستهدف: <b style={{ color: '#fff' }}>مقعد {Number(targetPlayer.seat) + 1}</b>
                   </span>
                 </div>
 
                 {spectators.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '6px' : '8px' }}>
+                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: '#94a3b8' }}>
                       اضغط على زر الإعادة لإرجاع أي متفرج من القائمة إلى هذا المقعد فوراً:
                     </div>
                     {spectators.map((s) => (
@@ -796,17 +806,17 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          padding: '8px 12px',
+                          padding: isMobile ? '6px 10px' : '8px 12px',
                           borderRadius: '8px',
                           backgroundColor: 'rgba(30, 41, 59, 0.7)',
                           border: '1px solid rgba(255, 255, 255, 0.08)',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '1.1rem' }}>👤</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px' }}>
+                          <span style={{ fontSize: isMobile ? '1rem' : '1.1rem' }}>👤</span>
                           <div>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff' }}>{s.username}</div>
-                            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                            <div style={{ fontSize: isMobile ? '0.78rem' : '0.85rem', fontWeight: 800, color: '#fff' }}>{s.username}</div>
+                            <div style={{ fontSize: isMobile ? '0.64rem' : '0.68rem', color: '#64748b' }}>
                               {s.isConnected ? 'متصل الآن 🟢' : 'غير متصل 🔴'}
                             </div>
                           </div>
@@ -815,12 +825,12 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                           type="button"
                           onClick={() => handleReturnSpectator(s.userId)}
                           style={{
-                            padding: '6px 12px',
+                            padding: isMobile ? '4px 8px' : '6px 12px',
                             borderRadius: '6px',
                             backgroundColor: 'var(--baffa-gold-primary)',
                             color: '#080d1a',
                             border: 'none',
-                            fontSize: '0.78rem',
+                            fontSize: isMobile ? '0.72rem' : '0.78rem',
                             fontWeight: 900,
                             cursor: 'pointer',
                             display: 'flex',
@@ -830,7 +840,7 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                           }}
                         >
                           <span>↩️</span>
-                          <span>إرجاعه للمقعد</span>
+                          <span>إرجاع</span>
                         </button>
                       </div>
                     ))}
@@ -838,12 +848,12 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                 ) : (
                   <div
                     style={{
-                      padding: '12px',
+                      padding: isMobile ? '8px 10px' : '12px',
                       borderRadius: '8px',
                       backgroundColor: 'rgba(255, 255, 255, 0.03)',
                       border: '1px dashed rgba(255, 255, 255, 0.15)',
                       textAlign: 'center',
-                      fontSize: '0.8rem',
+                      fontSize: isMobile ? '0.72rem' : '0.8rem',
                       color: 'var(--baffa-text-muted)',
                       lineHeight: 1.4,
                     }}

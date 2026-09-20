@@ -33,6 +33,16 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
   const [selectedWinnerTeam, setSelectedWinnerTeam] = useState<TeamId>(1);
   const [terminateReason, setTerminateReason] = useState('إنهاء المباراة بقرار إداري من الحكم');
 
+  const [isMobile, setIsMobile] = useState(false);
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleVoidRound = () => {
     onVoidRound('إلغاء وإعادة الجولة بقرار من الحكم');
   };
@@ -55,7 +65,7 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
           width: '100%',
           maxWidth: '840px',
           margin: '0 auto',
-          padding: '3px 12px',
+          padding: isMobile ? '2px 6px' : '3px 12px',
           background: 'linear-gradient(90deg, rgba(8, 13, 26, 0.95) 0%, rgba(18, 26, 46, 0.95) 50%, rgba(8, 13, 26, 0.95) 100%)',
           border: '1px solid rgba(245, 158, 11, 0.5)',
           borderRadius: '20px',
@@ -63,39 +73,39 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '8px',
+          gap: isMobile ? '4px' : '8px',
           boxSizing: 'border-box',
           backdropFilter: 'blur(10px)',
           color: '#fff',
-          minHeight: '34px',
+          minHeight: isMobile ? '28px' : '34px',
         }}
       >
         {/* Judge Badge & Role Indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '8px', flexShrink: 0 }}>
           <div
             style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '7px',
+              width: isMobile ? '20px' : '24px',
+              height: isMobile ? '20px' : '24px',
+              borderRadius: '6px',
               backgroundColor: 'rgba(245, 158, 11, 0.2)',
               border: '1px solid var(--baffa-gold-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '0.88rem',
+              fontSize: isMobile ? '0.74rem' : '0.88rem',
               boxShadow: '0 0 8px rgba(245, 158, 11, 0.3)',
             }}
           >
             ⚖️
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="arabic-font" style={{ fontSize: '0.78rem', fontWeight: 900, color: 'var(--baffa-gold-primary)', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span className="arabic-font" style={{ fontSize: isMobile ? '0.68rem' : '0.78rem', fontWeight: 900, color: 'var(--baffa-gold-primary)', whiteSpace: 'nowrap' }}>
               تحكم الحكم • ج{roundNumber}
             </span>
             <span
               style={{
-                width: '6px',
-                height: '6px',
+                width: '5px',
+                height: '5px',
                 borderRadius: '50%',
                 backgroundColor: '#22c55e',
                 boxShadow: '0 0 6px #22c55e',
@@ -106,15 +116,26 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: isMobile ? '4px' : '6px',
+          flexWrap: 'nowrap',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch',
+          maxWidth: '100%',
+          padding: '2px 0',
+        }}>
           {/* Instant Next Round Button when Round Finished */}
           {isRoundFinished && onRequestNextRound && (
             <button
               onClick={onRequestNextRound}
               style={{
-                padding: '3px 10px',
-                borderRadius: '8px',
-                fontSize: '0.74rem',
+                padding: isMobile ? '2px 7px' : '3px 10px',
+                borderRadius: isMobile ? '6px' : '8px',
+                fontSize: isMobile ? '0.66rem' : '0.74rem',
                 fontWeight: 900,
                 backgroundColor: 'var(--baffa-gold-primary)',
                 color: '#080d1a',
@@ -130,7 +151,7 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
               title="بدء الجولة التالية فوراً"
             >
               <span>⚡</span>
-              <span className="arabic-font">الجولة التالية</span>
+              <span className="arabic-font">{isMobile ? 'التالية' : 'الجولة التالية'}</span>
             </button>
           )}
 
@@ -140,9 +161,9 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
               onClick={onTriggerBot}
               disabled={!isMatchActive}
               style={{
-                padding: '3px 9px',
-                borderRadius: '8px',
-                fontSize: '0.72rem',
+                padding: isMobile ? '2px 7px' : '3px 9px',
+                borderRadius: isMobile ? '6px' : '8px',
+                fontSize: isMobile ? '0.66rem' : '0.72rem',
                 fontWeight: 800,
                 backgroundColor: 'rgba(245, 158, 11, 0.2)',
                 color: 'var(--baffa-gold-primary)',
@@ -151,7 +172,7 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
                 opacity: isMatchActive ? 1 : 0.5,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '3px',
                 transition: 'all 0.2s ease',
                 whiteSpace: 'nowrap',
               }}
@@ -167,9 +188,9 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
             onClick={handleExtraTime}
             disabled={!isMatchActive}
             style={{
-              padding: '3px 9px',
-              borderRadius: '8px',
-              fontSize: '0.72rem',
+              padding: isMobile ? '2px 7px' : '3px 9px',
+              borderRadius: isMobile ? '6px' : '8px',
+              fontSize: isMobile ? '0.66rem' : '0.72rem',
               fontWeight: 800,
               backgroundColor: 'rgba(8, 51, 68, 0.75)',
               color: '#38bdf8',
@@ -178,7 +199,7 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
               opacity: isMatchActive ? 1 : 0.5,
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '3px',
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',
             }}
@@ -193,9 +214,9 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
             onClick={handleVoidRound}
             disabled={!isMatchActive}
             style={{
-              padding: '3px 9px',
-              borderRadius: '8px',
-              fontSize: '0.72rem',
+              padding: isMobile ? '2px 7px' : '3px 9px',
+              borderRadius: isMobile ? '6px' : '8px',
+              fontSize: isMobile ? '0.66rem' : '0.72rem',
               fontWeight: 800,
               backgroundColor: 'rgba(69, 26, 3, 0.75)',
               color: '#fde68a',
@@ -204,23 +225,23 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
               opacity: isMatchActive ? 1 : 0.5,
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '3px',
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',
             }}
             title="إلغاء الجولة وتوزيع كروت جديدة دون تعديل النقاط"
           >
             <span>🔄</span>
-            <span className="arabic-font">إعادة الجولة</span>
+            <span className="arabic-font">{isMobile ? 'إعادة' : 'إعادة الجولة'}</span>
           </button>
 
           {/* Spectator Management */}
           <button
             onClick={() => setShowSpectatorDrawer(!showSpectatorDrawer)}
             style={{
-              padding: '3px 9px',
-              borderRadius: '8px',
-              fontSize: '0.72rem',
+              padding: isMobile ? '2px 7px' : '3px 9px',
+              borderRadius: isMobile ? '6px' : '8px',
+              fontSize: isMobile ? '0.66rem' : '0.72rem',
               fontWeight: 800,
               backgroundColor: 'rgba(23, 23, 23, 0.75)',
               color: '#e2e8f0',
@@ -228,14 +249,14 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '3px',
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',
             }}
             title="إدارة المشاهدين وكتم الصوت والدردشة"
           >
             <span>👀</span>
-            <span className="arabic-font">المشاهدون ({spectators.length})</span>
+            <span className="arabic-font">{isMobile ? `(${spectators.length})` : `المشاهدون (${spectators.length})`}</span>
           </button>
 
           {/* Terminate Match */}
@@ -243,9 +264,9 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
             onClick={() => setShowTerminateDialog(true)}
             disabled={!isMatchActive}
             style={{
-              padding: '3px 9px',
-              borderRadius: '8px',
-              fontSize: '0.72rem',
+              padding: isMobile ? '2px 7px' : '3px 9px',
+              borderRadius: isMobile ? '6px' : '8px',
+              fontSize: isMobile ? '0.66rem' : '0.72rem',
               fontWeight: 800,
               backgroundColor: 'rgba(69, 10, 10, 0.75)',
               color: '#fca5a5',
@@ -254,7 +275,7 @@ export const RefereeControlHub: React.FC<RefereeControlHubProps> = ({
               opacity: isMatchActive ? 1 : 0.5,
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '3px',
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',
             }}

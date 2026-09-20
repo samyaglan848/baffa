@@ -379,17 +379,17 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
             position: 'absolute',
             bottom: isLandscape ? '46px' : isMobile ? '56px' : '76px',
             left: isLandscape ? '8px' : isMobile ? '12px' : '22px',
-            width: isLandscape ? '280px' : isMobile ? '290px' : '320px',
+            width: isLandscape ? '280px' : isMobile ? '280px' : '320px',
             backgroundColor: 'rgba(10, 18, 30, 0.96)',
             backdropFilter: 'blur(16px)',
-            borderRadius: '24px',
+            borderRadius: isMobile ? '18px' : '24px',
             border: '1.5px solid var(--baffa-gold-primary)',
-            padding: isLandscape ? '12px' : '18px',
+            padding: isLandscape ? '10px' : isMobile ? '12px' : '18px',
             boxShadow: '0 12px 40px rgba(0,0,0,0.85), 0 0 25px rgba(245, 158, 11, 0.35)',
             zIndex: 65,
             display: 'flex',
             flexDirection: 'column',
-            gap: isLandscape ? '10px' : '16px',
+            gap: isLandscape ? '8px' : isMobile ? '10px' : '16px',
             maxHeight: isLandscape ? '75vh' : '65vh',
             overflowY: 'auto',
           }}
@@ -399,17 +399,17 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
             <div
               className="arabic-font"
               style={{
-                fontSize: '0.85rem',
+                fontSize: isLandscape ? '0.78rem' : isMobile ? '0.8rem' : '0.85rem',
                 fontWeight: 800,
                 color: !reactionsEnabled || isReactionsMuted ? '#f87171' : 'var(--baffa-gold-primary)',
-                marginBottom: '10px',
+                marginBottom: isMobile ? '6px' : '10px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Smile size={16} />
+                <Smile size={isMobile ? 14 : 16} />
                 <span>إيموجيز وتفاعلات</span>
               </div>
               {!reactionsEnabled ? (
@@ -432,16 +432,16 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                 تم حظر إرسال التفاعلات عنك بقرار من حكم المباراة ⚖️
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: isMobile ? '6px' : '8px' }}>
                 {EMOJIS.map((emoji) => (
                   <button
                     key={emoji}
                     onClick={() => handleSendReaction(emoji)}
                     style={{
-                      fontSize: '1.7rem',
-                      padding: '8px',
+                      fontSize: isMobile ? '1.35rem' : '1.7rem',
+                      padding: isMobile ? '5px' : '8px',
                       backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                      borderRadius: '14px',
+                      borderRadius: isMobile ? '10px' : '14px',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       cursor: 'pointer',
                       transition: 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -469,17 +469,17 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
             <div
               className="arabic-font"
               style={{
-                fontSize: '0.85rem',
+                fontSize: isLandscape ? '0.78rem' : isMobile ? '0.8rem' : '0.85rem',
                 fontWeight: 800,
                 color: !quickChatEnabled || isChatMuted ? '#f87171' : 'var(--baffa-gold-primary)',
-                marginBottom: '10px',
+                marginBottom: isMobile ? '6px' : '10px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <MessageSquare size={16} />
+                <MessageSquare size={isMobile ? 14 : 16} />
                 <span>رسائل سريعة</span>
               </div>
               {!quickChatEnabled ? (
@@ -502,7 +502,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                 تم حظر إرسال الرسائل عنك بقرار من حكم المباراة ⚖️
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '4px' : '6px' }}>
                 {QUICK_CHATS.map((chat) => (
                   <button
                     key={chat}
@@ -510,12 +510,12 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                     className="arabic-font"
                     style={{
                       textAlign: 'right',
-                      padding: '9px 14px',
+                      padding: isLandscape ? '5px 8px' : isMobile ? '6px 10px' : '9px 14px',
                       backgroundColor: 'rgba(255, 255, 255, 0.05)',
                       color: 'var(--baffa-text-primary)',
-                      borderRadius: '12px',
+                      borderRadius: isMobile ? '8px' : '12px',
                       border: '1px solid rgba(255, 255, 255, 0.08)',
-                      fontSize: '0.9rem',
+                      fontSize: isLandscape ? '0.75rem' : isMobile ? '0.78rem' : '0.9rem',
                       fontWeight: 700,
                       cursor: 'pointer',
                       transition: 'all 0.18s ease',
