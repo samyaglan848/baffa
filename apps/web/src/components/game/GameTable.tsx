@@ -629,17 +629,17 @@ export const GameTable: React.FC<GameTableProps> = ({
     }, 1000);
     return () => clearInterval(timer);
   }, [roundEndStage, gameState.status, onRequestNextRound, gameState.players]);
-
-
+  const isRoundOver = gameState.status === 'ROUND_FINISHED' || gameState.status === 'MATCH_FINISHED';
 
   const triggerInvalid = useCallback(() => {
+    if (!isMyTurn || isRoundOver) return;
     playSound('invalid');
     setInvalidMoveToast('الكارت ده مينفعش هنا');
-    setTimeout(() => setInvalidMoveToast(null), 2500);
-  }, [playSound]);
+    setTimeout(() => setInvalidMoveToast(null), 2000);
+  }, [isMyTurn, isRoundOver, playSound]);
 
   const handleTileClick = useCallback((tile: DominoTileType) => {
-    if (!isMyTurn) return;
+    if (!isMyTurn || isRoundOver) return;
 
     const legal = myLegalMoves.find(
       (m) =>
@@ -655,7 +655,7 @@ export const GameTable: React.FC<GameTableProps> = ({
     // Play tile directly without popup prompt (user uses drag & drop to choose specific end)
     onPlayTile(legal.tile, legal.validEnds[0]);
     setSelectedTileIndex(null);
-  }, [isMyTurn, myLegalMoves, onPlayTile, triggerInvalid]);
+  }, [isMyTurn, isRoundOver, myLegalMoves, onPlayTile, triggerInvalid]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -802,12 +802,6 @@ export const GameTable: React.FC<GameTableProps> = ({
         return;
       }
 
-      // Drag and Drop placement logic
-      if (current.validEnds.length === 0) {
-        triggerInvalid();
-        return;
-      }
-
       const boardEl = boardElRef.current;
       if (!boardEl) return;
       const boardRect = boardEl.getBoundingClientRect();
@@ -818,18 +812,24 @@ export const GameTable: React.FC<GameTableProps> = ({
       const tableFelt = boardEl.closest('[data-table-felt="true"]');
       const tableRect = tableFelt ? tableFelt.getBoundingClientRect() : boardRect;
 
-      // If dropped back into the hand row area, cancel drag cleanly
+      // If dropped back into the hand row area, cancel drag cleanly without error
       if (dropY > tableRect.bottom - 90) {
         return;
       }
 
-      // If dropped far outside the felt table, cancel
+      // If dropped far outside the felt table, cancel cleanly without error
       if (
         dropX < tableRect.left - 50 ||
         dropX > tableRect.right + 50 ||
         dropY < tableRect.top - 50 ||
         dropY > tableRect.bottom + 30
       ) {
+        return;
+      }
+
+      // Drag and Drop placement logic
+      if (current.validEnds.length === 0) {
+        triggerInvalid();
         return;
       }
 
@@ -924,7 +924,6 @@ export const GameTable: React.FC<GameTableProps> = ({
   };
 
   const lastRound = gameState.lastRoundResult;
-  const isRoundOver = gameState.status === 'ROUND_FINISHED' || gameState.status === 'MATCH_FINISHED';
   const losingTeam = lastRound ? (lastRound.winnerTeam === 1 ? 2 : 1) : null;
   const myTeam = mySeat !== null ? getSeatTeam(mySeat) : 1;
   const isMyTeamWinner = lastRound ? lastRound.winnerTeam === myTeam : false;
@@ -2015,7 +2014,9 @@ export const GameTable: React.FC<GameTableProps> = ({
                                   (m.tile[0] === tile[0] && m.tile[1] === tile[1]) ||
                                   (m.tile[0] === tile[1] && m.tile[1] === tile[0])
                               );
-                              const validEnds = legal ? legal.validEnds : [];
+                              // If not a legal playable tile, do NOT start dragging to avoid accidental triggers
+                              if (!legal) return;
+                              const validEnds = legal.validEnds;
 
                               const state = {
                                 tile,
@@ -2059,6 +2060,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                               isSelected={isSelected}
                               isVertical={!isLandscape}
                               isFaceDown={false}
+                              disabled={!isMyTurn || isRoundOver}
                               onInvalidClick={triggerInvalid}
                             />
                           </div>
@@ -2334,28 +2336,30 @@ export const GameTable: React.FC<GameTableProps> = ({
               <div
                 style={{
                   position: 'absolute',
-                  bottom: isLandscape ? '44px' : '90px',
+                  bottom: isLandscape ? '36px' : isMobile ? '68px' : '85px',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   zIndex: 65,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: isLandscape ? '8px' : '14px',
-                  backgroundColor: 'rgba(8, 16, 26, 0.94)',
+                  gap: isLandscape ? '6px' : isMobile ? '8px' : '12px',
+                  backgroundColor: 'rgba(8, 16, 26, 0.95)',
                   backdropFilter: 'blur(12px)',
                   border: '1.5px solid var(--baffa-gold-primary)',
-                  padding: isLandscape ? '4px 14px' : '8px 22px',
-                  borderRadius: '30px',
-                  boxShadow: '0 8px 30px rgba(0,0,0,0.85), 0 0 25px rgba(245,158,11,0.4)',
+                  padding: isLandscape ? '3px 10px' : isMobile ? '5px 12px' : '8px 20px',
+                  borderRadius: '24px',
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.85), 0 0 20px rgba(245,158,11,0.35)',
                   animation: 'drop-in-bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+                  maxWidth: isMobile ? '92%' : 'auto',
+                  boxSizing: 'border-box',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '1.2rem' }}>{isMyTeamWinner ? '🎉' : '⚠️'}</span>
-                  <span className="arabic-font" style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 800 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '8px', minWidth: 0 }}>
+                  <span style={{ fontSize: isMobile ? '1rem' : '1.2rem' }}>{isMyTeamWinner ? '🎉' : '⚠️'}</span>
+                  <span className="arabic-font" style={{ color: '#fff', fontSize: isLandscape ? '0.72rem' : isMobile ? '0.76rem' : '0.9rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {isMyTeamWinner
-                      ? `مبروك! فريقك فاز بالجولة (+${lastRound?.roundScore} نقطة)`
-                      : `فوز فريق ${lastRound?.winnerTeam} بالجولة (+${lastRound?.roundScore} نقطة)`}
+                      ? `مبروك! فزتم (+${lastRound?.roundScore})`
+                      : `فوز فريق ${lastRound?.winnerTeam} (+${lastRound?.roundScore})`}
                   </span>
                 </div>
 
@@ -2363,37 +2367,51 @@ export const GameTable: React.FC<GameTableProps> = ({
                   <button
                     onClick={onRequestNextRound}
                     className="baffa-btn-primary"
-                    style={{ padding: '6px 16px', fontSize: '0.9rem', borderRadius: '20px' }}
+                    style={{
+                      padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 16px',
+                      fontSize: isLandscape ? '0.72rem' : isMobile ? '0.76rem' : '0.88rem',
+                      borderRadius: '16px',
+                      gap: '4px',
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    <Zap size={15} />
+                    <Zap size={isMobile ? 13 : 15} />
                     <span className="arabic-font">الجولة التالية {nextRoundCountdown > 0 ? `(${nextRoundCountdown})` : ''}</span>
                   </button>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '8px' }}>
                     {onRematch && (
                       <button
                         onClick={handleRematch}
                         disabled={isRematchLoading}
                         className="baffa-btn-primary"
                         style={{
-                          padding: '6px 16px',
-                          fontSize: '0.9rem',
-                          borderRadius: '20px',
+                          padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 16px',
+                          fontSize: isLandscape ? '0.72rem' : isMobile ? '0.76rem' : '0.88rem',
+                          borderRadius: '16px',
                           cursor: isRematchLoading ? 'wait' : 'pointer',
                           opacity: isRematchLoading ? 0.8 : 1,
+                          gap: '4px',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        <RotateCcw size={15} style={{ animation: isRematchLoading ? 'spin 1s linear infinite' : 'none' }} />
+                        <RotateCcw size={isMobile ? 13 : 15} style={{ animation: isRematchLoading ? 'spin 1s linear infinite' : 'none' }} />
                         <span className="arabic-font">{isRematchLoading ? 'جاري البدء...' : 'العب تاني ⚡'}</span>
                       </button>
                     )}
                     <button
                       onClick={() => setShowMatchTrophyModal(true)}
                       className="baffa-btn-secondary"
-                      style={{ padding: '6px 16px', fontSize: '0.9rem', borderRadius: '20px' }}
+                      style={{
+                        padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 16px',
+                        fontSize: isLandscape ? '0.72rem' : isMobile ? '0.76rem' : '0.88rem',
+                        borderRadius: '16px',
+                        gap: '4px',
+                        whiteSpace: 'nowrap',
+                      }}
                     >
-                      <Trophy size={15} />
-                      <span className="arabic-font">تتويج الفائز 🏆</span>
+                      <Trophy size={isMobile ? 13 : 15} />
+                      <span className="arabic-font">التتويج 🏆</span>
                     </button>
                   </div>
                 )}
@@ -2405,9 +2423,22 @@ export const GameTable: React.FC<GameTableProps> = ({
       {/* TOASTS & MODALS */}
       {invalidMoveToast && (
         <div className="animate-float arabic-font" style={{
-          position: 'absolute', top: '80px', left: '50%', transform: 'translateX(-50%)', padding: '12px 24px',
-          borderRadius: '20px', backgroundColor: 'rgba(239, 68, 68, 0.95)',
-          color: '#fff', fontSize: '1.1rem', fontWeight: 800, zIndex: 50, border: '1px solid rgba(255,255,255,0.2)'
+          position: 'fixed',
+          top: isLandscape ? '44px' : isMobile ? '52px' : '68px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          padding: isLandscape ? '4px 12px' : isMobile ? '5px 14px' : '7px 18px',
+          borderRadius: '16px',
+          backgroundColor: 'rgba(220, 38, 38, 0.94)',
+          backdropFilter: 'blur(8px)',
+          color: '#fff',
+          fontSize: isLandscape ? '0.74rem' : isMobile ? '0.8rem' : '0.88rem',
+          fontWeight: 800,
+          zIndex: 100,
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.65), 0 0 14px rgba(220, 38, 38, 0.4)',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
         }}>
           {invalidMoveToast}
         </div>
@@ -2549,8 +2580,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                   disabled={isRematchLoading}
                   className="baffa-btn-primary arabic-font"
                   style={{
-                    padding: '10px 18px',
-                    fontSize: '0.95rem',
+                    padding: isMobile ? '8px 14px' : '10px 18px',
+                    fontSize: isMobile ? '0.86rem' : '0.95rem',
                     fontWeight: 800,
                     borderRadius: '14px',
                     cursor: isRematchLoading ? 'wait' : 'pointer',
