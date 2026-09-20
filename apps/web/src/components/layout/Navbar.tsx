@@ -280,24 +280,33 @@ export const Navbar: React.FC<NavbarProps> = ({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            padding: '5px 12px',
+            gap: isMobile ? '6px' : '8px',
+            padding: isMobile ? '4px 8px' : '5px 12px',
             borderRadius: 'var(--baffa-radius-md)',
             backgroundColor: currentView === 'PROFILE' ? 'rgba(245, 158, 11, 0.15)' : 'var(--baffa-bg-surface)',
             border: currentView === 'PROFILE' ? '1px solid var(--baffa-gold-primary)' : '1px solid var(--baffa-surface-glass-border)',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
+            maxWidth: isMobile ? '120px' : '200px',
           }}
           title="عرض الملف الشخصي"
         >
           <UserAvatar
             avatar={currentUser.avatar}
             username={currentUser.username}
-            size={28}
+            size={isMobile ? 24 : 28}
             border="1.5px solid var(--baffa-gold-primary)"
             boxShadow="0 0 8px rgba(245, 158, 11, 0.35)"
           />
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: currentView === 'PROFILE' ? 'var(--baffa-gold-hover)' : 'var(--baffa-text-primary)' }}>
+          <span style={{ 
+            fontSize: isMobile ? '0.78rem' : '0.85rem', 
+            fontWeight: 700, 
+            color: currentView === 'PROFILE' ? 'var(--baffa-gold-hover)' : 'var(--baffa-text-primary)',
+            maxWidth: isMobile ? '70px' : '140px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
             {currentUser.username}
           </span>
         </div>

@@ -87,29 +87,11 @@ export function useDominoLayout(tiles: BoardTilePlacement[], containerWidth: num
     const isLandscape = screenWidth > screenHeight && screenHeight <= 540;
     const isSmallScreen = screenWidth < 768 || screenHeight <= 540;
 
-    const availableWidth = containerWidth > 0
-      ? containerWidth
-      : isLandscape
-      ? Math.max(screenWidth - 140, 320)
-      : isSmallScreen
-      ? Math.max(screenWidth - 60, 280)
-      : Math.max(screenWidth - 400, 300);
-
-    const availableHeight = containerHeight > 0
-      ? containerHeight
-      : isLandscape
-      ? Math.max(screenHeight - 110, 160)
-      : isSmallScreen
-      ? 240
-      : 300;
-
-    // Change direction before reaching player cards on left/right and top/bottom edges
-    const margin = isLandscape ? 20 : isSmallScreen ? 30 : 55;
-    const maxXPx = Math.max((availableWidth / 2) - margin, 45);
-    const maxYPx = Math.max((availableHeight / 2) - margin, 45);
-
-    const MAX_X = maxXPx / U;
-    const MAX_Y = maxYPx / U;
+    // Layout bounds in unscaled virtual coordinates (1 unit = U = 44px).
+    // The chain is scaled down via fitScale in GameTable to fit the physical container,
+    // so virtual bounds should give the chain room to breathe naturally before turning.
+    const MAX_X = isLandscape ? 7 : isSmallScreen ? 4.5 : 7.5;
+    const MAX_Y = isLandscape ? 2.5 : isSmallScreen ? 3.5 : 4.5;
 
     if (tiles.length === 0) {
       return {

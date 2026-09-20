@@ -202,15 +202,19 @@ export const GameTable: React.FC<GameTableProps> = ({
 
   const { isMobile, isLandscape, isPortraitMobile, isShortScreen } = screenMode;
   
-  // Dynamic scale factor so all tiles stay perfectly visible on felt table without overflowing
-  const boardWidth = Math.max(bounds.maxX - bounds.minX + 140, 200);
-  const boardHeight = Math.max(bounds.maxY - bounds.minY + 140, 200);
-  const availW = boardSize.width > 0 ? boardSize.width : (isLandscape ? 520 : isMobile ? 320 : 600);
-  const availH = boardSize.height > 0 ? boardSize.height : (isLandscape ? 170 : isMobile ? 220 : 300);
-  const hasTurned = bounds.minY !== 0 || bounds.maxY !== 0;
-  const turnScaleMultiplier = hasTurned ? 0.92 : 1.0;
-  const minScaleFloor = isLandscape ? 0.25 : isMobile ? 0.32 : 0.55;
-  const fitScale = Math.min(1, Math.max(minScaleFloor, Math.min(availW / boardWidth, availH / boardHeight))) * turnScaleMultiplier;
+  // True center and bounding box of placed tiles on the felt table
+  const boardCenterX = (bounds.minX + bounds.maxX) / 2;
+  const boardCenterY = (bounds.minY + bounds.maxY) / 2;
+  const boardSpanX = Math.max(bounds.maxX - bounds.minX + 88 + 24, 160);
+  const boardSpanY = Math.max(bounds.maxY - bounds.minY + 88 + 24, 160);
+
+  const availW = boardSize.width > 0 ? boardSize.width : (isLandscape ? 480 : isMobile ? 260 : 600);
+  const availH = boardSize.height > 0 ? boardSize.height : (isLandscape ? 160 : isMobile ? 180 : 300);
+
+  // fitScale guarantees the domino chain fits 100% inside the available space without ever overflowing or clipping
+  const scaleX = availW / boardSpanX;
+  const scaleY = availH / boardSpanY;
+  const fitScale = Math.min(1.0, Math.min(scaleX, scaleY));
   
   const animatedRoundKeyRef = useRef<string | null>(null);
   const roundEndTimersRef = useRef<NodeJS.Timeout[]>([]);
@@ -1360,6 +1364,7 @@ export const GameTable: React.FC<GameTableProps> = ({
             className={dealAnimClass}
             style={{
               animationDelay: isDealingRound ? `${idx * 90}ms` : undefined,
+              marginTop: orientation === 'column' && idx > 0 ? (isLandscape ? '-14px' : isMobile ? '-12px' : '-8px') : undefined,
             }}
           >
             <DominoTile
@@ -2121,8 +2126,8 @@ export const GameTable: React.FC<GameTableProps> = ({
               <div ref={setBoardRef} style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0, display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
                 <div style={{ 
                   position: 'absolute', left: '50%', top: '50%', 
-                  transform: `scale(${fitScale})`,
-                  transition: 'transform 0.5s ease'
+                  transform: `translate(-50%, -50%) translate(${-boardCenterX * fitScale}px, ${-boardCenterY * fitScale}px) scale(${fitScale})`,
+                  transition: 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)'
                 }}>
                   {/* Drop Target Indicator when Dragging */}
                   {isDragging && dragState && dragState.validEnds.length > 0 && (
@@ -2238,9 +2243,9 @@ export const GameTable: React.FC<GameTableProps> = ({
                           globalSeatY = 0;
                         }
 
-                        // Convert global visual seat position into local board coordinates (compensating for fitScale)
-                        const localSeatX = globalSeatX / scale;
-                        const localSeatY = globalSeatY / scale;
+                        // Convert global visual seat position into local board coordinates (compensating for fitScale and center offset)
+                        const localSeatX = (globalSeatX / scale) + boardCenterX;
+                        const localSeatY = (globalSeatY / scale) + boardCenterY;
 
                         // Delta vector from target tile position (pt.x, pt.y) to the player's cards
                         const deltaX = localSeatX - pt.x;

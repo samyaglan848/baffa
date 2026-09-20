@@ -189,9 +189,9 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
           onClick={() => handleSeatClick(seatInfo.seat)}
           style={{
             width: isMobile ? '100%' : '200px',
-            maxWidth: isMobile ? '170px' : '200px',
-            minHeight: isMobile ? '120px' : '155px',
-            padding: isMobile ? '10px 8px' : '14px',
+            maxWidth: isMobile ? '125px' : '200px',
+            minHeight: isMobile ? '100px' : '155px',
+            padding: isMobile ? '6px 6px' : '14px',
             borderRadius: isMobile ? 'var(--baffa-radius-md)' : 'var(--baffa-radius-xl)',
             backgroundColor: seatInfo.occupied ? 'rgba(15, 23, 42, 0.92)' : 'rgba(11, 20, 32, 0.5)',
             border: isSwapSource
@@ -226,11 +226,11 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <span
               style={{
-                padding: '2px 8px',
+                padding: isMobile ? '1px 5px' : '2px 8px',
                 borderRadius: '4px',
                 backgroundColor: teamColor,
                 color: '#fff',
-                fontSize: '0.65rem',
+                fontSize: isMobile ? '0.58rem' : '0.65rem',
                 fontWeight: 900,
                 letterSpacing: '0.5px',
               }}
@@ -241,11 +241,11 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
 
           {/* Seat Content */}
           {seatInfo.occupied ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '10px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '12px', margin: isMobile ? '4px 0' : '10px 0' }}>
               <div
                 style={{
-                  width: '46px',
-                  height: '46px',
+                  width: isMobile ? '32px' : '46px',
+                  height: isMobile ? '32px' : '46px',
                   borderRadius: '50%',
                   backgroundColor: teamBg,
                   color: teamColor,
@@ -263,25 +263,25 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
                   username={seatInfo.username || undefined}
                   isBot={seatInfo.isBot}
                   botId={seatInfo.botId}
-                  size={46}
+                  size={isMobile ? 32 : 46}
                 />
               </div>
-              <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+              <div style={{ overflow: 'hidden', minWidth: 0 }}>
+                <div style={{ fontSize: isMobile ? '0.78rem' : '0.95rem', fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                   {seatInfo.isBot && botProfile ? botProfile.arabicName : seatInfo.username}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: seatInfo.isBot ? 'var(--baffa-cyan-primary)' : 'var(--baffa-gold-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ fontSize: isMobile ? '0.65rem' : '0.75rem', color: seatInfo.isBot ? 'var(--baffa-cyan-primary)' : 'var(--baffa-gold-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <span>
-                    {seatInfo.isBot ? `بوت (${botProfile?.difficulty || 'عادي'})` : isCurrentUser ? 'أنت (لاعب)' : 'لاعب'}
+                    {seatInfo.isBot ? `بوت (${botProfile?.difficulty || 'عادي'})` : isCurrentUser ? 'أنت' : 'لاعب'}
                   </span>
                   {!seatInfo.isBot && seatInfo.presence === 'AWAY' && (
-                    <span style={{ color: '#fbbf24', fontSize: '0.72rem', backgroundColor: 'rgba(245, 158, 11, 0.25)', padding: '1px 6px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.5)', animation: 'pulse 1s infinite', fontWeight: 900 }}>
-                      ⚠️ خارج اللعبة
+                    <span style={{ color: '#fbbf24', fontSize: '0.62rem', backgroundColor: 'rgba(245, 158, 11, 0.25)', padding: '1px 4px', borderRadius: '4px', animation: 'pulse 1s infinite', fontWeight: 900 }}>
+                      ⚠️ خارج
                     </span>
                   )}
                   {!seatInfo.isBot && (!seatInfo.isConnected || seatInfo.presence === 'DISCONNECTED') && (
-                    <span style={{ color: '#f87171', fontSize: '0.68rem', backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: '1px 4px', borderRadius: '4px' }}>
-                      (غير متصل)
+                    <span style={{ color: '#f87171', fontSize: '0.6rem', backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: '1px 3px', borderRadius: '4px' }}>
+                      (منقطع)
                     </span>
                   )}
                 </div>
@@ -629,12 +629,12 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
           </span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(180px, 1fr))', gap: isMobile ? '6px' : '10px' }}>
           {/* 1. Player Button */}
           <button
             onClick={() => onSelectSeat(0)}
             style={{
-              padding: '12px 14px',
+              padding: isMobile ? '8px 4px' : '12px 14px',
               borderRadius: 'var(--baffa-radius-md)',
               backgroundColor: isPlayer ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
               color: isPlayer ? '#080d1a' : '#fff',
@@ -644,20 +644,20 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
+              gap: isMobile ? '4px' : '8px',
               transition: 'all 0.2s ease',
               boxShadow: isPlayer ? '0 0 16px rgba(245, 158, 11, 0.5)' : 'none',
             }}
           >
-            <span style={{ fontSize: '1.1rem' }}>🎮</span>
-            <span className="arabic-font" style={{ fontSize: '0.95rem' }}>لاعب على الطاولة</span>
+            <span style={{ fontSize: isMobile ? '0.9rem' : '1.1rem' }}>🎮</span>
+            <span className="arabic-font" style={{ fontSize: isMobile ? '0.78rem' : '0.95rem' }}>لاعب</span>
           </button>
 
           {/* 2. Judge Button */}
           <button
             onClick={onJoinAsJudge}
             style={{
-              padding: '12px 14px',
+              padding: isMobile ? '8px 4px' : '12px 14px',
               borderRadius: 'var(--baffa-radius-md)',
               backgroundColor: isJudge ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
               color: isJudge ? '#080d1a' : '#fff',
@@ -667,20 +667,20 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
+              gap: isMobile ? '4px' : '8px',
               transition: 'all 0.2s ease',
               boxShadow: isJudge ? '0 0 16px rgba(245, 158, 11, 0.5)' : 'none',
             }}
           >
-            <Gavel size={18} />
-            <span className="arabic-font" style={{ fontSize: '0.95rem' }}>حَكَم الماتش</span>
+            <Gavel size={isMobile ? 14 : 18} />
+            <span className="arabic-font" style={{ fontSize: isMobile ? '0.78rem' : '0.95rem' }}>حَكَم</span>
           </button>
 
           {/* 3. Spectator Button */}
           <button
             onClick={onJoinAsSpectator}
             style={{
-              padding: '12px 14px',
+              padding: isMobile ? '8px 4px' : '12px 14px',
               borderRadius: 'var(--baffa-radius-md)',
               backgroundColor: isSpectator ? 'var(--baffa-cyan-primary)' : 'var(--baffa-bg-elevated)',
               color: isSpectator ? '#080d1a' : '#fff',
@@ -690,13 +690,13 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
+              gap: isMobile ? '4px' : '8px',
               transition: 'all 0.2s ease',
               boxShadow: isSpectator ? '0 0 16px rgba(6, 182, 212, 0.4)' : 'none',
             }}
           >
-            <Eye size={18} />
-            <span className="arabic-font" style={{ fontSize: '0.95rem' }}>متفرّج (يشاهد فقط)</span>
+            <Eye size={isMobile ? 14 : 18} />
+            <span className="arabic-font" style={{ fontSize: isMobile ? '0.78rem' : '0.95rem' }}>متفرّج</span>
           </button>
         </div>
       </div>
@@ -991,24 +991,25 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
 
           <div
             style={{
-              flex: isMobile ? '0 1 70px' : 1,
-              height: isMobile ? '70px' : '120px',
-              borderRadius: isMobile ? '10px' : 'var(--baffa-radius-xl)',
+              flex: isMobile ? '0 1 55px' : 1,
+              height: isMobile ? '55px' : '120px',
+              borderRadius: isMobile ? '8px' : 'var(--baffa-radius-xl)',
               border: '2px dashed rgba(245, 158, 11, 0.2)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: isMobile ? '4px' : '12px',
+              padding: isMobile ? '2px' : '12px',
               textAlign: 'center',
               backgroundColor: 'rgba(6, 9, 14, 0.4)',
-              minWidth: isMobile ? '50px' : '120px',
+              minWidth: isMobile ? '36px' : '120px',
+              maxWidth: isMobile ? '60px' : 'none',
             }}
           >
-            <span className="arabic-font" style={{ fontSize: isMobile ? '1.05rem' : '1.4rem', fontWeight: 900, color: 'var(--baffa-gold-hover)' }}>
+            <span className="arabic-font" style={{ fontSize: isMobile ? '0.9rem' : '1.4rem', fontWeight: 900, color: 'var(--baffa-gold-hover)' }}>
               بَفّة
             </span>
-            <span style={{ fontSize: isMobile ? '0.62rem' : '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '2px' }}>
+            <span style={{ fontSize: isMobile ? '0.55rem' : '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '1px' }}>
               فريق 1 ضد 2
             </span>
           </div>
@@ -1060,26 +1061,28 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <button onClick={onLeaveRoom} className="baffa-btn-secondary">
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', gap: isMobile ? '10px' : '16px', width: '100%' }}>
+          <button onClick={onLeaveRoom} className="baffa-btn-secondary" style={{ width: isMobile ? '100%' : 'auto' }}>
             مغادرة الغرفة (Leave Room)
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: isMobile ? '100%' : 'auto' }}>
             {canStartMatch ? (
               <button
                 onClick={handleStartMatch}
                 disabled={!canClickStart || isStarting}
                 className="baffa-btn-primary"
                 style={{
-                  padding: '14px 36px',
-                  fontSize: '1.1rem',
+                  width: isMobile ? '100%' : 'auto',
+                  padding: isMobile ? '12px 20px' : '14px 36px',
+                  fontSize: isMobile ? '1rem' : '1.1rem',
                   backgroundColor: isSpectator ? 'var(--baffa-cyan-primary)' : undefined,
                   color: isSpectator ? '#080d1a' : undefined,
                   opacity: !canClickStart || isStarting ? 0.6 : 1,
                   cursor: !canClickStart || isStarting ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '10px',
                 }}
               >
@@ -1095,14 +1098,14 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
                         animation: 'spin 0.7s linear infinite',
                       }}
                     />
-                    <span className="arabic-font" style={{ fontSize: '1.15rem' }}>
+                    <span className="arabic-font" style={{ fontSize: isMobile ? '1rem' : '1.15rem' }}>
                       جارٍ تجهيز الطاولة وبدء الماتش...
                     </span>
                   </>
                 ) : (
                   <>
                     <Play size={20} />
-                    <span className="arabic-font" style={{ fontSize: '1.15rem' }}>
+                    <span className="arabic-font" style={{ fontSize: isMobile ? '1rem' : '1.15rem' }}>
                       {isJudge
                         ? 'ابدأ الماتش (كحكم) ⚡'
                         : isSpectator
@@ -1113,7 +1116,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
                 )}
               </button>
             ) : (
-              <div style={{ color: 'var(--baffa-text-muted)', fontSize: '0.9rem' }}>
+              <div style={{ color: 'var(--baffa-text-muted)', fontSize: '0.9rem', textAlign: 'center', width: '100%' }}>
                 في انتظار الأدمن لبدء الماتش...
               </div>
             )}

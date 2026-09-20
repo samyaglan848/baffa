@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, PlusCircle, LogIn, BookOpen, ShieldCheck, UserCheck, Gavel, Eye, ShieldAlert, WifiOff, Cpu, Bot, Radio, X } from 'lucide-react';
 import { JoinRoomModal } from '../room/JoinRoomModal';
 import { AuthModal } from '../auth/AuthModal';
@@ -32,6 +32,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [joinRole, setJoinRole] = useState<'PLAYER' | 'JUDGE' | 'SPECTATOR'>('PLAYER');
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleJoinSubmit = (code: string) => {
     if (joinRole === 'JUDGE') {
       onJoinAsJudge(code);
@@ -50,7 +60,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '36px 20px',
+        padding: isMobile ? '20px 12px' : '36px 20px',
         maxWidth: '1180px',
         margin: '0 auto',
         width: '100%',
@@ -64,7 +74,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           flexDirection: 'column',
           alignItems: 'center',
           textAlign: 'center',
-          marginBottom: '42px',
+          marginBottom: isMobile ? '24px' : '42px',
           position: 'relative',
         }}
       >
@@ -75,8 +85,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: '380px',
-            height: '240px',
+            width: isMobile ? '260px' : '380px',
+            height: isMobile ? '180px' : '240px',
             background: 'radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, rgba(6, 9, 14, 0) 70%)',
             filter: 'blur(30px)',
             pointerEvents: 'none',
@@ -88,15 +98,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <div
           className="animate-float"
           style={{
-            width: '92px',
-            height: '92px',
-            borderRadius: '26px',
+            width: isMobile ? '68px' : '92px',
+            height: isMobile ? '68px' : '92px',
+            borderRadius: isMobile ? '18px' : '26px',
             background: 'linear-gradient(145deg, #fbbf24 0%, #d97706 50%, #92400e 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 0 32px rgba(245, 158, 11, 0.6), inset 0 2px 2px rgba(255, 255, 255, 0.8), inset 0 -3px 6px rgba(0, 0, 0, 0.5)',
-            marginBottom: '20px',
+            marginBottom: isMobile ? '12px' : '20px',
             border: '2px solid rgba(255, 255, 255, 0.4)',
             position: 'relative',
             zIndex: 1,
@@ -116,7 +126,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           />
           <span
             style={{
-              fontSize: '3.2rem',
+              fontSize: isMobile ? '2.4rem' : '3.2rem',
               fontWeight: 900,
               fontFamily: 'var(--baffa-font-sans), sans-serif',
               color: '#080d1a',
@@ -133,9 +143,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         <h1
           style={{
-            fontSize: 'clamp(2.6rem, 5.5vw, 4.2rem)',
+            fontSize: isMobile ? '2.5rem' : 'clamp(2.6rem, 5.5vw, 4.2rem)',
             fontWeight: 900,
-            letterSpacing: '4px',
+            letterSpacing: isMobile ? '2px' : '4px',
             background: 'linear-gradient(135deg, #ffffff 20%, #cbd5e1 60%, #94a3b8 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -150,9 +160,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <p
           className="arabic-font"
           style={{
-            fontSize: '1.4rem',
+            fontSize: isMobile ? '1.15rem' : '1.4rem',
             color: 'var(--baffa-gold-hover)',
-            marginTop: '8px',
+            marginTop: '6px',
             fontWeight: 900,
             textShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
             zIndex: 1,
@@ -164,12 +174,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <p
           className="arabic-font"
           style={{
-            fontSize: '1.05rem',
+            fontSize: isMobile ? '0.88rem' : '1.05rem',
             color: 'var(--baffa-text-secondary)',
             maxWidth: '620px',
-            marginTop: '10px',
-            lineHeight: 1.7,
+            marginTop: '8px',
+            lineHeight: 1.6,
             zIndex: 1,
+            padding: '0 8px',
           }}
         >
           العب 2 ضد 2 مع صحابك أونلاين، اتكلموا كأنكم عالقهوة، والعبوا ضد بوتات مصرية فاهمة اللعبة.. من غير غش ولا لعب من تحت الترابيزة. 😎
@@ -179,9 +190,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <div
           style={{
             display: 'flex',
-            gap: '14px',
-            marginTop: '22px',
-            padding: '12px 24px',
+            gap: isMobile ? '8px' : '14px',
+            marginTop: isMobile ? '14px' : '22px',
+            padding: isMobile ? '8px 16px' : '12px 24px',
             borderRadius: 'var(--baffa-radius-full)',
             backgroundColor: 'rgba(11, 20, 32, 0.7)',
             border: '1px solid rgba(245, 158, 11, 0.25)',
@@ -189,10 +200,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             zIndex: 1,
           }}
         >
-          <DominoTile tile={[6, 6]} size="sm" isVertical={false} disabled />
-          <DominoTile tile={[6, 5]} size="sm" isVertical={true} disabled />
-          <DominoTile tile={[5, 5]} size="sm" isVertical={false} disabled />
-          <DominoTile tile={[5, 4]} size="sm" isVertical={true} disabled />
+          <DominoTile tile={[6, 6]} size={isMobile ? 'xs' : 'sm'} isVertical={false} disabled />
+          <DominoTile tile={[6, 5]} size={isMobile ? 'xs' : 'sm'} isVertical={true} disabled />
+          <DominoTile tile={[5, 5]} size={isMobile ? 'xs' : 'sm'} isVertical={false} disabled />
+          <DominoTile tile={[5, 4]} size={isMobile ? 'xs' : 'sm'} isVertical={true} disabled />
         </div>
       </div>
 
@@ -200,8 +211,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '24px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: isMobile ? '14px' : '24px',
           width: '100%',
           maxWidth: '960px',
           zIndex: 1,
@@ -212,7 +223,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           onClick={onQuickPlay}
           className="baffa-card"
           style={{
-            padding: '30px 24px',
+            padding: isMobile ? '18px 16px' : '30px 24px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -238,13 +249,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div
             style={{
               position: 'absolute',
-              top: '12px',
-              right: '12px',
-              padding: '2px 8px',
+              top: '10px',
+              right: '10px',
+              padding: '2px 7px',
               borderRadius: '4px',
               backgroundColor: 'var(--baffa-gold-primary)',
               color: '#080d1a',
-              fontSize: '0.65rem',
+              fontSize: '0.62rem',
               fontWeight: 900,
             }}
           >
@@ -253,31 +264,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           <div
             style={{
-              width: '60px',
-              height: '60px',
+              width: isMobile ? '46px' : '60px',
+              height: isMobile ? '46px' : '60px',
               borderRadius: '50%',
               backgroundColor: 'var(--baffa-gold-primary)',
               color: '#080d1a',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '16px',
+              marginBottom: isMobile ? '10px' : '16px',
               boxShadow: '0 0 20px rgba(245, 158, 11, 0.6)',
             }}
           >
-            <Play size={30} fill="#080d1a" />
+            <Play size={isMobile ? 22 : 30} fill="#080d1a" />
           </div>
 
           <h2
             className="arabic-font"
-            style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--baffa-gold-hover)', margin: 0 }}
+            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-gold-hover)', margin: 0 }}
           >
             لعب سريع
           </h2>
-          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
+          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
             Quick Play with Bots
           </span>
-          <p style={{ fontSize: '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: '10px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
             ابدأ ماتش 2v2 فوراً مع أذكى البوتات المصرية (السامي، القط، رقم واحد في العزبة) بروح القهوة.
           </p>
         </div>
@@ -303,7 +314,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           }}
           className="baffa-card"
           style={{
-            padding: '30px 24px',
+            padding: isMobile ? '18px 16px' : '30px 24px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -328,13 +339,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div
             style={{
               position: 'absolute',
-              top: '12px',
-              right: '12px',
-              padding: '2px 8px',
+              top: '10px',
+              right: '10px',
+              padding: '2px 7px',
               borderRadius: '4px',
               backgroundColor: 'rgba(6, 182, 212, 0.2)',
               color: 'var(--baffa-cyan-primary)',
-              fontSize: '0.65rem',
+              fontSize: '0.62rem',
               fontWeight: 800,
               border: '1px solid rgba(6, 182, 212, 0.3)',
             }}
@@ -344,31 +355,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           <div
             style={{
-              width: '60px',
-              height: '60px',
+              width: isMobile ? '46px' : '60px',
+              height: isMobile ? '46px' : '60px',
               borderRadius: '50%',
               backgroundColor: 'rgba(6, 182, 212, 0.15)',
               color: 'var(--baffa-cyan-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '16px',
+              marginBottom: isMobile ? '10px' : '16px',
               border: '1px solid rgba(6, 182, 212, 0.4)',
             }}
           >
-            <PlusCircle size={30} />
+            <PlusCircle size={isMobile ? 22 : 30} />
           </div>
 
           <h2
             className="arabic-font"
-            style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--baffa-cyan-primary)', margin: 0 }}
+            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-cyan-primary)', margin: 0 }}
           >
             إنشاء غرفة
           </h2>
-          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
+          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
             Create Custom Room
           </span>
-          <p style={{ fontSize: '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: '10px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
             خصص قوانين الطاولة، افتح مقاعد الحكم والمتفرج، وفعّل الشات الصوتي المباشر مع صحابك.
           </p>
         </div>
@@ -378,7 +389,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           onClick={() => setShowJoinModal(true)}
           className="baffa-card"
           style={{
-            padding: '30px 24px',
+            padding: isMobile ? '18px 16px' : '30px 24px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -403,13 +414,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div
             style={{
               position: 'absolute',
-              top: '12px',
-              right: '12px',
-              padding: '2px 8px',
+              top: '10px',
+              right: '10px',
+              padding: '2px 7px',
               borderRadius: '4px',
               backgroundColor: 'rgba(99, 102, 241, 0.2)',
               color: '#a5b4fc',
-              fontSize: '0.65rem',
+              fontSize: '0.62rem',
               fontWeight: 800,
               border: '1px solid rgba(99, 102, 241, 0.3)',
             }}
@@ -419,31 +430,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           <div
             style={{
-              width: '60px',
-              height: '60px',
+              width: isMobile ? '46px' : '60px',
+              height: isMobile ? '46px' : '60px',
               borderRadius: '50%',
               backgroundColor: 'var(--baffa-bg-elevated)',
               color: 'var(--baffa-text-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '16px',
+              marginBottom: isMobile ? '10px' : '16px',
               border: '1px solid var(--baffa-surface-glass-border)',
             }}
           >
-            <LogIn size={30} />
+            <LogIn size={isMobile ? 22 : 30} />
           </div>
 
           <h2
             className="arabic-font"
-            style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', margin: 0 }}
+            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: '#fff', margin: 0 }}
           >
             انضمام لغرفة
           </h2>
-          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
+          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
             Join with Code
           </span>
-          <p style={{ fontSize: '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: '10px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
             ادخل بكود الغرفة والعب كلاعب، أو انضم كـ حكم (Judge) أو متفرج (Spectator) في أي وقت.
           </p>
         </div>
@@ -455,8 +466,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '20px',
-          marginTop: '36px',
+          gap: isMobile ? '10px' : '20px',
+          marginTop: isMobile ? '22px' : '36px',
           flexWrap: 'wrap',
           zIndex: 1,
         }}
@@ -468,16 +479,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             alignItems: 'center',
             gap: '8px',
             color: 'var(--baffa-text-primary)',
-            fontSize: '0.9rem',
+            fontSize: isMobile ? '0.82rem' : '0.9rem',
             fontWeight: 700,
-            padding: '10px 20px',
+            padding: isMobile ? '8px 16px' : '10px 20px',
             borderRadius: 'var(--baffa-radius-full)',
             backgroundColor: 'var(--baffa-bg-surface)',
             border: '1px solid var(--baffa-gold-primary)',
             boxShadow: '0 0 16px rgba(245, 158, 11, 0.15)',
+            cursor: 'pointer',
           }}
         >
-          <BookOpen size={18} style={{ color: 'var(--baffa-gold-primary)' }} />
+          <BookOpen size={isMobile ? 15 : 18} style={{ color: 'var(--baffa-gold-primary)' }} />
           <span className="arabic-font">قواعد لعبة بَفّة (Game Rules)</span>
         </button>
 
@@ -485,17 +497,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             color: 'var(--baffa-text-muted)',
-            fontSize: '0.85rem',
-            padding: '8px 16px',
+            fontSize: isMobile ? '0.75rem' : '0.85rem',
+            padding: isMobile ? '6px 12px' : '8px 16px',
             borderRadius: 'var(--baffa-radius-full)',
             backgroundColor: 'rgba(18, 29, 45, 0.5)',
             border: '1px solid var(--baffa-surface-glass-border)',
+            textAlign: 'center',
           }}
         >
-          <ShieldCheck size={16} style={{ color: 'var(--baffa-success)' }} />
-          <span>محمي بنظام مكافحة الغش وسلطة السيرفر المطلقة (Anti-Cheat Protected)</span>
+          <ShieldCheck size={isMobile ? 14 : 16} style={{ color: 'var(--baffa-success)', flexShrink: 0 }} />
+          <span>محمي بنظام مكافحة الغش وسلطة السيرفر المطلقة (Anti-Cheat)</span>
         </div>
       </div>
 
