@@ -2053,7 +2053,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                               size={responsiveTileSize}
                               isPlayable={isPlayable}
                               isSelected={isSelected}
-                              isVertical={true}
+                              isVertical={!isLandscape}
                               isFaceDown={false}
                               onInvalidClick={triggerInvalid}
                             />
@@ -2616,7 +2616,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.85)) drop-shadow(0 0 16px rgba(245,158,11,0.5))',
         }}
       >
-        {dragState && <DominoTile tile={dragState.tile} size="md" isVertical={true} />}
+        {dragState && <DominoTile tile={dragState.tile} size="md" isVertical={!isLandscape} />}
       </div>
 
       {/* Judge Disciplinary Action & Moderation Modal */}

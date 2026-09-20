@@ -87,11 +87,16 @@ export function useDominoLayout(tiles: BoardTilePlacement[], containerWidth: num
     const isLandscape = screenWidth > screenHeight && screenHeight <= 540;
     const isSmallScreen = screenWidth < 768 || screenHeight <= 540;
 
-    // Layout bounds in unscaled virtual coordinates (1 unit = U = 44px).
-    // The chain is scaled down via fitScale in GameTable to fit the physical container,
-    // so virtual bounds should give the chain room to breathe naturally before turning.
-    const MAX_X = isLandscape ? 7 : isSmallScreen ? 4.5 : 7.5;
-    const MAX_Y = isLandscape ? 2.5 : isSmallScreen ? 3.5 : 4.5;
+    const isPortrait = screenHeight > screenWidth;
+    const isPortraitMobile = isPortrait && (screenWidth < 768 || isSmallScreen);
+
+    // Primary axis of domino chain layout:
+    // In portrait mobile: flow along the length of the phone (VERTICAL).
+    // In landscape or desktop: flow along the width of the screen (HORIZONTAL).
+    const isVerticalFlow = isPortraitMobile;
+
+    const MAX_X = isVerticalFlow ? 2.5 : (isLandscape ? 7 : isSmallScreen ? 4.5 : 7.5);
+    const MAX_Y = isVerticalFlow ? 6.5 : (isLandscape ? 2.5 : isSmallScreen ? 3.5 : 4.5);
 
     if (tiles.length === 0) {
       return {
@@ -115,16 +120,28 @@ export function useDominoLayout(tiles: BoardTilePlacement[], containerWidth: num
     let minX = 0, maxX = 0, minY = 0, maxY = 0;
 
     const startTile = tiles[startIndex];
-    const startRot = startTile.isDouble ? 90 : 0;
+    const startRot = startTile.isDouble
+      ? (isVerticalFlow ? 0 : 90)
+      : (isVerticalFlow ? 90 : 0);
     layout[startIndex] = { placement: startTile, x: 0, y: 0, rotation: startRot };
     
     let initialRightTip: Tip, initialLeftTip: Tip;
-    if (startTile.isDouble) {
-      initialRightTip = { x: 0.5, y: 0, facing: 0 };
-      initialLeftTip = { x: -0.5, y: 0, facing: 180 };
+    if (isVerticalFlow) {
+      if (startTile.isDouble) {
+        initialRightTip = { x: 0, y: 0.5, facing: 90 };
+        initialLeftTip = { x: 0, y: -0.5, facing: 270 };
+      } else {
+        initialRightTip = { x: 0, y: 1, facing: 90 };
+        initialLeftTip = { x: 0, y: -1, facing: 270 };
+      }
     } else {
-      initialRightTip = { x: 1, y: 0, facing: 0 };
-      initialLeftTip = { x: -1, y: 0, facing: 180 };
+      if (startTile.isDouble) {
+        initialRightTip = { x: 0.5, y: 0, facing: 0 };
+        initialLeftTip = { x: -0.5, y: 0, facing: 180 };
+      } else {
+        initialRightTip = { x: 1, y: 0, facing: 0 };
+        initialLeftTip = { x: -1, y: 0, facing: 180 };
+      }
     }
 
     let rightEndTip = initialRightTip;
@@ -133,8 +150,8 @@ export function useDominoLayout(tiles: BoardTilePlacement[], containerWidth: num
     const layoutBranch = (step: 1 | -1, branch: 'RIGHT' | 'LEFT', initialTip: Tip) => {
       let currentTip = initialTip;
       let flowHoriz = branch === 'RIGHT' ? 0 : 180;
-      let flowVert = branch === 'RIGHT' ? 90 : 270; // RIGHT branch snakes bottom, LEFT snakes top
-      let vertStepsRemaining = 0;
+      let flowVert = branch === 'RIGHT' ? 90 : 270;
+      let turnStepsRemaining = 0;
 
       for (let i = startIndex + step; i >= 0 && i < tiles.length; i += step) {
         const p = tiles[i];
@@ -149,40 +166,72 @@ export function useDominoLayout(tiles: BoardTilePlacement[], containerWidth: num
         minY = Math.min(minY, py);
         maxY = Math.max(maxY, py);
 
-        // Check boundary limits for next tile
         const nextX = nextFrontTip.x;
         const nextY = nextFrontTip.y;
-        
-        if (currentTip.facing === 0 || currentTip.facing === 180) {
-          if ((currentTip.facing === 0 && nextX > MAX_X) || (currentTip.facing === 180 && nextX < -MAX_X)) {
-            // Start turn: use 2 vertical tiles for double row separation!
-            vertStepsRemaining = 2;
-            flowHoriz = currentTip.facing === 0 ? 180 : 0;
-            if (currentTip.facing === 0) {
-              currentTip = flowVert === 90 ? nextRightTip : nextLeftTip;
+
+        if (isVerticalFlow) {
+          // Flowing along vertical axis (90 or 270)
+          if (currentTip.facing === 90 || currentTip.facing === 270) {
+            if ((currentTip.facing === 90 && nextY > MAX_Y) || (currentTip.facing === 270 && nextY < -MAX_Y)) {
+              // Turn horizontally: 2 horizontal steps for row separation!
+              turnStepsRemaining = 2;
+              flowVert = currentTip.facing === 90 ? 270 : 90;
+              if (currentTip.facing === 90) {
+                currentTip = flowHoriz === 0 ? nextLeftTip : nextRightTip;
+              } else {
+                currentTip = flowHoriz === 0 ? nextRightTip : nextLeftTip;
+              }
+              turnStepsRemaining--;
             } else {
-              currentTip = flowVert === 90 ? nextLeftTip : nextRightTip;
+              currentTip = nextFrontTip;
             }
-            vertStepsRemaining--;
           } else {
-            currentTip = nextFrontTip;
+            // We are moving horizontally (facing 0 or 180)
+            if (turnStepsRemaining > 0) {
+              currentTip = nextFrontTip;
+              turnStepsRemaining--;
+            } else {
+              // Completed 2 horizontal steps: turn vertically back towards center!
+              if (currentTip.facing === 0) {
+                currentTip = flowVert === 90 ? nextRightTip : nextLeftTip;
+              } else if (currentTip.facing === 180) {
+                currentTip = flowVert === 90 ? nextLeftTip : nextRightTip;
+              }
+              if (nextX > MAX_X) flowHoriz = 180;
+              if (nextX < -MAX_X) flowHoriz = 0;
+            }
           }
         } else {
-          // We are moving vertically (facing 90 or 270)
-          if (vertStepsRemaining > 0) {
-            // 2nd vertical tile step
-            currentTip = nextFrontTip;
-            vertStepsRemaining--;
-          } else {
-            // Completed 2 vertical steps: turn horizontally back towards center!
-            if (currentTip.facing === 90) {
-               currentTip = flowHoriz === 0 ? nextLeftTip : nextRightTip;
-            } else if (currentTip.facing === 270) {
-               currentTip = flowHoriz === 0 ? nextRightTip : nextLeftTip;
+          // Flowing along horizontal axis (0 or 180)
+          if (currentTip.facing === 0 || currentTip.facing === 180) {
+            if ((currentTip.facing === 0 && nextX > MAX_X) || (currentTip.facing === 180 && nextX < -MAX_X)) {
+              // Start turn: use 2 vertical tiles for row separation!
+              turnStepsRemaining = 2;
+              flowHoriz = currentTip.facing === 0 ? 180 : 0;
+              if (currentTip.facing === 0) {
+                currentTip = flowVert === 90 ? nextRightTip : nextLeftTip;
+              } else {
+                currentTip = flowVert === 90 ? nextLeftTip : nextRightTip;
+              }
+              turnStepsRemaining--;
+            } else {
+              currentTip = nextFrontTip;
             }
-            
-            if (nextY > MAX_Y) flowVert = 270;
-            if (nextY < -MAX_Y) flowVert = 90;
+          } else {
+            // We are moving vertically (facing 90 or 270)
+            if (turnStepsRemaining > 0) {
+              currentTip = nextFrontTip;
+              turnStepsRemaining--;
+            } else {
+              // Completed 2 vertical steps: turn horizontally back towards center!
+              if (currentTip.facing === 90) {
+                currentTip = flowHoriz === 0 ? nextLeftTip : nextRightTip;
+              } else if (currentTip.facing === 270) {
+                currentTip = flowHoriz === 0 ? nextRightTip : nextLeftTip;
+              }
+              if (nextY > MAX_Y) flowVert = 270;
+              if (nextY < -MAX_Y) flowVert = 90;
+            }
           }
         }
       }
