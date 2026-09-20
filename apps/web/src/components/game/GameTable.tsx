@@ -1332,7 +1332,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 <DominoTile
                   tile={tile}
                   size={isLandscape ? 'xs' : isMobile ? 'xs' : 'sm'}
-                  isVertical={orientation === 'row'}
+                  isVertical={true}
                   isFaceDown={false}
                   disabled={true}
                 />
@@ -1365,14 +1365,14 @@ export const GameTable: React.FC<GameTableProps> = ({
             className={dealAnimClass}
             style={{
               animationDelay: isDealingRound ? `${idx * 90}ms` : undefined,
-              marginTop: orientation === 'column' && idx > 0 ? (isLandscape ? '-14px' : isMobile ? '-12px' : '-8px') : undefined,
+              marginTop: orientation === 'column' && idx > 0 ? (isLandscape ? '-26px' : isMobile ? '-24px' : '-18px') : undefined,
             }}
           >
             <DominoTile
               tile={[0, 0]}
               isFaceDown={true}
               size={isLandscape ? 'xs' : isMobile ? 'xs' : 'sm'}
-              isVertical={orientation === 'row'}
+              isVertical={true}
             />
           </div>
         ))}
@@ -1988,9 +1988,9 @@ export const GameTable: React.FC<GameTableProps> = ({
                         : gameState.myHand;
 
                       const responsiveTileSize = isLandscape
-                        ? 'xs'
+                        ? 'sm'
                         : isMobile
-                        ? 'xs'
+                        ? 'sm'
                         : 'md';
 
                       return myTilesToRender.map((tile, index) => {
