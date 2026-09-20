@@ -947,7 +947,13 @@ export const GameTable: React.FC<GameTableProps> = ({
   const renderBadgeOnly = (player: SanitizedPlayerState | undefined, relation: string, orientation: 'row' | 'column' = 'row') => {
     if (!player) return null;
     const isCurrentTurn = gameState.currentTurnSeat === player.seat && gameState.status === 'PLAYING';
-    const isSpeakingBot = Boolean(latestBotMessage && player.isBot && player.botId === latestBotMessage.botId);
+    const isSpeakingBot = Boolean(
+      latestBotMessage &&
+      player.isBot &&
+      (latestBotMessage.seat !== undefined && latestBotMessage.seat !== null
+        ? Number(player.seat) === Number(latestBotMessage.seat)
+        : player.botId === latestBotMessage.botId)
+    );
     const isMe = mySeat === player.seat;
     const isPassed = (Date.now() - (recentlyPassedSeats[Number(player.seat)] || 0)) < 3000;
     const isPlayerSpeaking = Boolean(player.playerId && isSpeaking(player.playerId));
@@ -1047,14 +1053,46 @@ export const GameTable: React.FC<GameTableProps> = ({
         )}
 
         {isSpeakingBot && !isPassed && (
-          <div className="animate-float" style={{
-            position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '10px', padding: '6px 14px',
-            borderRadius: '16px', backgroundColor: 'var(--baffa-gold-primary)', color: '#080d1a',
-            fontWeight: 800, fontSize: '0.85rem', whiteSpace: 'nowrap', zIndex: 40,
-            boxShadow: '0 4px 14px rgba(0,0,0,0.6)',
-          }}>
-            <span className="arabic-font">{latestBotMessage?.text}</span>
-            <div style={{ position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid var(--baffa-gold-primary)' }} />
+          <div
+            className="animate-float arabic-font"
+            style={{
+              position: 'absolute',
+              bottom: orientation === 'column' ? '100%' : '110%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginBottom: '10px',
+              padding: isMobile ? '4px 10px' : '6px 14px',
+              borderRadius: isMobile ? '12px' : '16px',
+              backgroundColor: 'var(--baffa-gold-primary)',
+              color: '#080d1a',
+              fontWeight: 800,
+              fontSize: isLandscape ? '0.7rem' : isMobile ? '0.74rem' : '0.84rem',
+              whiteSpace: 'normal',
+              textAlign: 'center',
+              lineHeight: 1.3,
+              width: 'max-content',
+              maxWidth: isLandscape ? '140px' : isMobile ? '160px' : '220px',
+              zIndex: 55,
+              boxShadow: '0 6px 18px rgba(0, 0, 0, 0.75), 0 0 10px rgba(245, 158, 11, 0.4)',
+              border: '1.5px solid rgba(255, 255, 255, 0.3)',
+              wordBreak: 'break-word',
+              pointerEvents: 'none',
+            }}
+          >
+            <span>{latestBotMessage?.text}</span>
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '-6px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 0,
+                height: 0,
+                borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent',
+                borderTop: '6px solid var(--baffa-gold-primary)',
+              }}
+            />
           </div>
         )}
 

@@ -345,10 +345,12 @@ export class GameSessionService {
       if (engine.getStatus() === 'MATCH_FINISHED') {
         this.matchService.finalizeMatch(engine);
         this.callbacks?.broadcastStatsUpdated(roomId);
+        this.triggerBotRoundEndReaction(roomId);
       } else if (engine.getStatus() === 'PLAYING') {
         this.startTurnTimer(roomId);
       } else if (engine.getStatus() === 'ROUND_FINISHED') {
         // Auto-advance for bot/judge matches (normal win condition)
+        this.triggerBotRoundEndReaction(roomId);
         this.autoAdvanceRoundIfBotMatch(roomId, 4500);
       }
 
@@ -394,10 +396,13 @@ export class GameSessionService {
       if (engine.getStatus() === 'MATCH_FINISHED') {
         this.matchService.finalizeMatch(engine);
         this.callbacks?.broadcastStatsUpdated(roomId);
+        this.triggerBotRoundEndReaction(roomId);
       } else if (engine.getStatus() === 'PLAYING') {
         this.startTurnTimer(roomId);
+        this.triggerBotOpponentPassReaction(roomId, seat);
       } else if (engine.getStatus() === 'ROUND_FINISHED') {
         // Auto-advance for bot/judge matches (blocked round)
+        this.triggerBotRoundEndReaction(roomId);
         this.autoAdvanceRoundIfBotMatch(roomId, 4500);
       }
 
@@ -934,6 +939,22 @@ export class GameSessionService {
             engine.passTurn(currentSeat);
           }
         }
+
+        // If game continues, check if this move forced the next player to pass (OPPONENT_PASS banter)
+        if (engine.getStatus() === 'PLAYING') {
+          const nextSeat = engine.getCurrentTurnSeat();
+          const nextLegalMoves = engine.getLegalMovesForSeat(nextSeat);
+          if (nextLegalMoves.length === 0) {
+            setTimeout(() => {
+              const taunt = this.botService.generateSocialReaction(engine, currentSeat, effectiveBotId, 'OPPONENT_PASS');
+              if (taunt) {
+                try {
+                  this.callbacks?.broadcastBotChat(roomId, taunt);
+                } catch {}
+              }
+            }, 350);
+          }
+        }
       } else {
         try { require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[BOT-PASS] room=${roomId} seat=${currentSeat}\n`); } catch(e) {}
         const legalMoves = engine.getLegalMovesForSeat(currentSeat);
@@ -948,10 +969,12 @@ export class GameSessionService {
       if (engine.getStatus() === 'MATCH_FINISHED') {
         this.matchService.finalizeMatch(engine);
         this.callbacks?.broadcastStatsUpdated(roomId);
+        this.triggerBotRoundEndReaction(roomId);
       } else if (engine.getStatus() === 'PLAYING') {
         this.startTurnTimer(roomId);
       } else if (engine.getStatus() === 'ROUND_FINISHED') {
         // Auto-advance to next round for bot/judge matches
+        this.triggerBotRoundEndReaction(roomId);
         this.autoAdvanceRoundIfBotMatch(roomId, 4500);
       }
 
@@ -1033,17 +1056,112 @@ export class GameSessionService {
       this.clearTurnTimer(roomId);
       this.matchService.finalizeMatch(engine);
       this.callbacks?.broadcastStatsUpdated(roomId);
+      this.triggerBotRoundEndReaction(roomId);
     } else if (engine.getStatus() === 'PLAYING') {
       this.startTurnTimer(roomId);
       this.checkAndTriggerBotTurn(roomId);
     } else if (engine.getStatus() === 'ROUND_FINISHED') {
       this.clearTurnTimer(roomId);
+      this.triggerBotRoundEndReaction(roomId);
       this.autoAdvanceRoundIfBotMatch(roomId, 4500);
     } else {
       this.clearTurnTimer(roomId);
     }
 
     this.callbacks?.broadcastStateToRoom(roomId);
+  }
+
+  /**
+   * Triggers witty Egyptian bot reactions when a round or match ends.
+   * Winning bots taunt opponents; losing bots mock their teammate ("فردة تعبانة").
+   */
+  private triggerBotRoundEndReaction(roomId: string) {
+    const engine = this.sessions.get(roomId);
+    if (!engine) return;
+
+    const room = this.roomService.getRoom(roomId);
+    if (!room) return;
+
+    const sanitized = engine.getSanitizedState(null);
+    const roundResult = sanitized.lastRoundResult;
+    if (!roundResult) return;
+
+    const winnerTeam: TeamId = roundResult.winnerTeam;
+
+    // Collect bots in this room
+    const botSeats: { seat: PlayerSeat; botId: BotId; isWinner: boolean }[] = [];
+    room.seats.forEach((s) => {
+      if (s.isBot || s.isTemporarilyBotControlled || (s.playerId && s.playerId.startsWith('bot_'))) {
+        const team: TeamId = s.seat % 2 === 0 ? 1 : 2;
+        const isWinner = team === winnerTeam;
+        const botId: BotId = s.botId || 'EL_SAMY';
+        botSeats.push({ seat: s.seat, botId, isWinner });
+      }
+    });
+
+    if (botSeats.length === 0) return;
+
+    const winningBots = botSeats.filter((b) => b.isWinner);
+    const losingBots = botSeats.filter((b) => !b.isWinner);
+
+    // Winning bot taunts the defeated opponents (~600ms)
+    if (winningBots.length > 0 && Math.random() < 0.9) {
+      const bot = winningBots[Math.floor(Math.random() * winningBots.length)];
+      setTimeout(() => {
+        const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, 'ROUND_WIN');
+        if (chat) {
+          try {
+            this.callbacks?.broadcastBotChat(roomId, chat);
+          } catch {}
+        }
+      }, 600);
+    }
+
+    // Losing bot mocks/blames teammate ("أنا بلعب مع فردة تعبانة وضيعتني يا زميلي!") (~1600ms)
+    if (losingBots.length > 0 && Math.random() < 0.9) {
+      const bot = losingBots[Math.floor(Math.random() * losingBots.length)];
+      setTimeout(() => {
+        const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, 'ROUND_LOSS');
+        if (chat) {
+          try {
+            this.callbacks?.broadcastBotChat(roomId, chat);
+          } catch {}
+        }
+      }, 1600);
+    }
+  }
+
+  /**
+   * Triggers an opponent bot to taunt a player who just passed their turn.
+   */
+  private triggerBotOpponentPassReaction(roomId: string, passingSeat: PlayerSeat) {
+    const engine = this.sessions.get(roomId);
+    if (!engine) return;
+
+    const room = this.roomService.getRoom(roomId);
+    if (!room) return;
+
+    // Find bots on the opposing team
+    const passingTeam: TeamId = passingSeat % 2 === 0 ? 1 : 2;
+    const opponentBots = room.seats.filter(
+      (s) =>
+        (s.isBot || s.isTemporarilyBotControlled || (s.playerId && s.playerId.startsWith('bot_'))) &&
+        (s.seat % 2 === 0 ? 1 : 2) !== passingTeam
+    );
+
+    if (opponentBots.length === 0) return;
+
+    const bot = opponentBots[Math.floor(Math.random() * opponentBots.length)];
+    const botId: BotId = bot.botId || 'EL_SAMY';
+
+    setTimeout(() => {
+      const taunt = this.botService.generateSocialReaction(engine, bot.seat, botId, 'OPPONENT_PASS');
+      if (taunt) {
+        try {
+          this.callbacks?.broadcastBotChat(roomId, taunt);
+        } catch {}
+      }
+    }, 450);
   }
 
   /**

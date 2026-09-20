@@ -1,3 +1,5 @@
+import type { PlayerSeat } from './domino';
+
 export type BotId =
   | 'EL_RAYEQ'      // الرايق (Weak, funny, makes obvious mistakes)
   | 'EL_QETT'       // القط (Medium, confident)
@@ -80,6 +82,7 @@ export const OFFICIAL_BAFFA_BOTS: Record<BotId, BotProfile> = {
 export interface BotChatMessage {
   botId: BotId;
   botName: string;
+  seat?: PlayerSeat;
   text: string;
   emoji?: string;
   timestamp: number;
