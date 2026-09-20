@@ -92,6 +92,50 @@ export default function App() {
     }
   }, [room]);
 
+  // If an error occurs while reconnecting (e.g. room not found or closed), immediately abort loading
+  useEffect(() => {
+    if (errorMessage && isReconnectingRoom) {
+      setIsReconnectingRoom(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('baffa_active_room_code');
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete('room');
+        currentUrl.searchParams.delete('join');
+        currentUrl.searchParams.delete('code');
+        currentUrl.searchParams.delete('role');
+        window.history.replaceState({}, '', currentUrl.pathname);
+      }
+    }
+  }, [errorMessage, isReconnectingRoom]);
+
+  // Safety Timeout: Never let the user get stuck on "جاري العودة إلى الطاولة..." for more than 4 seconds
+  useEffect(() => {
+    if (!isReconnectingRoom || room) return;
+
+    const timeout = setTimeout(() => {
+      console.warn('[RECONNECT_SAFEGUARD] Room reconnect timed out after 4s. Returning to home.');
+      setIsReconnectingRoom(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('baffa_active_room_code');
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete('room');
+        currentUrl.searchParams.delete('join');
+        currentUrl.searchParams.delete('code');
+        currentUrl.searchParams.delete('role');
+        window.history.replaceState({}, '', currentUrl.pathname);
+      }
+      setLatestNotification({
+        type: 'INFO',
+        message: 'Could not rejoin the table (it may have ended).',
+        arabicMessage: 'لم نتمكن من العودة إلى الطاولة (قد تكون انتهت أو أُغلقت).',
+        timestamp: Date.now(),
+      });
+      setTimeout(() => setLatestNotification(null), 7000);
+    }, 4000);
+
+    return () => clearTimeout(timeout);
+  }, [isReconnectingRoom, room]);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !isConnected || room || autoJoinAttemptedRef.current) return;
 
@@ -183,6 +227,33 @@ export default function App() {
           <p className="arabic-font" style={{ color: 'var(--baffa-gold-hover)', fontSize: '1.05rem', fontWeight: 700 }}>
             {isReconnectingRoom ? 'جاري العودة إلى الطاولة...' : 'جاري تشغيل منصة بَفّة...'}
           </p>
+          {isReconnectingRoom && (
+            <button
+              onClick={() => {
+                setIsReconnectingRoom(false);
+                if (typeof window !== 'undefined') {
+                  sessionStorage.removeItem('baffa_active_room_code');
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('room');
+                  url.searchParams.delete('join');
+                  url.searchParams.delete('code');
+                  url.searchParams.delete('role');
+                  window.history.replaceState({}, '', url.pathname);
+                }
+                setCurrentView('HOME');
+              }}
+              className="baffa-btn-secondary arabic-font"
+              style={{
+                marginTop: '18px',
+                padding: '8px 22px',
+                fontSize: '0.88rem',
+                borderRadius: '20px',
+                cursor: 'pointer',
+              }}
+            >
+              إلغاء والعودة للرئيسية ✕
+            </button>
+          )}
         </div>
       </div>
     );

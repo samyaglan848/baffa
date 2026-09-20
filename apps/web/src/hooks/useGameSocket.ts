@@ -432,6 +432,9 @@ export function useGameSocket() {
       }
       setErrorMessage(data.message);
       setTimeout(() => setErrorMessage(null), 4000);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('baffa_active_room_code');
+      }
       if (data.message && data.message.toLowerCase().includes('not found')) {
         console.warn('[ROOM_ERROR] Active room was not found on server. Clearing stale room state.');
         setRoom(null);
