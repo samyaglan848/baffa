@@ -214,7 +214,8 @@ export const GameTable: React.FC<GameTableProps> = ({
   // fitScale guarantees the domino chain fits 100% inside the available space without ever overflowing or clipping
   const scaleX = availW / boardSpanX;
   const scaleY = availH / boardSpanY;
-  const fitScale = Math.min(1.0, Math.min(scaleX, scaleY));
+  const maxScale = isLandscape ? 0.70 : isMobile ? 0.70 : 1.0;
+  const fitScale = Math.min(maxScale, Math.min(scaleX, scaleY));
   
   const animatedRoundKeyRef = useRef<string | null>(null);
   const roundEndTimersRef = useRef<NodeJS.Timeout[]>([]);
@@ -1984,9 +1985,9 @@ export const GameTable: React.FC<GameTableProps> = ({
                         : gameState.myHand;
 
                       const responsiveTileSize = isLandscape
-                        ? (myTilesToRender.length > 5 ? 'xs' : 'sm')
+                        ? 'xs'
                         : isMobile
-                        ? (myTilesToRender.length > 5 ? 'xs' : 'sm')
+                        ? 'xs'
                         : 'md';
 
                       return myTilesToRender.map((tile, index) => {

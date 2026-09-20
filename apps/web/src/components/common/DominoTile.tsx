@@ -44,8 +44,8 @@ export const DominoTile: React.FC<DominoTileProps> = ({
 
   // Dimensions based on size and orientation
   const sizeStyles = {
-    xs: isVertical ? { width: '26px', height: '52px' } : { width: '52px', height: '26px' },
-    sm: isVertical ? { width: '32px', height: '64px' } : { width: '64px', height: '32px' },
+    xs: isVertical ? { width: '23px', height: '46px' } : { width: '46px', height: '23px' },
+    sm: isVertical ? { width: '30px', height: '60px' } : { width: '60px', height: '30px' },
     md: isVertical ? { width: '44px', height: '88px' } : { width: '88px', height: '44px' },
     lg: isVertical ? { width: '56px', height: '112px' } : { width: '112px', height: '56px' },
   }[size];
@@ -82,7 +82,7 @@ export const DominoTile: React.FC<DominoTileProps> = ({
           gridTemplateRows: 'repeat(3, 1fr)',
           width: '100%',
           height: '100%',
-          padding: size === 'xs' ? '2px' : size === 'sm' ? '3px' : '5px',
+          padding: size === 'xs' ? '1.5px' : size === 'sm' ? '3px' : '5px',
           boxSizing: 'border-box',
           alignItems: 'center',
           justifyItems: 'center',
@@ -92,8 +92,8 @@ export const DominoTile: React.FC<DominoTileProps> = ({
           <div
             key={idx}
             style={{
-              width: size === 'xs' ? '4px' : size === 'sm' ? '5px' : size === 'md' ? '7px' : '9px',
-              height: size === 'xs' ? '4px' : size === 'sm' ? '5px' : size === 'md' ? '7px' : '9px',
+              width: size === 'xs' ? '3.5px' : size === 'sm' ? '5px' : size === 'md' ? '7px' : '9px',
+              height: size === 'xs' ? '3.5px' : size === 'sm' ? '5px' : size === 'md' ? '7px' : '9px',
               borderRadius: '50%',
               backgroundColor: activeIndices.includes(idx) ? pipColors[value] : 'transparent',
               boxShadow: activeIndices.includes(idx) ? 'inset 0 1px 1px rgba(0,0,0,0.4)' : 'none',
