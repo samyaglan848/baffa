@@ -1332,7 +1332,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 <DominoTile
                   tile={tile}
                   size={isLandscape ? 'xs' : isMobile ? 'xs' : 'sm'}
-                  isVertical={isLandscape && orientation === 'row' ? false : orientation === 'row'}
+                  isVertical={orientation === 'row'}
                   isFaceDown={false}
                   disabled={true}
                 />
@@ -1372,7 +1372,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               tile={[0, 0]}
               isFaceDown={true}
               size={isLandscape ? 'xs' : isMobile ? 'xs' : 'sm'}
-              isVertical={isLandscape && orientation === 'row' ? false : orientation === 'row'}
+              isVertical={orientation === 'row'}
             />
           </div>
         ))}
@@ -2059,7 +2059,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                               size={responsiveTileSize}
                               isPlayable={isPlayable}
                               isSelected={isSelected}
-                              isVertical={!isLandscape}
+                              isVertical={true}
                               isFaceDown={false}
                               disabled={!isMyTurn || isRoundOver}
                               onInvalidClick={triggerInvalid}
@@ -2652,7 +2652,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.85)) drop-shadow(0 0 16px rgba(245,158,11,0.5))',
         }}
       >
-        {dragState && <DominoTile tile={dragState.tile} size="md" isVertical={!isLandscape} />}
+        {dragState && <DominoTile tile={dragState.tile} size={isLandscape ? 'xs' : isMobile ? 'sm' : 'md'} isVertical={true} />}
       </div>
 
       {/* Judge Disciplinary Action & Moderation Modal */}

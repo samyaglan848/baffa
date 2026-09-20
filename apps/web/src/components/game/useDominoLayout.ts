@@ -173,64 +173,62 @@ export function useDominoLayout(tiles: BoardTilePlacement[], containerWidth: num
           // Flowing along vertical axis (90 or 270)
           if (currentTip.facing === 90 || currentTip.facing === 270) {
             if ((currentTip.facing === 90 && nextY > MAX_Y) || (currentTip.facing === 270 && nextY < -MAX_Y)) {
-              // Turn horizontally: 2 horizontal steps for row separation!
+              // Turn horizontally outward: 2 steps for column separation
               turnStepsRemaining = 2;
               flowVert = currentTip.facing === 90 ? 270 : 90;
-              if (currentTip.facing === 90) {
-                currentTip = flowHoriz === 0 ? nextLeftTip : nextRightTip;
+              // Branch RIGHT always turns RIGHT (facing 0), Branch LEFT always turns LEFT (facing 180)
+              if (branch === 'RIGHT') {
+                currentTip = currentTip.facing === 90 ? nextLeftTip : nextRightTip; // facing 0
               } else {
-                currentTip = flowHoriz === 0 ? nextRightTip : nextLeftTip;
+                currentTip = currentTip.facing === 90 ? nextRightTip : nextLeftTip; // facing 180
               }
               turnStepsRemaining--;
             } else {
               currentTip = nextFrontTip;
             }
           } else {
-            // We are moving horizontally (facing 0 or 180)
+            // We are moving horizontally outward (facing 0 for RIGHT, 180 for LEFT)
             if (turnStepsRemaining > 0) {
               currentTip = nextFrontTip;
               turnStepsRemaining--;
             } else {
-              // Completed 2 horizontal steps: turn vertically back towards center!
+              // Completed 2 horizontal steps: turn vertically in direction of flowVert
               if (currentTip.facing === 0) {
                 currentTip = flowVert === 90 ? nextRightTip : nextLeftTip;
               } else if (currentTip.facing === 180) {
                 currentTip = flowVert === 90 ? nextLeftTip : nextRightTip;
               }
-              if (nextX > MAX_X) flowHoriz = 180;
-              if (nextX < -MAX_X) flowHoriz = 0;
             }
           }
         } else {
           // Flowing along horizontal axis (0 or 180)
           if (currentTip.facing === 0 || currentTip.facing === 180) {
             if ((currentTip.facing === 0 && nextX > MAX_X) || (currentTip.facing === 180 && nextX < -MAX_X)) {
-              // Start turn: use 2 vertical tiles for row separation!
+              // Start turn: use 2 vertical steps for row separation
               turnStepsRemaining = 2;
               flowHoriz = currentTip.facing === 0 ? 180 : 0;
-              if (currentTip.facing === 0) {
-                currentTip = flowVert === 90 ? nextRightTip : nextLeftTip;
+              // Branch RIGHT always turns DOWN (flowVert=90), Branch LEFT always turns UP (flowVert=270)
+              if (branch === 'RIGHT') {
+                currentTip = currentTip.facing === 0 ? nextRightTip : nextLeftTip; // facing 90 (DOWN)
               } else {
-                currentTip = flowVert === 90 ? nextLeftTip : nextRightTip;
+                currentTip = currentTip.facing === 0 ? nextLeftTip : nextRightTip; // facing 270 (UP)
               }
               turnStepsRemaining--;
             } else {
               currentTip = nextFrontTip;
             }
           } else {
-            // We are moving vertically (facing 90 or 270)
+            // We are moving vertically (facing 90 for RIGHT, 270 for LEFT)
             if (turnStepsRemaining > 0) {
               currentTip = nextFrontTip;
               turnStepsRemaining--;
             } else {
-              // Completed 2 vertical steps: turn horizontally back towards center!
+              // Completed 2 vertical steps: turn horizontally in direction of flowHoriz
               if (currentTip.facing === 90) {
                 currentTip = flowHoriz === 0 ? nextLeftTip : nextRightTip;
               } else if (currentTip.facing === 270) {
                 currentTip = flowHoriz === 0 ? nextRightTip : nextLeftTip;
               }
-              if (nextY > MAX_Y) flowVert = 270;
-              if (nextY < -MAX_Y) flowVert = 90;
             }
           }
         }
