@@ -9,6 +9,7 @@ interface VoiceControlsProps {
   isJudgeMuted?: boolean;
   activePeersCount?: number;
   onToggleMute: () => void;
+  isMobile?: boolean;
 }
 
 export const VoiceControls: React.FC<VoiceControlsProps> = ({
@@ -17,6 +18,7 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
   isJudgeMuted = false,
   activePeersCount = 0,
   onToggleMute,
+  isMobile = false,
 }) => {
   const isRestricted = isAdminDisabled || isJudgeMuted;
 
@@ -28,8 +30,8 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          padding: '7px 15px',
+          gap: isMobile ? '4px' : '8px',
+          padding: isMobile ? '4px 9px' : '7px 15px',
           borderRadius: '24px',
           backgroundColor: isRestricted
             ? 'rgba(239, 68, 68, 0.15)'
@@ -46,7 +48,7 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
             : '0 4px 18px rgba(0, 0, 0, 0.75), 0 0 14px rgba(16, 185, 129, 0.35)',
           backdropFilter: 'blur(12px)',
           color: isRestricted || isMuted ? '#fca5a5' : '#6ee7b7',
-          fontSize: '0.86rem',
+          fontSize: isMobile ? '0.78rem' : '0.86rem',
           fontWeight: 800,
           cursor: 'pointer',
           transition: 'all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -76,23 +78,23 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
       >
         {isAdminDisabled ? (
           <>
-            <MicOff size={16} color="#ef4444" />
-            <span>المايك محظور 🚫</span>
+            <MicOff size={isMobile ? 14 : 16} color="#ef4444" />
+            <span>{isMobile ? 'محظور 🚫' : 'المايك محظور 🚫'}</span>
           </>
         ) : isJudgeMuted ? (
           <>
-            <MicOff size={16} color="#ef4444" />
-            <span>المايك محظور (حَكَم) ⚖️</span>
+            <MicOff size={isMobile ? 14 : 16} color="#ef4444" />
+            <span>{isMobile ? 'محظور ⚖️' : 'المايك محظور (حَكَم) ⚖️'}</span>
           </>
         ) : isMuted ? (
           <>
-            <MicOff size={16} color="#ef4444" />
-            <span>المايك مقفول 🔇</span>
+            <MicOff size={isMobile ? 14 : 16} color="#ef4444" />
+            <span>{isMobile ? 'مقفول 🔇' : 'المايك مقفول 🔇'}</span>
           </>
         ) : (
           <>
-            <Mic size={16} color="#10b981" />
-            <span>المايك شغال 🎙️</span>
+            <Mic size={isMobile ? 14 : 16} color="#10b981" />
+            <span>{isMobile ? 'شغال 🎙️' : 'المايك شغال 🎙️'}</span>
             {activePeersCount > 0 && (
               <span
                 style={{

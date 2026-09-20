@@ -234,82 +234,85 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
       case 'BOTTOM':
         return {
           containerStyle: {
-            bottom: '8px',
-            right: 'calc(50% + 115px)',
+            bottom: isLandscape ? '44px' : isMobile ? '68px' : '85px',
+            left: '50%',
+            transform: 'translateX(-50%)',
           },
           tailStyle: {
             position: 'absolute',
-            top: '50%',
-            right: '-7px',
-            transform: 'translateY(-50%)',
+            bottom: '-6px',
+            left: '50%',
+            transform: 'translateX(-50%)',
             width: 0,
             height: 0,
-            borderTop: '6px solid transparent',
-            borderBottom: '6px solid transparent',
-            borderLeft: '7px solid var(--baffa-gold-primary)',
+            borderLeft: '5px solid transparent',
+            borderRight: '5px solid transparent',
+            borderTop: '6px solid var(--baffa-gold-primary)',
           },
         };
       case 'TOP':
         return {
           containerStyle: {
-            top: '8px',
-            right: 'calc(50% + 115px)',
+            top: isLandscape ? '44px' : isMobile ? '56px' : '72px',
+            left: '50%',
+            transform: 'translateX(-50%)',
           },
           tailStyle: {
             position: 'absolute',
-            top: '50%',
-            right: '-7px',
-            transform: 'translateY(-50%)',
+            top: '-6px',
+            left: '50%',
+            transform: 'translateX(-50%)',
             width: 0,
             height: 0,
-            borderTop: '6px solid transparent',
-            borderBottom: '6px solid transparent',
-            borderLeft: '7px solid var(--baffa-gold-primary)',
+            borderLeft: '5px solid transparent',
+            borderRight: '5px solid transparent',
+            borderBottom: '6px solid var(--baffa-gold-primary)',
           },
         };
       case 'RIGHT':
         return {
           containerStyle: {
             top: '50%',
-            right: '95px',
+            right: isLandscape ? '44px' : isMobile ? '46px' : '72px',
             transform: 'translateY(-50%)',
           },
           tailStyle: {
             position: 'absolute',
             top: '50%',
-            right: '-7px',
+            right: '-6px',
             transform: 'translateY(-50%)',
             width: 0,
             height: 0,
-            borderTop: '6px solid transparent',
-            borderBottom: '6px solid transparent',
-            borderLeft: '7px solid var(--baffa-gold-primary)',
+            borderTop: '5px solid transparent',
+            borderBottom: '5px solid transparent',
+            borderLeft: '6px solid var(--baffa-gold-primary)',
           },
         };
       case 'LEFT':
         return {
           containerStyle: {
             top: '50%',
-            left: '95px',
+            left: isLandscape ? '44px' : isMobile ? '46px' : '72px',
             transform: 'translateY(-50%)',
           },
           tailStyle: {
             position: 'absolute',
             top: '50%',
-            left: '-7px',
+            left: '-6px',
             transform: 'translateY(-50%)',
             width: 0,
             height: 0,
-            borderTop: '6px solid transparent',
-            borderBottom: '6px solid transparent',
-            borderRight: '7px solid var(--baffa-gold-primary)',
+            borderTop: '5px solid transparent',
+            borderBottom: '5px solid transparent',
+            borderRight: '6px solid var(--baffa-gold-primary)',
           },
         };
       default:
         return {
           containerStyle: {
-            bottom: '8px',
-            right: 'calc(50% + 115px)',
+            bottom: isLandscape ? '44px' : isMobile ? '68px' : '85px',
+            left: '50%',
+            transform: 'translateX(-50%)',
           },
         };
     }
@@ -538,7 +541,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
       )}
 
       {/* RENDER ACTIVE CHATS & REACTIONS ANCHORED BESIDE SENDER BADGE WITHOUT REPEATING NAME */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 55, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 75, overflow: 'hidden' }}>
         {activeChats.map((chat) => {
           const { containerStyle, tailStyle } = getPositionStyles(chat.seat);
           return (
@@ -548,26 +551,29 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
               style={{
                 position: 'absolute',
                 ...containerStyle,
-                padding: '8px 16px',
-                background: 'linear-gradient(135deg, rgba(14, 26, 42, 0.96) 0%, rgba(20, 36, 58, 0.94) 100%)',
-                border: '2px solid var(--baffa-gold-primary)',
-                borderRadius: '18px',
-                boxShadow: '0 8px 30px rgba(0,0,0,0.85), 0 0 20px rgba(245, 158, 11, 0.45)',
+                padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 14px',
+                background: 'linear-gradient(135deg, rgba(14, 26, 42, 0.98) 0%, rgba(20, 36, 58, 0.96) 100%)',
+                border: '1.5px solid var(--baffa-gold-primary)',
+                borderRadius: isLandscape ? '12px' : isMobile ? '14px' : '18px',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
                 backdropFilter: 'blur(10px)',
-                whiteSpace: 'nowrap',
+                maxWidth: isLandscape ? '140px' : isMobile ? '160px' : '220px',
+                textAlign: 'center',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                zIndex: 60,
+                zIndex: 80,
               }}
             >
               {tailStyle && <div style={tailStyle} />}
               <span
                 style={{
-                  fontSize: '1rem',
+                  fontSize: isLandscape ? '0.72rem' : isMobile ? '0.78rem' : '0.9rem',
                   fontWeight: 900,
                   color: '#fff',
                   textAlign: 'center',
+                  lineHeight: 1.25,
+                  wordBreak: 'break-word',
                 }}
               >
                 {chat.text}
@@ -588,13 +594,13 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                zIndex: 60,
+                zIndex: 80,
               }}
             >
               <span
                 style={{
-                  fontSize: '3.4rem',
-                  filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.85)) drop-shadow(0 0 16px rgba(245, 158, 11, 0.45))',
+                  fontSize: isLandscape ? '1.8rem' : isMobile ? '2.1rem' : '2.8rem',
+                  filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 14px rgba(245, 158, 11, 0.45))',
                   lineHeight: 1,
                   display: 'inline-block',
                 }}

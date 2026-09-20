@@ -121,6 +121,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   const [showMatchTrophyModal, setShowMatchTrophyModal] = useState(false);
   const [invalidMoveToast, setInvalidMoveToast] = useState<string | null>(null);
   const [isRematchLoading, setIsRematchLoading] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   
   // In-table round end sequence states
   const [roundEndStage, setRoundEndStage] = useState<'IDLE' | 'REVEALED' | 'FLYING' | 'SCORE_PULSE' | 'DONE'>('IDLE');
@@ -1654,57 +1655,140 @@ export const GameTable: React.FC<GameTableProps> = ({
         onRequestPermission={requestMicrophonePermission}
       />
 
-      {/* Top Floating Controls (Exit & Brand) */}
+      {/* Sleek Unified Top Navigation & Status Bar */}
       <div style={{
-        position: 'absolute',
-        top: isLandscape ? 4 : 12,
-        left: isLandscape ? 8 : 16,
+        width: '100%',
         display: 'flex',
         alignItems: 'center',
-        gap: isLandscape ? '6px' : '12px',
-        zIndex: 40,
-        pointerEvents: 'auto'
+        justifyContent: 'space-between',
+        padding: isLandscape ? '2px 8px' : isMobile ? '4px 10px' : '8px 24px',
+        zIndex: 45,
+        boxSizing: 'border-box',
+        flexShrink: 0,
+        backgroundColor: 'rgba(8, 13, 22, 0.7)',
+        backdropFilter: 'blur(8px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
       }}>
-        <button 
-          onClick={onLeaveMatch} 
-          style={{ 
-            color: 'var(--baffa-text-muted)',
-            backgroundColor: 'rgba(18, 29, 45, 0.75)',
-            backdropFilter: 'blur(6px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '50%',
-            width: isLandscape ? '28px' : '34px',
-            height: isLandscape ? '28px' : '34px',
+        {/* Left: Exit Button & Baffa Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '6px' : '10px' }}>
+          <button 
+            onClick={() => setShowLeaveConfirm(true)} 
+            style={{ 
+              color: 'var(--baffa-text-muted)',
+              backgroundColor: 'rgba(18, 29, 45, 0.75)',
+              backdropFilter: 'blur(6px)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '50%',
+              width: isLandscape ? '28px' : '32px',
+              height: isLandscape ? '28px' : '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            title="مغادرة الغرفة"
+          >
+            <ArrowLeft size={isLandscape ? 14 : 16} />
+          </button>
+          <span className="arabic-font" style={{ fontSize: isLandscape ? '1.05rem' : '1.25rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>بَفّة</span>
+        </div>
+
+        {/* Center: Sleek Unified Score Badge (Target for flying round-end cards) */}
+        <div
+          id="table-score-badge"
+          className={roundEndStage === 'SCORE_PULSE' ? 'animate-score-glow' : ''}
+          style={{
+            position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer'
+            gap: isLandscape ? '4px' : isMobile ? '6px' : '10px',
+            backgroundColor: 'rgba(10, 24, 20, 0.92)',
+            backdropFilter: 'blur(8px)',
+            padding: isLandscape ? '2px 8px' : isMobile ? '3px 10px' : '5px 16px',
+            borderRadius: '24px',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+            userSelect: 'none',
           }}
         >
-          <ArrowLeft size={isLandscape ? 14 : 18} />
-        </button>
-        <span className="arabic-font" style={{ fontSize: isLandscape ? '1.05rem' : '1.3rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>بَفّة</span>
-      </div>
+          {lastRound && (roundEndStage === 'SCORE_PULSE' || roundEndStage === 'DONE') && (
+            <div
+              className="animate-score-delta"
+              style={{
+                position: 'absolute',
+                top: '-18px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: isMyTeamWinner ? 'var(--baffa-gold-primary)' : '#ef4444',
+                color: '#080d1a',
+                fontWeight: 900,
+                fontSize: isLandscape ? '0.7rem' : '0.78rem',
+                padding: isLandscape ? '1px 6px' : '2px 8px',
+                borderRadius: '12px',
+                boxShadow: '0 0 15px rgba(245, 158, 11, 0.8)',
+                whiteSpace: 'nowrap',
+                zIndex: 50,
+              }}
+            >
+              +{lastRound.roundScore} بنط
+            </div>
+          )}
 
-      {/* Floating Voice Audio Controls */}
-      <div
-        style={{
-          position: 'absolute',
-          top: isLandscape ? '4px' : isMobile ? '8px' : '64px',
-          right: isLandscape ? '6px' : isMobile ? '8px' : '18px',
-          zIndex: 45,
-          pointerEvents: 'auto',
-          transform: isLandscape ? 'scale(0.72)' : isMobile ? 'scale(0.85)' : 'none',
-          transformOrigin: 'top right',
-        }}
-      >
-        <VoiceControls
-          isMuted={isMuted}
-          isAdminDisabled={isAdminVoiceDisabled}
-          isJudgeMuted={isJudgeVoiceMuted}
-          activePeersCount={activePeers.length}
-          onToggleMute={handleToggleVoice}
-        />
+          {isObserver ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '5px' }}>
+                <span className="arabic-font" style={{ fontSize: isLandscape ? '0.65rem' : '0.72rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>{getTeamLabel(1)}</span>
+                <span style={{ fontSize: isLandscape ? '0.9rem' : '1.05rem', fontWeight: 900, color: 'var(--baffa-team1-color)' }}>{gameState.team1Score}</span>
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900, fontSize: isLandscape ? '0.75rem' : '0.85rem' }}>:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '5px' }}>
+                <span style={{ fontSize: isLandscape ? '0.9rem' : '1.05rem', fontWeight: 900, color: 'var(--baffa-team2-color)' }}>{gameState.team2Score}</span>
+                <span className="arabic-font" style={{ fontSize: isLandscape ? '0.65rem' : '0.72rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>{getTeamLabel(2)}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '5px' }}>
+                <span className="arabic-font" style={{ fontSize: isLandscape ? '0.65rem' : '0.72rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>فريقك</span>
+                <span style={{ fontSize: isLandscape ? '0.9rem' : '1.05rem', fontWeight: 900, color: 'var(--baffa-team1-color)' }}>{myTeamScore}</span>
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900, fontSize: isLandscape ? '0.75rem' : '0.85rem' }}>:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '5px' }}>
+                <span style={{ fontSize: isLandscape ? '0.9rem' : '1.05rem', fontWeight: 900, color: 'var(--baffa-error)' }}>{opponentScore}</span>
+                <span className="arabic-font" style={{ fontSize: isLandscape ? '0.65rem' : '0.72rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>الخصم</span>
+              </div>
+            </>
+          )}
+          <div style={{
+            padding: isLandscape ? '1px 6px' : '2px 7px',
+            borderRadius: '10px',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            color: 'var(--baffa-gold-primary)',
+            fontSize: isLandscape ? '0.62rem' : '0.68rem',
+            fontWeight: 800
+          }}>
+            إلى {gameState.targetScore}
+          </div>
+        </div>
+
+        {/* Right: Floating Voice Audio Controls */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          transform: isLandscape ? 'scale(0.78)' : isMobile ? 'scale(0.85)' : 'none',
+          transformOrigin: 'right center',
+        }}>
+          <VoiceControls
+            isMuted={isMuted}
+            isAdminDisabled={isAdminVoiceDisabled}
+            isJudgeMuted={isJudgeVoiceMuted}
+            activePeersCount={activePeers.length}
+            onToggleMute={handleToggleVoice}
+            isMobile={isMobile || isLandscape}
+          />
+        </div>
       </div>
 
       {/* GAME ARENA */}
@@ -1779,87 +1863,6 @@ export const GameTable: React.FC<GameTableProps> = ({
           minHeight: 0,
           overflow: 'hidden',
         }}>
-            {/* Sleek Score Badge in North-East (Top-Right) corner of Table */}
-            <div
-              id="table-score-badge"
-              className={roundEndStage === 'SCORE_PULSE' ? 'animate-score-glow' : ''}
-              style={{
-                position: 'absolute',
-                top: isLandscape ? 3 : isMobile ? 6 : 14,
-                right: isLandscape ? 6 : isMobile ? 8 : 20,
-                zIndex: 45,
-                display: 'flex',
-                alignItems: 'center',
-                gap: isLandscape ? '4px' : isMobile ? '6px' : '12px',
-                backgroundColor: 'rgba(10, 24, 20, 0.85)',
-                backdropFilter: 'blur(8px)',
-                padding: isLandscape ? '2px 8px' : isMobile ? '3px 10px' : '6px 16px',
-                borderRadius: '24px',
-                border: '1px solid rgba(245, 158, 11, 0.35)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
-                userSelect: 'none'
-              }}
-            >
-              {lastRound && (roundEndStage === 'SCORE_PULSE' || roundEndStage === 'DONE') && (
-                <div
-                  className="animate-score-delta"
-                  style={{
-                    position: 'absolute',
-                    top: '-20px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    backgroundColor: isMyTeamWinner ? 'var(--baffa-gold-primary)' : '#ef4444',
-                    color: '#080d1a',
-                    fontWeight: 900,
-                    fontSize: isLandscape ? '0.72rem' : '0.82rem',
-                    padding: isLandscape ? '1px 8px' : '2px 10px',
-                    borderRadius: '12px',
-                    boxShadow: '0 0 15px rgba(245, 158, 11, 0.8)',
-                    whiteSpace: 'nowrap',
-                    zIndex: 50,
-                  }}
-                >
-                  +{lastRound.roundScore} بنط
-                </div>
-              )}
-
-              {isObserver ? (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '6px' }}>
-                    <span className="arabic-font" style={{ fontSize: isLandscape ? '0.68rem' : '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>{getTeamLabel(1)}</span>
-                    <span style={{ fontSize: isLandscape ? '0.95rem' : '1.1rem', fontWeight: 900, color: 'var(--baffa-team1-color)' }}>{gameState.team1Score}</span>
-                  </div>
-                  <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900, fontSize: isLandscape ? '0.75rem' : '0.85rem' }}>:</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '6px' }}>
-                    <span style={{ fontSize: isLandscape ? '0.95rem' : '1.1rem', fontWeight: 900, color: 'var(--baffa-team2-color)' }}>{gameState.team2Score}</span>
-                    <span className="arabic-font" style={{ fontSize: isLandscape ? '0.68rem' : '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>{getTeamLabel(2)}</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '6px' }}>
-                    <span className="arabic-font" style={{ fontSize: isLandscape ? '0.68rem' : '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>فريقك</span>
-                    <span style={{ fontSize: isLandscape ? '0.95rem' : '1.1rem', fontWeight: 900, color: 'var(--baffa-team1-color)' }}>{myTeamScore}</span>
-                  </div>
-                  <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900, fontSize: isLandscape ? '0.75rem' : '0.85rem' }}>:</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '6px' }}>
-                    <span style={{ fontSize: isLandscape ? '0.95rem' : '1.1rem', fontWeight: 900, color: 'var(--baffa-error)' }}>{opponentScore}</span>
-                    <span className="arabic-font" style={{ fontSize: isLandscape ? '0.68rem' : '0.75rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>الخصم</span>
-                  </div>
-                </>
-              )}
-              <div style={{
-                padding: '2px 8px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                border: '1px solid rgba(245, 158, 11, 0.25)',
-                color: 'var(--baffa-gold-primary)',
-                fontSize: isLandscape ? '0.65rem' : '0.72rem',
-                fontWeight: 800
-              }}>
-                إلى {gameState.targetScore}
-              </div>
-            </div>
             
             {/* Cards and Badges INSIDE the table edges */}
             <div style={{ gridColumn: '2 / 3', gridRow: '1', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -2635,6 +2638,91 @@ export const GameTable: React.FC<GameTableProps> = ({
           onJudgeSubSeat?.(action, seat, spectatorUserId, botId);
         }}
       />
+
+      {/* Leave Room Confirmation Modal */}
+      {showLeaveConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '16px',
+          }}
+        >
+          <div
+            className="arabic-font"
+            style={{
+              backgroundColor: '#0f172a',
+              border: '1.5px solid rgba(245, 158, 11, 0.4)',
+              borderRadius: '24px',
+              padding: '24px 20px',
+              maxWidth: '360px',
+              width: '100%',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.85), 0 0 30px rgba(245, 158, 11, 0.2)',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+            }}
+          >
+            <div style={{ fontSize: '2.5rem', lineHeight: 1 }}>🚪</div>
+            <div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--baffa-text-primary)', margin: '0 0 8px 0' }}>
+                تأكيد الخروج من الغرفة
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--baffa-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                هل أنت متأكد من رغبتك في الخروج؟ الخروج أثناء اللعب قد يؤدي لخسارة فريقك للجولة أو مغادرة الغرفة.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+              <button
+                onClick={() => {
+                  setShowLeaveConfirm(false);
+                  onLeaveMatch();
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: '14px',
+                  backgroundColor: '#ef4444',
+                  color: '#fff',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                نعم، خروج
+              </button>
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: '14px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  color: 'var(--baffa-text-primary)',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                إلغاء / استمرار
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
