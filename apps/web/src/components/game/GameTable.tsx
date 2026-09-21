@@ -489,18 +489,51 @@ export const GameTable: React.FC<GameTableProps> = ({
     }
 
     const roundKey = `${gameState.matchId}_round_${gameState.roundNumber}`;
-    if (activeDealingKeyRef.current !== roundKey || (gameState.chain.tiles.length === 0 && !activeDealingKeyRef.current)) {
+    if (activeDealingKeyRef.current !== roundKey) {
       activeDealingKeyRef.current = roundKey;
-      setIsDealingRound(true);
-      playSound('shuffle');
+      // Only trigger dealing animation if the round is at its fresh beginning with 0 tiles on table
+      if (gameState.chain.tiles.length === 0) {
+        setIsDealingRound(true);
+        playSound('shuffle');
 
-      const timer = setTimeout(() => {
+        const timer = setTimeout(() => {
+          setIsDealingRound(false);
+        }, 1400);
+
+        return () => clearTimeout(timer);
+      } else {
         setIsDealingRound(false);
-      }, 1400);
-
-      return () => clearTimeout(timer);
+      }
     }
   }, [gameState.matchId, gameState.roundNumber, gameState.status, playSound, gameState.chain.tiles.length]);
+
+  // Tab switch recovery: when returning to the game tab, instantly clear any stuck drag, selection, or stale animation states
+  useEffect(() => {
+    const handleReturnToGame = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        setDragState(null);
+        setIsDragging(false);
+        setSelectedTileIndex(null);
+        setIsDealingRound(false);
+
+        // If game is actively playing, ensure no stale round-end stage is lingering
+        if (gameState.status === 'PLAYING') {
+          roundEndTimersRef.current.forEach(clearTimeout);
+          roundEndTimersRef.current = [];
+          setRoundEndStage('IDLE');
+          setFlyingVectors({});
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleReturnToGame);
+    window.addEventListener('focus', handleReturnToGame);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleReturnToGame);
+      window.removeEventListener('focus', handleReturnToGame);
+    };
+  }, [gameState.status]);
 
   // Real-time sound alert on anti-cheat warnings, referee decisions & match notifications
   useEffect(() => {

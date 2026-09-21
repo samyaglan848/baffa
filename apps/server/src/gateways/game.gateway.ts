@@ -289,13 +289,12 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             this.server.to(roomId).emit(ServerEvents.DISCONNECT_GRACE_UPDATE, { grace });
             const notif: NotificationPayload = {
               type: 'WARNING',
-              message: `${username} disconnected. Bot taking over temporarily (2-min grace).`,
-              arabicMessage: `انقطع اتصال اللاعب ${username} (خرج من الموقع). البوت تولى اللعب مكانه مؤقتاً لحين عودته.`,
+              message: `${username} disconnected. Waiting for turn timer before auto-play (2-min grace).`,
+              arabicMessage: `انقطع اتصال اللاعب ${username} (خرج من الموقع). سيتم انتظار انتهاء وقت تفكيره بالكامل قبل لعب كارت عشوائي لحين عودته.`,
               timestamp: Date.now(),
             };
             this.broadcastNotificationToRoom(roomId, notif, client.id);
             this.broadcastGameState(roomId);
-            this.gameSessionService.checkAndTriggerBotTurn(roomId, false);
           }
         } else if (player.role === 'JUDGE' || room.judge?.userId === player.userId) {
           if (room.judge) room.judge.isConnected = false;
@@ -388,8 +387,10 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           if (seated) {
             seated.isConnected = true;
             seated.presence = 'ONLINE';
+            seated.isTemporarilyBotControlled = false;
             this.roomService.cancelDisconnectGrace(room.id, seated.seat);
             this.gameSessionService.setBotTakeover(room.id, seated.seat, false);
+            this.gameSessionService.clearBotTimeout(room.id);
           }
 
           if (hadGrace) {
@@ -1048,6 +1049,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         const seatObj = room.seats.find((s) => s.playerId === userId && !s.isBot);
         if (seatObj) {
           seatObj.presence = 'ONLINE';
+          seatObj.isTemporarilyBotControlled = false;
+          this.gameSessionService.setBotTakeover(roomId, seatObj.seat, false);
+          this.gameSessionService.clearBotTimeout(roomId);
         }
         if (room.judge && room.judge.userId === userId) {
           (room.judge as any).presence = 'ONLINE';

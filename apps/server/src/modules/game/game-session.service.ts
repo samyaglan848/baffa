@@ -741,8 +741,8 @@ export class GameSessionService {
       engine.setBotTakeover(seat, active);
       this.callbacks?.broadcastStateToRoom(roomId);
 
-      if (active) {
-        this.checkAndTriggerBotTurn(roomId);
+      if (!active) {
+        this.clearBotTimeout(roomId);
       }
     }
   }
@@ -817,17 +817,13 @@ export class GameSessionService {
     const seatInfo = room.seats[currentSeat];
     const enginePlayers = (engine as any).players;
     const enginePlayer = enginePlayers ? enginePlayers[currentSeat] : null;
-    const isHuman = Boolean(
+    const isActualBot = Boolean(
       seatInfo &&
       seatInfo.occupied &&
-      !seatInfo.isBot &&
-      !seatInfo.isTemporarilyBotControlled &&
-      seatInfo.playerId &&
-      !seatInfo.playerId.startsWith('bot_')
+      (seatInfo.isBot || (seatInfo.playerId && seatInfo.playerId.startsWith('bot_')))
     );
-    const isBot = !isHuman;
-    if (!isBot) {
-      return; // Turn belongs to an active connected human player
+    if (!isActualBot) {
+      return; // Turn belongs to a human player (active, away, or reconnecting) -> turn timer handles full timeout
     }
 
     // If an active bot timer is already running for this room:
@@ -891,17 +887,13 @@ export class GameSessionService {
       const seatInfo = room.seats[currentSeat];
       const enginePlayers = (engine as any).players;
       const enginePlayer = enginePlayers ? enginePlayers[currentSeat] : null;
-      const isHuman = Boolean(
+      const isActualBot = Boolean(
         seatInfo &&
         seatInfo.occupied &&
-        !seatInfo.isBot &&
-        !seatInfo.isTemporarilyBotControlled &&
-        seatInfo.playerId &&
-        !seatInfo.playerId.startsWith('bot_')
+        (seatInfo.isBot || (seatInfo.playerId && seatInfo.playerId.startsWith('bot_')))
       );
-      const isBot = !isHuman;
 
-      if (!isBot) {
+      if (!isActualBot) {
         this.startTurnTimer(roomId);
         return;
       }
