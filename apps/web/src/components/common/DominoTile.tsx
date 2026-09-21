@@ -45,7 +45,7 @@ export const DominoTile: React.FC<DominoTileProps> = ({
   // Dimensions based on size and orientation
   const sizeStyles = {
     xs: isVertical ? { width: '23px', height: '46px' } : { width: '46px', height: '23px' },
-    sm: isVertical ? { width: '30px', height: '60px' } : { width: '60px', height: '30px' },
+    sm: isVertical ? { width: '32px', height: '64px' } : { width: '64px', height: '32px' },
     md: isVertical ? { width: '44px', height: '88px' } : { width: '88px', height: '44px' },
     lg: isVertical ? { width: '56px', height: '112px' } : { width: '112px', height: '56px' },
   }[size];

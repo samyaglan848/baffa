@@ -211,14 +211,15 @@ export const GameTable: React.FC<GameTableProps> = ({
   const boardSpanX = Math.max(bounds.maxX - bounds.minX + 88 + 24, 160);
   const boardSpanY = Math.max(bounds.maxY - bounds.minY + 88 + 24, 160);
 
-  const availW = boardSize.width > 0 ? boardSize.width : (isLandscape ? 480 : isMobile ? 260 : 600);
-  const availH = boardSize.height > 0 ? boardSize.height : (isLandscape ? 160 : isMobile ? 180 : 300);
+  const availW = boardSize.width > 0 ? boardSize.width : (isLandscape ? 480 : isMobile ? 260 : 750);
+  const availH = boardSize.height > 0 ? boardSize.height : (isLandscape ? 160 : isMobile ? 180 : 350);
 
-  // fitScale guarantees the domino chain fits 100% inside the available space without ever overflowing or clipping
+  // fitScale guarantees the domino chain fits inside the available space without ever overflowing or clipping
   const scaleX = availW / boardSpanX;
   const scaleY = availH / boardSpanY;
   const maxScale = isLandscape ? 0.70 : isMobile ? 0.70 : 1.0;
-  const fitScale = Math.min(maxScale, Math.min(scaleX, scaleY));
+  const minScale = isLandscape ? 0.30 : isMobile ? 0.35 : 0.65;
+  const fitScale = Math.min(maxScale, Math.max(minScale, Math.min(scaleX, scaleY)));
   
   const animatedRoundKeyRef = useRef<string | null>(null);
   const roundEndTimersRef = useRef<NodeJS.Timeout[]>([]);
