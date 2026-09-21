@@ -84,19 +84,21 @@ export function useDominoLayout(tiles: BoardTilePlacement[], containerWidth: num
     // containerWidth is measured directly from the board container via ResizeObserver.
     const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1000;
     const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
-    const isLandscape = screenWidth > screenHeight && screenHeight <= 540;
-    const isSmallScreen = screenWidth < 768 || screenHeight <= 540;
+    const userAgent = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    const isRealMobile = isMobileDevice || screenWidth < 768;
 
+    const isLandscape = isRealMobile && screenWidth > screenHeight && screenHeight <= 540;
     const isPortrait = screenHeight > screenWidth;
-    const isPortraitMobile = isPortrait && (screenWidth < 768 || isSmallScreen);
+    const isPortraitMobile = isRealMobile && isPortrait;
 
     // Primary axis of domino chain layout:
     // In portrait mobile: flow along the length of the phone (VERTICAL).
     // In landscape or desktop: flow along the width of the screen (HORIZONTAL).
     const isVerticalFlow = isPortraitMobile;
 
-    const MAX_X = isVerticalFlow ? 2.5 : (isLandscape ? 7 : isSmallScreen ? 4.5 : 7.5);
-    const MAX_Y = isVerticalFlow ? 6.5 : (isLandscape ? 2.5 : isSmallScreen ? 3.5 : 4.5);
+    const MAX_X = isVerticalFlow ? 2.5 : (isLandscape ? 7 : isRealMobile ? 4.5 : 7.5);
+    const MAX_Y = isVerticalFlow ? 6.5 : (isLandscape ? 2.5 : isRealMobile ? 3.5 : 4.5);
 
     if (tiles.length === 0) {
       return {

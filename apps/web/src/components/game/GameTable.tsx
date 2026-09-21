@@ -171,12 +171,14 @@ export const GameTable: React.FC<GameTableProps> = ({
       if (typeof window === 'undefined') return;
       const w = window.innerWidth;
       const h = window.innerHeight;
-      const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      
-      const isShort = h <= 540;
-      const isLand = w > h && isShort;
-      const isMob = w < 768 || isShort || (isTouch && Math.max(w, h) <= 1024);
+      const userAgent = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      const isRealMobile = isMobileDevice || w < 768;
+
+      const isLand = isRealMobile && w > h && h <= 540;
+      const isMob = isRealMobile;
       const isPortMob = isMob && !isLand;
+      const isShort = isRealMobile && h <= 540;
 
       setScreenMode({
         isMobile: isMob,
@@ -1370,7 +1372,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 <DominoTile
                   tile={tile}
                   size={isLandscape ? 'xs' : isMobile ? 'xs' : 'sm'}
-                  isVertical={true}
+                  isVertical={orientation === 'row'}
                   isFaceDown={false}
                   disabled={true}
                 />
@@ -1403,14 +1405,14 @@ export const GameTable: React.FC<GameTableProps> = ({
             className={dealAnimClass}
             style={{
               animationDelay: isDealingRound ? `${idx * 90}ms` : undefined,
-              marginTop: orientation === 'column' && idx > 0 ? (isLandscape ? '-26px' : isMobile ? '-24px' : '-18px') : undefined,
+              marginTop: orientation === 'column' && idx > 0 ? (isLandscape ? '-22px' : isMobile ? '-18px' : '-8px') : undefined,
             }}
           >
             <DominoTile
               tile={[0, 0]}
               isFaceDown={true}
               size={isLandscape ? 'xs' : isMobile ? 'xs' : 'sm'}
-              isVertical={true}
+              isVertical={orientation === 'row'}
             />
           </div>
         ))}
@@ -1837,12 +1839,11 @@ export const GameTable: React.FC<GameTableProps> = ({
           ? '2px 8px 2px 8px'
           : isMobile 
           ? (isJudge ? '4px 4px 6px 4px' : '4px 4px 6px 4px') 
-          : (isJudge ? '14px 70px 20px 70px' : '26px 80px 30px 80px'),
+          : (isJudge ? '14px 70px 56px 70px' : '22px 80px 56px 80px'),
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
         boxSizing: 'border-box',
-        overflow: 'hidden',
       }}>
         
         {/* Badges OUTSIDE the table - for Desktop only */}
@@ -1871,7 +1872,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 'column'
               )}
             </div>
-            <div style={{ position: 'absolute', bottom: 4, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 20 }}>
+            <div style={{ position: 'absolute', bottom: 6, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 20 }}>
               {renderBadgeOnly(
                 relativePlayers.BOTTOM,
                 isObserver
@@ -1899,7 +1900,6 @@ export const GameTable: React.FC<GameTableProps> = ({
           borderRadius: isLandscape ? '14px' : isMobile ? '18px' : '40px',
           padding: isLandscape ? '2px 6px' : isMobile ? '4px 6px' : '16px',
           minHeight: 0,
-          overflow: 'hidden',
         }}>
             
             {/* Cards and Badges INSIDE the table edges */}
@@ -1949,7 +1949,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 renderHiddenCards(relativePlayers.LEFT, 'column', 'LEFT')
               )}
             </div>
-            <div style={{ gridColumn: '2 / 3', gridRow: '3', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: '100%' }}>
+            <div style={{ gridColumn: '2 / 3', gridRow: '3', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: '100%', paddingBottom: isLandscape ? '0' : isMobile ? '2px' : '4px', zIndex: 35 }}>
               {(myRole === 'PLAYER' || myRole === 'ADMIN') && mySeat !== null ? (
                 <div style={{
                   display: 'flex',
@@ -1973,9 +1973,9 @@ export const GameTable: React.FC<GameTableProps> = ({
                     flexWrap: 'nowrap', 
                     justifyContent: 'center', 
                     position: 'relative', 
-                    zIndex: 30,
+                    zIndex: 35,
                     maxWidth: '100%',
-                    overflowX: 'auto',
+                    overflowX: isMobile ? 'auto' : 'visible',
                     padding: isLandscape ? '2px 0' : '4px 2px',
                   }}>
                     {isMyTurn && !isRoundOver && (
