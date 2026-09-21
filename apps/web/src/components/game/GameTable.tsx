@@ -224,6 +224,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   const animatedRoundKeyRef = useRef<string | null>(null);
   const roundEndTimersRef = useRef<NodeJS.Timeout[]>([]);
   const hasInitializedAudioRef = useRef(false);
+  const justReturnedFromBackgroundRef = useRef(false);
 
   // Turn Thinking Timer countdown
   const [turnSecondsLeft, setTurnSecondsLeft] = useState<number | null>(null);
@@ -289,7 +290,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
     // CASE 1: A tile was placed on the board! (Strictly plays ONLY tile clack sound)
     if (currentCount > prevCount) {
-      if (Date.now() - lastTileSoundTimeRef.current > 120) {
+      if (!justReturnedFromBackgroundRef.current && Date.now() - lastTileSoundTimeRef.current > 120) {
         playSound('tile');
         lastTileSoundTimeRef.current = Date.now();
       }
@@ -317,7 +318,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       if (passedSeat !== gameState.currentTurnSeat) {
         setRecentlyPassedSeats((prev) => ({ ...prev, [passedSeat]: Date.now() }));
       }
-      if (Date.now() - lastPassSoundTimeRef.current > 200) {
+      if (!justReturnedFromBackgroundRef.current && Date.now() - lastPassSoundTimeRef.current > 200) {
         playSound('pass');
         lastPassSoundTimeRef.current = Date.now();
       }
@@ -534,6 +535,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   useEffect(() => {
     const handleReturnToGame = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        justReturnedFromBackgroundRef.current = true;
         setDragState(null);
         setIsDragging(false);
         setSelectedTileIndex(null);
@@ -546,6 +548,11 @@ export const GameTable: React.FC<GameTableProps> = ({
           setRoundEndStage('IDLE');
           setFlyingVectors({});
         }
+
+        // Suppress glide animations for 800ms so backgrounded moves snap into place with zero visual lag
+        setTimeout(() => {
+          justReturnedFromBackgroundRef.current = false;
+        }, 800);
       }
     };
 
@@ -2323,6 +2330,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                         const placement = pt.placement;
                         const stableKey = `tile-${Math.min(placement.tile[0], placement.tile[1])}-${Math.max(placement.tile[0], placement.tile[1])}`;
                         const isLatestTile = (placement.order || 0) === maxOrder;
+                        const shouldAnimateGlide = isLatestTile && !justReturnedFromBackgroundRef.current;
                         
                         const relSeat = getRelativeSeat(placement.playedBySeat);
                         
@@ -2370,12 +2378,12 @@ export const GameTable: React.FC<GameTableProps> = ({
                             position: 'absolute', 
                             left: 0, top: 0, 
                             transform: `translate(calc(-50% + ${pt.x}px), calc(-50% + ${pt.y}px)) rotate(${pt.rotation}deg)`,
-                            transition: isLatestTile ? 'none' : 'transform 0.5s ease-out',
+                            transition: shouldAnimateGlide ? 'none' : 'transform 0.5s ease-out',
                             zIndex: isLatestTile ? 60 : 10,
                           }}>
                             <div
-                              className={isLatestTile ? "animate-tile-glide" : undefined}
-                              style={isLatestTile ? ({
+                              className={shouldAnimateGlide ? "animate-tile-glide" : undefined}
+                              style={shouldAnimateGlide ? ({
                                 '--start-dx': startDx,
                                 '--start-dy': startDy,
                               } as React.CSSProperties) : undefined}

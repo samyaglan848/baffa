@@ -249,6 +249,24 @@ export function useGameSocket() {
           body: JSON.stringify(payload),
           keepalive: true,
         }).catch(() => {});
+
+        // Instant Zero-Latency Board State Restoration on Tab Return:
+        // Do not wait for WebSocket reconnection; immediately pull the authoritative match state
+        const role = myRoleRef.current;
+        const uName = encodeURIComponent(user?.username || '');
+        fetch(
+          `${apiUrl}/api/matches/active-state/${currentTargetRoomId}?userId=${user?.id}&role=${role}&username=${uName}`
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.success && data?.gameState) {
+              setGameState(data.gameState);
+              if (data.room) {
+                setRoom(data.room);
+              }
+            }
+          })
+          .catch(() => {});
       }
     };
 

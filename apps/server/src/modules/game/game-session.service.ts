@@ -851,7 +851,6 @@ export class GameSessionService {
 
   private executeBotTurn(roomId: string, scheduledSeat: PlayerSeat, botId: BotId) {
     this.botTimeouts.delete(roomId);
-    this.clearTurnTimer(roomId);
 
     try {
       require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[EXECUTE-BOT] room=${roomId} scheduledSeat=${scheduledSeat} botId=${botId}\n`);
@@ -860,6 +859,12 @@ export class GameSessionService {
     try {
       const engine = this.sessions.get(roomId);
       if (!engine || engine.getStatus() !== 'PLAYING') return;
+
+      const currentSeat = engine.getCurrentTurnSeat();
+      // Guard 1: If the turn already advanced away from the scheduled bot seat, abort immediately
+      if (currentSeat !== scheduledSeat) {
+        return;
+      }
 
       const room = this.roomService.getRoom(roomId);
       if (!room) return;
@@ -883,20 +888,28 @@ export class GameSessionService {
         }
       }
 
-      const currentSeat = engine.getCurrentTurnSeat();
-      const seatInfo = room.seats[currentSeat];
+      const activeTurnSeat = engine.getCurrentTurnSeat();
+      if (activeTurnSeat !== scheduledSeat) {
+        return;
+      }
+
+      const seatInfo = room.seats[activeTurnSeat];
       const enginePlayers = (engine as any).players;
-      const enginePlayer = enginePlayers ? enginePlayers[currentSeat] : null;
+      const enginePlayer = enginePlayers ? enginePlayers[activeTurnSeat] : null;
       const isActualBot = Boolean(
         seatInfo &&
         seatInfo.occupied &&
         (seatInfo.isBot || (seatInfo.playerId && seatInfo.playerId.startsWith('bot_')))
       );
 
+      // Guard 2: If the turn belongs to a human player (active, away, or reconnecting),
+      // DO NOT execute bot move and DO NOT clear or restart their active turn timer!
       if (!isActualBot) {
-        this.startTurnTimer(roomId);
         return;
       }
+
+      // Only clear turn timer when an actual bot is genuinely playing its move
+      this.clearTurnTimer(roomId);
 
       const effectiveBotId = seatInfo?.botId || enginePlayer?.botId || botId || 'EL_SAMY';
       let decision: BotDecision;
