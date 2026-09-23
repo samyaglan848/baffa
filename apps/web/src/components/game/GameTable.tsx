@@ -274,6 +274,15 @@ export const GameTable: React.FC<GameTableProps> = ({
   const lastTileSoundTimeRef = useRef(0);
   const lastPassSoundTimeRef = useRef(0);
 
+  // Tracks tiles that have already executed their glide entrance to prevent duplicate animations
+  const hasAnimatedTilesSetRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (gameState.chain.tiles.length === 0) {
+      hasAnimatedTilesSetRef.current.clear();
+    }
+  }, [gameState.chain.tiles.length, gameState.roundNumber, gameState.matchId]);
+
   useEffect(() => {
     if (gameState.status !== 'PLAYING') {
       prevChainTilesCountRef.current = gameState.chain.tiles.length;
@@ -2367,7 +2376,11 @@ export const GameTable: React.FC<GameTableProps> = ({
                         const placement = pt.placement;
                         const stableKey = `tile-${Math.min(placement.tile[0], placement.tile[1])}-${Math.max(placement.tile[0], placement.tile[1])}`;
                         const isLatestTile = (placement.order || 0) === maxOrder;
-                        const shouldAnimateGlide = isLatestTile && !justReturnedFromBackgroundRef.current;
+                        const alreadyAnimated = hasAnimatedTilesSetRef.current.has(stableKey);
+                        const shouldAnimateGlide = isLatestTile && !alreadyAnimated && !justReturnedFromBackgroundRef.current;
+                        if (shouldAnimateGlide) {
+                          hasAnimatedTilesSetRef.current.add(stableKey);
+                        }
                         
                         const relSeat = getRelativeSeat(placement.playedBySeat);
                         

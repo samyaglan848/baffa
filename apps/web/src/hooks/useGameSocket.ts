@@ -273,13 +273,18 @@ export function useGameSocket() {
             if (data?.success && data?.gameState) {
               setGameState((prev) => {
                 if (!prev) return data.gameState;
-                if (
-                  data.gameState.roundNumber > prev.roundNumber ||
-                  data.gameState.sequenceNumber >= (prev.sequenceNumber || 0)
-                ) {
-                  return data.gameState;
+                if (prev.matchId !== data.gameState.matchId) return data.gameState;
+                if (data.gameState.roundNumber > prev.roundNumber) return data.gameState;
+                if (data.gameState.roundNumber < prev.roundNumber) return prev;
+
+                const currentTiles = prev.chain?.tiles?.length || 0;
+                const incomingTiles = data.gameState.chain?.tiles?.length || 0;
+                if (incomingTiles < currentTiles) return prev;
+
+                if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {
+                  return prev;
                 }
-                return prev;
+                return data.gameState;
               });
               if (data.room) {
                 setRoom(data.room);
@@ -455,8 +460,15 @@ export function useGameSocket() {
       }
       setGameState((prev) => {
         if (!prev) return data.gameState;
+        if (prev.matchId !== data.gameState.matchId) return data.gameState;
         if (data.gameState.roundNumber > prev.roundNumber) return data.gameState;
         if (data.gameState.roundNumber < prev.roundNumber) return prev;
+
+        const currentTiles = prev.chain?.tiles?.length || 0;
+        const incomingTiles = data.gameState.chain?.tiles?.length || 0;
+        // Strictly prevent older packets from removing already placed tiles from the table
+        if (incomingTiles < currentTiles) return prev;
+
         // Never allow an older sequenceNumber packet from background WebSocket queue to overwrite newer state!
         if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {
           return prev;
@@ -615,7 +627,22 @@ export function useGameSocket() {
       if (!res.ok) return;
       const data = await res.json();
       if (data.success && data.gameState) {
-        setGameState(data.gameState);
+        setGameState((prev) => {
+          if (!prev) return data.gameState;
+          if (prev.matchId !== data.gameState.matchId) return data.gameState;
+          if (data.gameState.roundNumber > prev.roundNumber) return data.gameState;
+          if (data.gameState.roundNumber < prev.roundNumber) return prev;
+
+          const currentTiles = prev.chain?.tiles?.length || 0;
+          const incomingTiles = data.gameState.chain?.tiles?.length || 0;
+          // Never let an HTTP sync response wipe out tiles that were already placed on the table!
+          if (incomingTiles < currentTiles) return prev;
+
+          if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {
+            return prev;
+          }
+          return data.gameState;
+        });
         if (data.room) {
           setRoom(data.room);
         }
@@ -655,20 +682,19 @@ export function useGameSocket() {
         if (data.success && data.gameState) {
           setGameState((prev) => {
             if (!prev) return data.gameState;
+            if (prev.matchId !== data.gameState.matchId) return data.gameState;
+            if (data.gameState.roundNumber > prev.roundNumber) return data.gameState;
+            if (data.gameState.roundNumber < prev.roundNumber) return prev;
+
             const serverTiles = data.gameState.chain?.tiles?.length ?? 0;
             const clientTiles = prev.chain?.tiles?.length ?? 0;
-            const isNewer =
-              serverTiles > clientTiles ||
-              data.gameState.sequenceNumber > (prev.sequenceNumber || 0) ||
-              data.gameState.roundNumber !== prev.roundNumber ||
-              data.gameState.status !== prev.status ||
-              (serverTiles > 0 && clientTiles === 0) ||
-              data.gameState.currentTurnSeat !== prev.currentTurnSeat;
+            if (serverTiles < clientTiles) return prev;
 
-            if (isNewer) {
-              return data.gameState;
+            if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {
+              return prev;
             }
-            return prev;
+
+            return data.gameState;
           });
 
           if (data.room) {
@@ -1083,8 +1109,11 @@ export function useGameSocket() {
           starterSeat: (prev.starterSeat as number) < 0 ? 0 : prev.starterSeat,
         };
       });
-      triggerBotTurn(targetRoomId);
-      syncBoardState(targetRoomId);
+      // Only invoke bot/sync fallback if socket is disconnected or hasn't started
+      if (!socketRef.current || !socketRef.current.connected) {
+        triggerBotTurn(targetRoomId);
+        syncBoardState(targetRoomId);
+      }
     }, 800);
   }, [room, currentUser, triggerBotTurn, syncBoardState]);
 

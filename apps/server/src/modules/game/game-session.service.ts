@@ -838,8 +838,11 @@ export class GameSessionService {
       this.botTimeouts.delete(roomId);
     }
 
-    // Natural, human-like delay for bot moves (1200ms - 1600ms):
-    const delayMs = forceImmediate ? 150 : Math.floor(1200 + Math.random() * 400);
+    // Natural, human-like delay for bot moves:
+    // Opening move (especially [6|6] in Round 1 or empty board): snappy 400ms delay so match opens crisply!
+    // Subsequent in-game moves: 650ms - 900ms (authentic Egyptian domino tempo without sluggish lag)
+    const isOpeningMove = engine.getChain().isEmpty();
+    const delayMs = forceImmediate ? 150 : isOpeningMove ? 400 : Math.floor(650 + Math.random() * 250);
 
     const resolvedBotId = seatInfo?.botId || enginePlayer?.botId || 'EL_SAMY';
     const timeout = setTimeout(() => {
