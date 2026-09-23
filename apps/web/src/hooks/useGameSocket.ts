@@ -251,7 +251,7 @@ export function useGameSocket() {
         });
       }
 
-      // Infallible keepalive HTTP beacon fallback
+      // Infallible keepalive HTTP beacon fallback + instant zero-lag authoritative match state fetch
       if (typeof window !== 'undefined') {
         const apiUrl = API_URL;
         fetch(`${apiUrl}/api/matches/visibility`, {
@@ -260,6 +260,33 @@ export function useGameSocket() {
           body: JSON.stringify(payload),
           keepalive: true,
         }).catch(() => {});
+
+        // Instant Zero-Latency Board State Restoration on Tab Return:
+        // Pull latest authoritative match state directly from server bypassing any queued/delayed socket bursts
+        const role = myRoleRef.current;
+        const uName = encodeURIComponent(user?.username || '');
+        fetch(`${apiUrl}/api/matches/active-state/${currentTargetRoomId}?userId=${user?.id}&role=${role}&username=${uName}`, {
+          cache: 'no-store',
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.success && data?.gameState) {
+              setGameState((prev) => {
+                if (!prev) return data.gameState;
+                if (
+                  data.gameState.roundNumber > prev.roundNumber ||
+                  data.gameState.sequenceNumber >= (prev.sequenceNumber || 0)
+                ) {
+                  return data.gameState;
+                }
+                return prev;
+              });
+              if (data.room) {
+                setRoom(data.room);
+              }
+            }
+          })
+          .catch(() => {});
       }
     };
 
@@ -426,7 +453,16 @@ export function useGameSocket() {
       if (!activeRoomIdRef.current) {
         return;
       }
-      setGameState(data.gameState);
+      setGameState((prev) => {
+        if (!prev) return data.gameState;
+        if (data.gameState.roundNumber > prev.roundNumber) return data.gameState;
+        if (data.gameState.roundNumber < prev.roundNumber) return prev;
+        // Never allow an older sequenceNumber packet from background WebSocket queue to overwrite newer state!
+        if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {
+          return prev;
+        }
+        return data.gameState;
+      });
       if (data.gameState.myRole) {
         setMyRole(data.gameState.myRole);
       }
@@ -661,6 +697,9 @@ export function useGameSocket() {
   const createRoom = useCallback(
     (name: string, settings?: Partial<RoomSettings>, initialRole?: UserRole) => {
       if (!socketRef.current) return;
+      if (!socketRef.current.connected) {
+        socketRef.current.connect();
+      }
       leftRoomIdRef.current = null;
       socketRef.current.emit(ClientEvents.CREATE_ROOM, {
         name,

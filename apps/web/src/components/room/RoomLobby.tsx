@@ -91,10 +91,9 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
     playSound('click');
     setIsStarting(true);
     onAdminStartMatch();
-    const timer = setTimeout(() => {
+    setTimeout(() => {
       setIsStarting(false);
     }, 7000);
-    return () => clearTimeout(timer);
   };
 
   const isJudge =

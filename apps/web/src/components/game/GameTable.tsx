@@ -259,7 +259,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   const isObserver = (isJudge || isSpectator || isAllBots) && gameState.mySeat === null;
   const effectiveRole = isJudge ? 'JUDGE' : isSpectator ? 'SPECTATOR' : myRole;
   const mySeat = isObserver ? null : gameState.mySeat;
-  const isMyTurn = !isObserver && mySeat !== null && gameState.currentTurnSeat === mySeat && gameState.status === 'PLAYING';
+  const isMyTurn = !isObserver && mySeat !== null && Number(gameState.currentTurnSeat) === Number(mySeat) && gameState.status === 'PLAYING';
   const myLegalMoves = !isObserver ? (gameState.myLegalMoves || []) : [];
 
   // Recently passed players tracking: seat -> timestamp
@@ -562,6 +562,13 @@ export const GameTable: React.FC<GameTableProps> = ({
         setSelectedTileIndex(null);
         setIsDealingRound(false);
 
+        // Immediately align refs to current gameState so missed moves snap in silently with zero stutter
+        prevChainTilesCountRef.current = gameState.chain.tiles.length;
+        prevConsecutivePassCountRef.current = gameState.consecutivePassCount;
+        prevTurnSeatRef.current = gameState.currentTurnSeat;
+        setRecentlyPassedSeats({});
+        hasAutoPassedRef.current = false;
+
         // If game is actively playing, ensure no stale round-end stage is lingering
         if (gameState.status === 'PLAYING') {
           roundEndTimersRef.current.forEach(clearTimeout);
@@ -570,10 +577,10 @@ export const GameTable: React.FC<GameTableProps> = ({
           setFlyingVectors({});
         }
 
-        // Suppress glide animations for 800ms so backgrounded moves snap into place with zero visual lag
+        // Suppress glide animations and sounds for 1500ms so backgrounded moves snap into place with zero visual lag
         setTimeout(() => {
           justReturnedFromBackgroundRef.current = false;
-        }, 800);
+        }, 1500);
       }
     };
 
