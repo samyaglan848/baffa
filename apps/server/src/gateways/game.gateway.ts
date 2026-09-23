@@ -2511,6 +2511,13 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       ? 'SPECTATOR'
       : (seated ? 'PLAYER' : (room.currentAdminId === userId ? 'ADMIN' : 'PLAYER'));
 
+    if (userId) {
+      const callerSeat = room.seats.find((s) => s.playerId === userId && !s.isBot);
+      if (callerSeat && callerSeat.presence === 'AWAY') {
+        callerSeat.presence = 'ONLINE';
+      }
+    }
+
     const sanitized = this.gameSessionService.getSanitizedState(roomId, seat, role);
     return {
       success: true,

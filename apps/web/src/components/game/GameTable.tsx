@@ -279,6 +279,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       prevChainTilesCountRef.current = gameState.chain.tiles.length;
       prevConsecutivePassCountRef.current = gameState.consecutivePassCount;
       prevTurnSeatRef.current = gameState.currentTurnSeat;
+      setRecentlyPassedSeats({});
       return;
     }
 
@@ -294,13 +295,26 @@ export const GameTable: React.FC<GameTableProps> = ({
         playSound('tile');
         lastTileSoundTimeRef.current = Date.now();
       }
-      // The player who just played a tile definitely did not pass: clear any pass badge for them
-      const playedSeat = prevTurn !== null ? prevTurn : ((gameState.currentTurnSeat - 1 + 4) % 4);
+      // Any player whose lastAction is 'PLAY' or who just placed a tile definitely did not pass
+      const playedSeat = prevTurn !== null && prevTurn !== undefined
+        ? Number(prevTurn)
+        : ((Number(gameState.currentTurnSeat) - 1 + 4) % 4);
+
       setRecentlyPassedSeats((prev) => {
-        if (!prev[playedSeat]) return prev;
+        let changed = false;
         const next = { ...prev };
-        delete next[playedSeat];
-        return next;
+        if (next[playedSeat]) {
+          delete next[playedSeat];
+          changed = true;
+        }
+        gameState.players.forEach((p) => {
+          const s = Number(p.seat);
+          if (p.lastAction === 'PLAY' && next[s]) {
+            delete next[s];
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
       });
     }
     // CASE 2: No tile placed, but a player passed! (Strictly plays ONLY pass double-knock sound)
@@ -308,15 +322,22 @@ export const GameTable: React.FC<GameTableProps> = ({
       currentPasses > prevPasses ||
       (currentCount === prevCount &&
         prevTurn !== null &&
-        prevTurn !== gameState.currentTurnSeat &&
-        gameState.players.find((p) => Number(p.seat) === prevTurn)?.lastAction === 'PASS')
+        Number(prevTurn) !== Number(gameState.currentTurnSeat) &&
+        gameState.players.find((p) => Number(p.seat) === Number(prevTurn))?.lastAction === 'PASS')
     ) {
-      const passedSeat = prevTurn !== null && prevTurn !== gameState.currentTurnSeat
-        ? prevTurn
-        : ((gameState.currentTurnSeat - 1 + 4) % 4);
+      const candidateSeat = prevTurn !== null && Number(prevTurn) !== Number(gameState.currentTurnSeat)
+        ? Number(prevTurn)
+        : ((Number(gameState.currentTurnSeat) - 1 + 4) % 4);
 
-      if (passedSeat !== gameState.currentTurnSeat) {
-        setRecentlyPassedSeats((prev) => ({ ...prev, [passedSeat]: Date.now() }));
+      const candidatePlayer = gameState.players.find((p) => Number(p.seat) === candidateSeat);
+      const passedSeat = candidatePlayer?.lastAction === 'PASS'
+        ? candidateSeat
+        : (gameState.players.find(
+            (p) => Number(p.seat) !== Number(gameState.currentTurnSeat) && p.lastAction === 'PASS'
+          )?.seat ?? candidateSeat);
+
+      if (Number(passedSeat) !== Number(gameState.currentTurnSeat)) {
+        setRecentlyPassedSeats((prev) => ({ ...prev, [Number(passedSeat)]: Date.now() }));
       }
       if (!justReturnedFromBackgroundRef.current && Date.now() - lastPassSoundTimeRef.current > 200) {
         playSound('pass');
@@ -1012,7 +1033,11 @@ export const GameTable: React.FC<GameTableProps> = ({
 
   const renderBadgeOnly = (player: SanitizedPlayerState | undefined, relation: string, orientation: 'row' | 'column' = 'row') => {
     if (!player) return null;
-    const isCurrentTurn = gameState.currentTurnSeat === player.seat && gameState.status === 'PLAYING';
+    const isCurrentTurn =
+      gameState.currentTurnSeat !== null &&
+      gameState.currentTurnSeat !== undefined &&
+      Number(gameState.currentTurnSeat) === Number(player.seat) &&
+      gameState.status === 'PLAYING';
     const isSpeakingBot = Boolean(
       latestBotMessage &&
       player.isBot &&
@@ -1020,8 +1045,13 @@ export const GameTable: React.FC<GameTableProps> = ({
         ? Number(player.seat) === Number(latestBotMessage.seat)
         : player.botId === latestBotMessage.botId)
     );
-    const isMe = mySeat === player.seat;
-    const isPassed = !isCurrentTurn && (Date.now() - (recentlyPassedSeats[Number(player.seat)] || 0)) < 2200;
+    const isMe = mySeat !== null && mySeat !== undefined && Number(mySeat) === Number(player.seat);
+    const isPassed =
+      !isCurrentTurn &&
+      gameState.status === 'PLAYING' &&
+      player.lastAction === 'PASS' &&
+      (!isMe || (gameState.myLegalMoves?.length ?? 0) === 0) &&
+      (Date.now() - (recentlyPassedSeats[Number(player.seat)] || 0)) < 2200;
     const isPlayerSpeaking = Boolean(player.playerId && isSpeaking(player.playerId));
     const warnings = player.warnings || 0;
     const seatInfo = room?.seats?.[player.seat];

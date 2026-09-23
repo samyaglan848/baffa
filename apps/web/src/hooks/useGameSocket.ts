@@ -240,6 +240,17 @@ export function useGameSocket() {
         socketRef.current.emit(ClientEvents.APP_VISIBILITY_CHANGED, payload);
       }
 
+      // Optimistically clear away presence immediately upon return so the badge disappears instantly (0ms)
+      if (user?.id) {
+        setRoom((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            seats: prev.seats.map((s) => (s.playerId === user.id ? { ...s, presence: 'ONLINE' as const } : s)),
+          };
+        });
+      }
+
       // Infallible keepalive HTTP beacon fallback
       if (typeof window !== 'undefined') {
         const apiUrl = API_URL;
@@ -249,24 +260,6 @@ export function useGameSocket() {
           body: JSON.stringify(payload),
           keepalive: true,
         }).catch(() => {});
-
-        // Instant Zero-Latency Board State Restoration on Tab Return:
-        // Do not wait for WebSocket reconnection; immediately pull the authoritative match state
-        const role = myRoleRef.current;
-        const uName = encodeURIComponent(user?.username || '');
-        fetch(
-          `${apiUrl}/api/matches/active-state/${currentTargetRoomId}?userId=${user?.id}&role=${role}&username=${uName}`
-        )
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (data?.success && data?.gameState) {
-              setGameState(data.gameState);
-              if (data.room) {
-                setRoom(data.room);
-              }
-            }
-          })
-          .catch(() => {});
       }
     };
 
@@ -1122,10 +1115,17 @@ export function useGameSocket() {
           }
         }
 
+        const mySeatNum = prev.mySeat !== null && prev.mySeat !== undefined ? Number(prev.mySeat) : 0;
+        const newPlayers = prev.players.map((p) =>
+          Number(p.seat) === mySeatNum ? { ...p, lastAction: 'PLAY' as const } : p
+        );
+
         return {
           ...prev,
           myHand: newHand,
           currentTurnSeat: nextTurn,
+          players: newPlayers,
+          consecutivePassCount: 0,
           chain: {
             tiles: newTiles,
             leftEndValue: newLeft,
@@ -1171,9 +1171,17 @@ export function useGameSocket() {
     setGameState((prev) => {
       if (!prev) return prev;
       const nextTurn = (((prev.currentTurnSeat ?? 0) + 1) % 4) as PlayerSeat;
+      const curSeat = prev.mySeat !== null && prev.mySeat !== undefined
+        ? Number(prev.mySeat)
+        : Number(prev.currentTurnSeat ?? 0);
+      const newPlayers = prev.players.map((p) =>
+        Number(p.seat) === curSeat ? { ...p, lastAction: 'PASS' as const } : p
+      );
       return {
         ...prev,
         currentTurnSeat: nextTurn,
+        players: newPlayers,
+        consecutivePassCount: (prev.consecutivePassCount || 0) + 1,
       };
     });
 
