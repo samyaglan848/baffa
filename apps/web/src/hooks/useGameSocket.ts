@@ -303,15 +303,11 @@ export function useGameSocket() {
       }
     };
 
-    window.addEventListener('focus', handleReturnImmediate);
-    window.addEventListener('blur', handleLeaveImmediate);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handleLeaveImmediate);
     window.addEventListener('beforeunload', handleLeaveImmediate);
 
     return () => {
-      window.removeEventListener('focus', handleReturnImmediate);
-      window.removeEventListener('blur', handleLeaveImmediate);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handleLeaveImmediate);
       window.removeEventListener('beforeunload', handleLeaveImmediate);
@@ -466,7 +462,6 @@ export function useGameSocket() {
 
         const currentTiles = prev.chain?.tiles?.length || 0;
         const incomingTiles = data.gameState.chain?.tiles?.length || 0;
-        // Strictly prevent older packets from removing already placed tiles from the table
         if (incomingTiles < currentTiles) return prev;
 
         // Never allow an older sequenceNumber packet from background WebSocket queue to overwrite newer state!
@@ -635,7 +630,6 @@ export function useGameSocket() {
 
           const currentTiles = prev.chain?.tiles?.length || 0;
           const incomingTiles = data.gameState.chain?.tiles?.length || 0;
-          // Never let an HTTP sync response wipe out tiles that were already placed on the table!
           if (incomingTiles < currentTiles) return prev;
 
           if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {

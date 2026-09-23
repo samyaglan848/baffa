@@ -539,7 +539,7 @@ export default function App() {
         {/* If in Active Game Table (Straight to felt table with dealing animations) */}
         {isPlayingGame && activeGameState && room && (
           <GameTable
-            key={`${room.id}_${activeGameState.matchId}_${activeGameState.roundNumber}`}
+            key={room.id}
             gameState={activeGameState}
             socket={socket}
             room={room}

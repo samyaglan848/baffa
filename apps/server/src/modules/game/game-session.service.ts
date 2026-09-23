@@ -111,24 +111,29 @@ export class GameSessionService {
       { name: 'رقم واحد', botId: 'RAQAM_WAHED', avatar: 'bot-raqam-wahed' },
     ];
 
-    // If Judge exists, Spectator exists, or no other human players seated, guarantee ALL 4 seats are active Egyptian bots!
-    const isJudgePresent = Boolean(room.judge || isJudgeUser);
-    const isAllBotsMatch = allBotsOccupied || (hasJudge && humanSeats.length <= 1) || isJudgePresent;
-
     room.seats.forEach((seat, idx) => {
-      const isObserverSeated = Boolean(
-        isJudgePresent ||
-        (room.judge &&
-          (seat.playerId === room.judge.userId ||
-            seat.username === room.judge.username ||
-            seat.playerId === adminId)) ||
-        (room.spectator &&
-          (seat.playerId === room.spectator.userId ||
-            seat.username === room.spectator.username ||
-            seat.playerId === adminId))
+      // Check if this seat is occupied by a judge or spectator who is NOT a table player
+      const isJudgeOccupying = Boolean(
+        room.judge &&
+        (seat.playerId === room.judge.userId || (seat.username && seat.username === room.judge.username))
+      );
+      const isSpectatorOccupying = Boolean(
+        room.spectator &&
+        (seat.playerId === room.spectator.userId || (seat.username && seat.username === room.spectator.username))
       );
 
-      if (!seat.occupied || (!seat.playerId && !seat.isBot) || isObserverSeated || isAllBotsMatch) {
+      // Check if a real human player is genuinely seated here
+      const isRealHumanSeated = Boolean(
+        seat.occupied &&
+        !seat.isBot &&
+        seat.playerId &&
+        !seat.playerId.startsWith('bot_') &&
+        !isJudgeOccupying &&
+        !isSpectatorOccupying
+      );
+
+      // Only fill with a bot if the seat is EMPTY, already a bot, or occupied by a referee/spectator!
+      if (!isRealHumanSeated) {
         const botConfig = defaultBots[idx % defaultBots.length];
         seat.occupied = true;
         seat.playerId = `bot_${seat.seat}`;
@@ -139,6 +144,12 @@ export class GameSessionService {
         seat.isReady = true;
         seat.isConnected = true;
         seat.presence = 'ONLINE';
+        seat.isTemporarilyBotControlled = false;
+      } else {
+        // Human player is active and ready
+        seat.isBot = false;
+        seat.isReady = true;
+        seat.isConnected = true;
         seat.isTemporarilyBotControlled = false;
       }
     });
@@ -838,11 +849,9 @@ export class GameSessionService {
       this.botTimeouts.delete(roomId);
     }
 
-    // Natural, human-like delay for bot moves:
-    // Opening move (especially [6|6] in Round 1 or empty board): snappy 400ms delay so match opens crisply!
-    // Subsequent in-game moves: 650ms - 900ms (authentic Egyptian domino tempo without sluggish lag)
-    const isOpeningMove = engine.getChain().isEmpty();
-    const delayMs = forceImmediate ? 150 : isOpeningMove ? 400 : Math.floor(650 + Math.random() * 250);
+    // Natural, realistic tempo for bot moves:
+    // Every bot takes ~2 seconds (1900ms - 2100ms) to evaluate, decide, and play their move
+    const delayMs = forceImmediate ? 200 : Math.floor(1900 + Math.random() * 200);
 
     const resolvedBotId = seatInfo?.botId || enginePlayer?.botId || 'EL_SAMY';
     const timeout = setTimeout(() => {
