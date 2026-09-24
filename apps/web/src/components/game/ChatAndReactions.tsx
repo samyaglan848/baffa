@@ -357,16 +357,16 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
               ? 'var(--baffa-gold-primary)'
               : (!quickChatEnabled && !reactionsEnabled) || (isChatMuted && isReactionsMuted)
               ? 'rgba(239, 68, 68, 0.2)'
-              : 'rgba(18, 29, 45, 0.92)',
+              : '#ffffff',
             color: isOpen
               ? '#000'
               : (!quickChatEnabled && !reactionsEnabled) || (isChatMuted && isReactionsMuted)
               ? '#fca5a5'
-              : 'var(--baffa-gold-primary)',
+              : '#d97706',
             border: (!quickChatEnabled && !reactionsEnabled) || (isChatMuted && isReactionsMuted)
               ? '2px solid rgba(239, 68, 68, 0.6)'
               : '2px solid var(--baffa-gold-primary)',
-            boxShadow: '0 4px 18px rgba(0,0,0,0.65), 0 0 15px rgba(245, 158, 11, 0.35)',
+            boxShadow: '0 4px 18px rgba(6, 182, 212, 0.25), 0 2px 8px rgba(0, 0, 0, 0.1)',
             backdropFilter: 'blur(10px)',
             cursor: 'pointer',
             transition: 'all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -402,12 +402,12 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
             bottom: isLandscape ? '46px' : isMobile ? '56px' : '76px',
             left: isLandscape ? '8px' : isMobile ? '12px' : '22px',
             width: isLandscape ? '280px' : isMobile ? '280px' : '320px',
-            backgroundColor: 'rgba(10, 18, 30, 0.96)',
+            backgroundColor: 'rgba(255, 255, 255, 0.98)',
             backdropFilter: 'blur(16px)',
             borderRadius: isMobile ? '18px' : '24px',
-            border: '1.5px solid var(--baffa-gold-primary)',
+            border: '2px solid #f59e0b',
             padding: isLandscape ? '10px' : isMobile ? '12px' : '18px',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.85), 0 0 25px rgba(245, 158, 11, 0.35)',
+            boxShadow: '0 12px 40px rgba(6, 182, 212, 0.25), 0 0 25px rgba(245, 158, 11, 0.25)',
             zIndex: 65,
             display: 'flex',
             flexDirection: 'column',
@@ -533,10 +533,10 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                     style={{
                       textAlign: 'right',
                       padding: isLandscape ? '5px 8px' : isMobile ? '6px 10px' : '9px 14px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      color: 'var(--baffa-text-primary)',
+                      backgroundColor: '#f8fafc',
+                      color: '#0f172a',
                       borderRadius: isMobile ? '8px' : '12px',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(6, 182, 212, 0.25)',
                       fontSize: isLandscape ? '0.75rem' : isMobile ? '0.78rem' : '0.9rem',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -544,13 +544,13 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)';
-                      e.currentTarget.style.color = 'var(--baffa-gold-primary)';
-                      e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.15)';
+                      e.currentTarget.style.color = '#d97706';
+                      e.currentTarget.style.backgroundColor = 'rgba(254, 243, 199, 0.9)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                      e.currentTarget.style.color = 'var(--baffa-text-primary)';
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.25)';
+                      e.currentTarget.style.color = '#0f172a';
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
                     }}
                   >
                     {chat}
@@ -574,10 +574,10 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                 position: 'absolute',
                 ...containerStyle,
                 padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 14px',
-                background: 'linear-gradient(135deg, rgba(14, 26, 42, 0.98) 0%, rgba(20, 36, 58, 0.96) 100%)',
-                border: '1.5px solid var(--baffa-gold-primary)',
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                border: '2px solid #f59e0b',
                 borderRadius: isLandscape ? '12px' : isMobile ? '14px' : '18px',
-                boxShadow: '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
+                boxShadow: '0 8px 30px rgba(6, 182, 212, 0.3), 0 2px 8px rgba(0,0,0,0.1)',
                 backdropFilter: 'blur(10px)',
                 maxWidth: isLandscape ? '140px' : isMobile ? '160px' : '220px',
                 textAlign: 'center',
@@ -592,7 +592,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                 style={{
                   fontSize: isLandscape ? '0.72rem' : isMobile ? '0.78rem' : '0.9rem',
                   fontWeight: 900,
-                  color: '#fff',
+                  color: '#0f172a',
                   textAlign: 'center',
                   lineHeight: 1.25,
                   wordBreak: 'break-word',

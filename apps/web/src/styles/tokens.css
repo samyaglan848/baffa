@@ -4,10 +4,10 @@
   --baffa-bg-base: #070c18;
   --baffa-bg-surface: #0e1526;
   --baffa-bg-elevated: #151f38;
-  --baffa-bg-table: #0c1326; /* Signature BAFFA Royal Midnight Velvet Felt */
-  --baffa-bg-table-border: #141a29; /* Black Ebony Rim */
-  --baffa-table-rim-gold: rgba(245, 158, 11, 0.48); /* Inlaid 24K Gold Bevel */
-  --baffa-table-felt-glow: rgba(245, 158, 11, 0.08);
+  --baffa-bg-table: #06b6d4; /* Signature BAFFA Bright Nile Turquoise Velvet Felt */
+  --baffa-bg-table-border: #fefcf3; /* Warm Pearl Ivory Rim */
+  --baffa-table-rim-gold: #f59e0b; /* Inlaid 24K Gold Bevel */
+  --baffa-table-felt-glow: rgba(6, 182, 212, 0.3);
 
   /* Surfaces & Glass */
   --baffa-surface-glass: rgba(14, 21, 38, 0.82);
