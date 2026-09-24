@@ -1,5 +1,6 @@
 import {
   BoardTilePlacement,
+  BotChatMessage,
   BotId,
   ChainEnd,
   CheatingEvent,
@@ -69,6 +70,7 @@ export class DominoGameEngine {
   private sequenceNumber = 0;
   private rng: () => number;
   private playerWarnings = new Map<PlayerSeat, number>();
+  public latestBotMessage: BotChatMessage | null = null;
 
   constructor(options: GameEngineOptions) {
     this.matchId = options.matchId;
@@ -777,6 +779,7 @@ export class DominoGameEngine {
       consecutivePassCount: this.consecutivePassCount,
       sequenceNumber: this.sequenceNumber,
       cheatingEvent: this.cheatingEvent,
+      latestBotMessage: this.latestBotMessage,
       turnTimeLimit: this.turnTimeLimit,
       turnStartTime: this.turnStartTime,
     };

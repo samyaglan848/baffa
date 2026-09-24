@@ -271,32 +271,33 @@ export const GameTable: React.FC<GameTableProps> = ({
   const [botSpeechBySeat, setBotSpeechBySeat] = useState<Record<number, { text: string; timestamp: number }>>({});
 
   useEffect(() => {
-    if (!latestBotMessage) return;
+    const msg = latestBotMessage || gameState.latestBotMessage;
+    if (!msg) return;
     const seatNum =
-      latestBotMessage.seat !== undefined && latestBotMessage.seat !== null
-        ? Number(latestBotMessage.seat)
+      msg.seat !== undefined && msg.seat !== null
+        ? Number(msg.seat)
         : null;
 
     if (seatNum !== null) {
       setBotSpeechBySeat((prev) => ({
         ...prev,
-        [seatNum]: { text: latestBotMessage.text, timestamp: latestBotMessage.timestamp },
+        [seatNum]: { text: msg.text, timestamp: msg.timestamp },
       }));
 
       const timer = setTimeout(() => {
         setBotSpeechBySeat((prev) => {
-          if (prev[seatNum]?.timestamp === latestBotMessage.timestamp) {
+          if (prev[seatNum]?.timestamp === msg.timestamp) {
             const next = { ...prev };
             delete next[seatNum];
             return next;
           }
           return prev;
         });
-      }, 5000);
+      }, 5500);
 
       return () => clearTimeout(timer);
     }
-  }, [latestBotMessage]);
+  }, [latestBotMessage, gameState.latestBotMessage]);
 
   // Authoritative tile placement vs pass detection
   const prevChainTilesCountRef = useRef(gameState.chain.tiles.length);
@@ -1084,14 +1085,24 @@ export const GameTable: React.FC<GameTableProps> = ({
       (seatInfo?.playerId && seatInfo.playerId.startsWith('bot_'))
     );
     const botSpeech = botSpeechBySeat[Number(player.seat)];
+    const engineBotMessage = gameState.latestBotMessage;
     const isSpeakingBot = Boolean(
-      (botSpeech && Date.now() - botSpeech.timestamp < 5000) ||
+      (botSpeech && Date.now() - botSpeech.timestamp < 5500) ||
       (latestBotMessage &&
         (latestBotMessage.seat !== undefined && latestBotMessage.seat !== null
           ? Number(player.seat) === Number(latestBotMessage.seat)
-          : (isBotPlayer && (player.botId === latestBotMessage.botId || seatInfo?.botId === latestBotMessage.botId))))
+          : (isBotPlayer && (player.botId === latestBotMessage.botId || seatInfo?.botId === latestBotMessage.botId)))) ||
+      (engineBotMessage &&
+        (engineBotMessage.seat !== undefined && engineBotMessage.seat !== null
+          ? Number(player.seat) === Number(engineBotMessage.seat)
+          : (isBotPlayer && (player.botId === engineBotMessage.botId || seatInfo?.botId === engineBotMessage.botId))))
     );
-    const activeBotText = botSpeech?.text || latestBotMessage?.text;
+    const activeBotText =
+      botSpeech?.text ||
+      (latestBotMessage && Number(latestBotMessage.seat) === Number(player.seat) ? latestBotMessage.text : undefined) ||
+      (engineBotMessage && Number(engineBotMessage.seat) === Number(player.seat) ? engineBotMessage.text : undefined) ||
+      latestBotMessage?.text ||
+      engineBotMessage?.text;
     const isMe = mySeat !== null && mySeat !== undefined && Number(mySeat) === Number(player.seat);
     const isPassed =
       !isCurrentTurn &&

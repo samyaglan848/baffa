@@ -1,4 +1,4 @@
-import { BotId } from './bot';
+import { BotId, BotChatMessage } from './bot';
 
 export type PipValue = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -130,6 +130,7 @@ export interface SanitizedGameState {
   consecutivePassCount: number;
   sequenceNumber: number;
   cheatingEvent: CheatingEvent | null;
+  latestBotMessage?: BotChatMessage | null;
   turnTimeLimit?: number;
   turnStartTime?: number;
 }

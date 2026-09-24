@@ -938,6 +938,7 @@ export class GameSessionService {
       }
 
       if (decision.chatMessage) {
+        engine.latestBotMessage = decision.chatMessage;
         try {
           this.callbacks?.broadcastBotChat(roomId, decision.chatMessage);
         } catch {}
@@ -965,8 +966,10 @@ export class GameSessionService {
             setTimeout(() => {
               const taunt = this.botService.generateSocialReaction(engine, currentSeat, effectiveBotId, 'OPPONENT_PASS');
               if (taunt) {
+                engine.latestBotMessage = taunt;
                 try {
                   this.callbacks?.broadcastBotChat(roomId, taunt);
+                  this.callbacks?.broadcastStateToRoom(roomId);
                 } catch {}
               }
             }, 350);
@@ -1128,8 +1131,10 @@ export class GameSessionService {
       setTimeout(() => {
         const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, 'ROUND_WIN');
         if (chat) {
+          engine.latestBotMessage = chat;
           try {
             this.callbacks?.broadcastBotChat(roomId, chat);
+            this.callbacks?.broadcastStateToRoom(roomId);
           } catch {}
         }
       }, 500);
@@ -1141,8 +1146,10 @@ export class GameSessionService {
       setTimeout(() => {
         const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, 'ROUND_LOSS');
         if (chat) {
+          engine.latestBotMessage = chat;
           try {
             this.callbacks?.broadcastBotChat(roomId, chat);
+            this.callbacks?.broadcastStateToRoom(roomId);
           } catch {}
         }
       }, 1800);
@@ -1175,8 +1182,10 @@ export class GameSessionService {
     setTimeout(() => {
       const taunt = this.botService.generateSocialReaction(engine, bot.seat, botId, 'OPPONENT_PASS');
       if (taunt) {
+        engine.latestBotMessage = taunt;
         try {
           this.callbacks?.broadcastBotChat(roomId, taunt);
+          this.callbacks?.broadcastStateToRoom(roomId);
         } catch {}
       }
     }, 450);

@@ -99,6 +99,24 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             this.server.to(cp.socketId).emit(ServerEvents.BOT_MESSAGE, chat);
           }
         }
+
+        // Also broadcast as QUICK_CHAT_BROADCAST so it renders in in-game chat stream and bubbles
+        const quickChatPayload = {
+          userId: `bot_${chat.seat}`,
+          messageId: chat.text,
+          senderName: chat.botName,
+          seat: chat.seat,
+          timestamp: chat.timestamp,
+        };
+        this.server.to(actualRoomId).emit(ServerEvents.QUICK_CHAT_BROADCAST, quickChatPayload);
+        if (roomCode && roomCode !== actualRoomId) {
+          this.server.to(roomCode).emit(ServerEvents.QUICK_CHAT_BROADCAST, quickChatPayload);
+        }
+        for (const cp of connected) {
+          if (cp.socketId) {
+            this.server.to(cp.socketId).emit(ServerEvents.QUICK_CHAT_BROADCAST, quickChatPayload);
+          }
+        }
         this.logger.log(`[BOT_MESSAGE_BROADCAST] room=${actualRoomId} bot=${chat.botName} (seat ${chat.seat}) said: "${chat.text}" (targets: ${connected.length})`);
       },
       broadcastStatsUpdated: (roomId: string) => {
