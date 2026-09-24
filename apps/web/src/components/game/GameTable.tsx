@@ -269,35 +269,48 @@ export const GameTable: React.FC<GameTableProps> = ({
 
   // Active bot speech bubbles by seat: seat -> { text: string; timestamp: number }
   const [botSpeechBySeat, setBotSpeechBySeat] = useState<Record<number, { text: string; timestamp: number }>>({});
+  const botSpeechTimersRef = useRef<Record<number, NodeJS.Timeout>>({});
+  const lastProcessedBotMsgTimestampRef = useRef<number>(0);
 
   useEffect(() => {
     const msg = latestBotMessage || gameState.latestBotMessage;
-    if (!msg) return;
+    if (!msg || !msg.timestamp) return;
+    if (msg.timestamp === lastProcessedBotMsgTimestampRef.current) return;
+    if (Date.now() - msg.timestamp > 7000) return; // Skip stale messages
+
+    lastProcessedBotMsgTimestampRef.current = msg.timestamp;
+
     const seatNum =
       msg.seat !== undefined && msg.seat !== null
         ? Number(msg.seat)
-        : null;
+        : (gameState.players || []).find(
+            (p) => p && (p.botId === msg.botId || room?.seats?.[p.seat]?.botId === msg.botId)
+          )?.seat ?? null;
 
-    if (seatNum !== null) {
+    if (seatNum !== null && seatNum !== undefined) {
+      const s = Number(seatNum);
       setBotSpeechBySeat((prev) => ({
         ...prev,
-        [seatNum]: { text: msg.text, timestamp: msg.timestamp },
+        [s]: { text: msg.text, timestamp: msg.timestamp },
       }));
 
-      const timer = setTimeout(() => {
+      if (botSpeechTimersRef.current[s]) {
+        clearTimeout(botSpeechTimersRef.current[s]);
+      }
+
+      botSpeechTimersRef.current[s] = setTimeout(() => {
         setBotSpeechBySeat((prev) => {
-          if (prev[seatNum]?.timestamp === msg.timestamp) {
+          if (prev[s]?.timestamp === msg.timestamp) {
             const next = { ...prev };
-            delete next[seatNum];
+            delete next[s];
             return next;
           }
           return prev;
         });
+        delete botSpeechTimersRef.current[s];
       }, 5500);
-
-      return () => clearTimeout(timer);
     }
-  }, [latestBotMessage, gameState.latestBotMessage]);
+  }, [latestBotMessage, gameState.latestBotMessage, gameState.players, room?.seats]);
 
   // Authoritative tile placement vs pass detection
   const prevChainTilesCountRef = useRef(gameState.chain.tiles.length);
@@ -1070,7 +1083,12 @@ export const GameTable: React.FC<GameTableProps> = ({
 
   // ----- MAIN TABLE RENDERING LOGIC -----
 
-  const renderBadgeOnly = (player: SanitizedPlayerState | undefined, relation: string, orientation: 'row' | 'column' = 'row') => {
+  const renderBadgeOnly = (
+    player: SanitizedPlayerState | undefined,
+    relation: string,
+    orientation: 'row' | 'column' = 'row',
+    position?: 'TOP' | 'BOTTOM' | 'LEFT' | 'RIGHT'
+  ) => {
     if (!player) return null;
     const seatInfo = room?.seats?.[player.seat];
     const isCurrentTurn =
@@ -1085,24 +1103,8 @@ export const GameTable: React.FC<GameTableProps> = ({
       (seatInfo?.playerId && seatInfo.playerId.startsWith('bot_'))
     );
     const botSpeech = botSpeechBySeat[Number(player.seat)];
-    const engineBotMessage = gameState.latestBotMessage;
-    const isSpeakingBot = Boolean(
-      (botSpeech && Date.now() - botSpeech.timestamp < 5500) ||
-      (latestBotMessage &&
-        (latestBotMessage.seat !== undefined && latestBotMessage.seat !== null
-          ? Number(player.seat) === Number(latestBotMessage.seat)
-          : (isBotPlayer && (player.botId === latestBotMessage.botId || seatInfo?.botId === latestBotMessage.botId)))) ||
-      (engineBotMessage &&
-        (engineBotMessage.seat !== undefined && engineBotMessage.seat !== null
-          ? Number(player.seat) === Number(engineBotMessage.seat)
-          : (isBotPlayer && (player.botId === engineBotMessage.botId || seatInfo?.botId === engineBotMessage.botId))))
-    );
-    const activeBotText =
-      botSpeech?.text ||
-      (latestBotMessage && Number(latestBotMessage.seat) === Number(player.seat) ? latestBotMessage.text : undefined) ||
-      (engineBotMessage && Number(engineBotMessage.seat) === Number(player.seat) ? engineBotMessage.text : undefined) ||
-      latestBotMessage?.text ||
-      engineBotMessage?.text;
+    const isSpeakingBot = Boolean(botSpeech && Date.now() - botSpeech.timestamp < 5500);
+    const activeBotText = botSpeech?.text;
     const isMe = mySeat !== null && mySeat !== undefined && Number(mySeat) === Number(player.seat);
     const isPassed =
       !isCurrentTurn &&
@@ -1115,6 +1117,9 @@ export const GameTable: React.FC<GameTableProps> = ({
     const effectiveAvatar = (isMe ? (currentUserAvatar || player.avatar) : player.avatar) || seatInfo?.avatar;
     const isAway = Boolean(!player.isBot && (seatInfo?.presence === 'AWAY' || (player as any).presence === 'AWAY'));
 
+    const resolvedPos: 'TOP' | 'BOTTOM' | 'LEFT' | 'RIGHT' =
+      position || (player ? getRelativeSeat(player.seat) : 'BOTTOM');
+
     return (
       <div style={{ position: 'relative', display: 'flex', flexDirection: orientation === 'column' ? 'column' : 'row', alignItems: 'center', gap: '6px' }}>
         {/* Anti-cheat Away Presence Bubble on Avatar */}
@@ -1123,10 +1128,27 @@ export const GameTable: React.FC<GameTableProps> = ({
             className="animate-float arabic-font"
             style={{
               position: 'absolute',
-              bottom: orientation === 'column' ? '100%' : '110%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              marginBottom: '10px',
+              top: resolvedPos === 'TOP'
+                ? '110%'
+                : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                ? '50%'
+                : undefined,
+              bottom: resolvedPos === 'BOTTOM'
+                ? '110%'
+                : undefined,
+              left: resolvedPos === 'LEFT'
+                ? (isMobile ? 'calc(100% + 6px)' : 'calc(100% + 10px)')
+                : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                ? '50%'
+                : undefined,
+              right: resolvedPos === 'RIGHT'
+                ? (isMobile ? 'calc(100% + 6px)' : 'calc(100% + 10px)')
+                : undefined,
+              transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                ? 'translateY(-50%)'
+                : 'translateX(-50%)',
+              marginTop: resolvedPos === 'TOP' ? '8px' : undefined,
+              marginBottom: resolvedPos === 'BOTTOM' ? '10px' : undefined,
               padding: '4px 12px',
               borderRadius: '16px',
               backgroundColor: 'rgba(239, 68, 68, 0.98)',
@@ -1148,14 +1170,47 @@ export const GameTable: React.FC<GameTableProps> = ({
             <div
               style={{
                 position: 'absolute',
-                bottom: '-6px',
-                left: '50%',
-                transform: 'translateX(-50%)',
+                top: resolvedPos === 'TOP'
+                  ? '-6px'
+                  : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? '50%'
+                  : undefined,
+                bottom: resolvedPos === 'BOTTOM'
+                  ? '-6px'
+                  : undefined,
+                left: resolvedPos === 'LEFT'
+                  ? '-6px'
+                  : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                  ? '50%'
+                  : undefined,
+                right: resolvedPos === 'RIGHT'
+                  ? '-6px'
+                  : undefined,
+                transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? 'translateY(-50%)'
+                  : 'translateX(-50%)',
                 width: 0,
                 height: 0,
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: '6px solid rgba(239, 68, 68, 0.98)',
+                borderTop: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? '5px solid transparent'
+                  : resolvedPos === 'BOTTOM'
+                  ? '6px solid rgba(239, 68, 68, 0.98)'
+                  : undefined,
+                borderBottom: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? '5px solid transparent'
+                  : resolvedPos === 'TOP'
+                  ? '6px solid rgba(239, 68, 68, 0.98)'
+                  : undefined,
+                borderLeft: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                  ? '6px solid transparent'
+                  : resolvedPos === 'RIGHT'
+                  ? '6px solid rgba(239, 68, 68, 0.98)'
+                  : undefined,
+                borderRight: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                  ? '6px solid transparent'
+                  : resolvedPos === 'LEFT'
+                  ? '6px solid rgba(239, 68, 68, 0.98)'
+                  : undefined,
               }}
             />
           </div>
@@ -1167,10 +1222,27 @@ export const GameTable: React.FC<GameTableProps> = ({
             className="animate-float arabic-font"
             style={{
               position: 'absolute',
-              bottom: orientation === 'column' ? '100%' : '110%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              marginBottom: '10px',
+              top: resolvedPos === 'TOP'
+                ? '110%'
+                : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                ? '50%'
+                : undefined,
+              bottom: resolvedPos === 'BOTTOM'
+                ? '110%'
+                : undefined,
+              left: resolvedPos === 'LEFT'
+                ? (isMobile ? 'calc(100% + 6px)' : 'calc(100% + 10px)')
+                : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                ? '50%'
+                : undefined,
+              right: resolvedPos === 'RIGHT'
+                ? (isMobile ? 'calc(100% + 6px)' : 'calc(100% + 10px)')
+                : undefined,
+              transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                ? 'translateY(-50%)'
+                : 'translateX(-50%)',
+              marginTop: resolvedPos === 'TOP' ? '8px' : undefined,
+              marginBottom: resolvedPos === 'BOTTOM' ? '10px' : undefined,
               padding: '5px 16px',
               borderRadius: '20px',
               backgroundColor: 'rgba(220, 38, 38, 0.95)',
@@ -1192,14 +1264,47 @@ export const GameTable: React.FC<GameTableProps> = ({
             <div
               style={{
                 position: 'absolute',
-                bottom: '-6px',
-                left: '50%',
-                transform: 'translateX(-50%)',
+                top: resolvedPos === 'TOP'
+                  ? '-6px'
+                  : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? '50%'
+                  : undefined,
+                bottom: resolvedPos === 'BOTTOM'
+                  ? '-6px'
+                  : undefined,
+                left: resolvedPos === 'LEFT'
+                  ? '-6px'
+                  : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                  ? '50%'
+                  : undefined,
+                right: resolvedPos === 'RIGHT'
+                  ? '-6px'
+                  : undefined,
+                transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? 'translateY(-50%)'
+                  : 'translateX(-50%)',
                 width: 0,
                 height: 0,
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: '6px solid rgba(220, 38, 38, 0.95)',
+                borderTop: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? '5px solid transparent'
+                  : resolvedPos === 'BOTTOM'
+                  ? '6px solid rgba(220, 38, 38, 0.95)'
+                  : undefined,
+                borderBottom: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? '5px solid transparent'
+                  : resolvedPos === 'TOP'
+                  ? '6px solid rgba(220, 38, 38, 0.95)'
+                  : undefined,
+                borderLeft: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                  ? '6px solid transparent'
+                  : resolvedPos === 'RIGHT'
+                  ? '6px solid rgba(220, 38, 38, 0.95)'
+                  : undefined,
+                borderRight: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                  ? '6px solid transparent'
+                  : resolvedPos === 'LEFT'
+                  ? '6px solid rgba(220, 38, 38, 0.95)'
+                  : undefined,
               }}
             />
           </div>
@@ -1210,12 +1315,27 @@ export const GameTable: React.FC<GameTableProps> = ({
             className="animate-float arabic-font"
             style={{
               position: 'absolute',
-              top: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? '110%' : undefined,
-              bottom: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? undefined : (orientation === 'column' ? '100%' : '110%'),
-              left: '50%',
-              transform: 'translateX(-50%)',
-              marginTop: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? '8px' : undefined,
-              marginBottom: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? undefined : '10px',
+              top: resolvedPos === 'TOP'
+                ? '110%'
+                : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                ? '50%'
+                : undefined,
+              bottom: resolvedPos === 'BOTTOM'
+                ? '110%'
+                : undefined,
+              left: resolvedPos === 'LEFT'
+                ? (isMobile ? 'calc(100% + 6px)' : 'calc(100% + 10px)')
+                : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                ? '50%'
+                : undefined,
+              right: resolvedPos === 'RIGHT'
+                ? (isMobile ? 'calc(100% + 6px)' : 'calc(100% + 10px)')
+                : undefined,
+              transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                ? 'translateY(-50%)'
+                : 'translateX(-50%)',
+              marginTop: resolvedPos === 'TOP' ? '8px' : undefined,
+              marginBottom: resolvedPos === 'BOTTOM' ? '10px' : undefined,
               padding: isMobile ? '4px 10px' : '6px 14px',
               borderRadius: isMobile ? '12px' : '16px',
               backgroundColor: 'var(--baffa-gold-primary)',
@@ -1226,7 +1346,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               textAlign: 'center',
               lineHeight: 1.3,
               width: 'max-content',
-              maxWidth: isLandscape ? '140px' : isMobile ? '160px' : '220px',
+              maxWidth: isLandscape ? '135px' : isMobile ? '150px' : '200px',
               zIndex: 65,
               boxShadow: '0 6px 18px rgba(0, 0, 0, 0.75), 0 0 10px rgba(245, 158, 11, 0.4)',
               border: '1.5px solid rgba(255, 255, 255, 0.3)',
@@ -1238,16 +1358,47 @@ export const GameTable: React.FC<GameTableProps> = ({
             <div
               style={{
                 position: 'absolute',
-                top: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? '-6px' : undefined,
-                bottom: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? undefined : '-6px',
-                left: '50%',
-                transform: 'translateX(-50%)',
+                top: resolvedPos === 'TOP'
+                  ? '-6px'
+                  : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? '50%'
+                  : undefined,
+                bottom: resolvedPos === 'BOTTOM'
+                  ? '-6px'
+                  : undefined,
+                left: resolvedPos === 'LEFT'
+                  ? '-6px'
+                  : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                  ? '50%'
+                  : undefined,
+                right: resolvedPos === 'RIGHT'
+                  ? '-6px'
+                  : undefined,
+                transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? 'translateY(-50%)'
+                  : 'translateX(-50%)',
                 width: 0,
                 height: 0,
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? undefined : '6px solid var(--baffa-gold-primary)',
-                borderBottom: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? '6px solid var(--baffa-gold-primary)' : undefined,
+                borderTop: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? '5px solid transparent'
+                  : resolvedPos === 'BOTTOM'
+                  ? '6px solid var(--baffa-gold-primary)'
+                  : undefined,
+                borderBottom: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
+                  ? '5px solid transparent'
+                  : resolvedPos === 'TOP'
+                  ? '6px solid var(--baffa-gold-primary)'
+                  : undefined,
+                borderLeft: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                  ? '6px solid transparent'
+                  : resolvedPos === 'RIGHT'
+                  ? '6px solid var(--baffa-gold-primary)'
+                  : undefined,
+                borderRight: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
+                  ? '6px solid transparent'
+                  : resolvedPos === 'LEFT'
+                  ? '6px solid var(--baffa-gold-primary)'
+                  : undefined,
               }}
             />
           </div>
@@ -2088,21 +2239,24 @@ export const GameTable: React.FC<GameTableProps> = ({
                 isObserver
                   ? getTeamLabel(relativePlayers.TOP?.team ?? 1)
                   : (mySeat !== null ? 'زميلك' : getTeamLabel(relativePlayers.TOP?.team ?? 1)),
-                'row'
+                'row',
+                'TOP'
               )}
             </div>
             <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
               {renderBadgeOnly(
                 relativePlayers.LEFT,
                 getTeamLabel(relativePlayers.LEFT?.team ?? 2),
-                'column'
+                'column',
+                'LEFT'
               )}
             </div>
             <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20 }}>
               {renderBadgeOnly(
                 relativePlayers.RIGHT,
                 getTeamLabel(relativePlayers.RIGHT?.team ?? 2),
-                'column'
+                'column',
+                'RIGHT'
               )}
             </div>
             <div style={{ position: 'absolute', bottom: 6, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 20 }}>
@@ -2111,7 +2265,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                 isObserver
                   ? getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)
                   : (mySeat !== null && !relativePlayers.BOTTOM?.isBot ? 'أنت' : getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)),
-                'row'
+                'row',
+                'BOTTOM'
               )}
             </div>
           </>
@@ -2144,7 +2299,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                     isObserver
                       ? getTeamLabel(relativePlayers.TOP?.team ?? 1)
                       : (mySeat !== null ? 'زميلك' : getTeamLabel(relativePlayers.TOP?.team ?? 1)),
-                    'row'
+                    'row',
+                    'TOP'
                   )}
                   {renderHiddenCards(relativePlayers.TOP, 'row', 'TOP')}
                 </div>
@@ -2159,7 +2315,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                   {renderBadgeOnly(
                     relativePlayers.RIGHT,
                     getTeamLabel(relativePlayers.RIGHT?.team ?? 2),
-                    'column'
+                    'column',
+                    'RIGHT'
                   )}
                   {renderHiddenCards(relativePlayers.RIGHT, 'column', 'RIGHT')}
                 </div>
@@ -2174,7 +2331,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                   {renderBadgeOnly(
                     relativePlayers.LEFT,
                     getTeamLabel(relativePlayers.LEFT?.team ?? 2),
-                    'column'
+                    'column',
+                    'LEFT'
                   )}
                   {renderHiddenCards(relativePlayers.LEFT, 'column', 'LEFT')}
                 </div>
@@ -2198,7 +2356,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                     isObserver
                       ? getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)
                       : (mySeat !== null && !relativePlayers.BOTTOM?.isBot ? 'أنت' : getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)),
-                    'row'
+                    'row',
+                    'BOTTOM'
                   )}
                   <div style={{ 
                     display: 'flex', 
@@ -2346,7 +2505,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                     isObserver
                       ? getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)
                       : (mySeat !== null && !relativePlayers.BOTTOM?.isBot ? 'أنت' : getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)),
-                    'row'
+                    'row',
+                    'BOTTOM'
                   )}
                 </div>
               ) : (
@@ -2357,7 +2517,8 @@ export const GameTable: React.FC<GameTableProps> = ({
                       isObserver
                         ? getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)
                         : (mySeat !== null && !relativePlayers.BOTTOM?.isBot ? 'أنت' : getTeamLabel(relativePlayers.BOTTOM?.team ?? 1)),
-                      'row'
+                      'row',
+                      'BOTTOM'
                     )}
                     {renderHiddenCards(relativePlayers.BOTTOM, 'row', 'BOTTOM')}
                   </div>

@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   BotChatMessage,
+  BotChatTrigger,
   BotDifficulty,
   BotId,
+  BotReactionContext,
   ChainEnd,
   DominoTile,
   LegalMove,
@@ -18,8 +20,6 @@ export interface BotDecision {
   chatMessage?: BotChatMessage;
 }
 
-export type BotChatTrigger = 'PASS' | 'PLAY' | 'ROUND_WIN' | 'ROUND_LOSS' | 'OPPONENT_PASS';
-
 const GENERAL_FALLBACK_QUOTES: Record<BotChatTrigger, string[]> = {
   ROUND_WIN: [
     'إيه الشغل التعبان ده؟ روح نام يا بني 😂',
@@ -30,6 +30,12 @@ const GENERAL_FALLBACK_QUOTES: Record<BotChatTrigger, string[]> = {
     'وسع للبطل.. رقم واحد في اللعبة دي 😎',
     'حاولت بس العين متعلاش عن الحاجب يا سيدي 😏',
   ],
+  ROUND_WIN_HIGH_POINTS: [
+    'بونط تقيل يشيل اللي ما يشتال يا مساكين 😂🔥',
+    'فوز عريض يرجعكم تلعبوا كوتشينة أحسن 😎',
+    'سكور تاريخي.. اتعلموا اللعب بقى 👑🏆',
+    'النتيجة كبرت أوي عليكم يا رجالة 🔥👌',
+  ],
   ROUND_LOSS: [
     'أنا بلعب مع فردة تعبانة وضيعتني يا زميلي! 🤦‍♂️',
     'عامل فيها حريف وجايبنا ورا يا عم فلان! 😂',
@@ -38,6 +44,12 @@ const GENERAL_FALLBACK_QUOTES: Record<BotChatTrigger, string[]> = {
     'يا ريتني كنت بلعب مع روبوت غسالة مش معاك 🤖😂',
     'هو أنت بتلعب معانا ولا مع الخصم يا نجم؟ 🤨',
     'ضيعت البونط بمزاجك يا زميلي.. عاش والله 👏😂',
+  ],
+  GAME_LOCKED: [
+    'سدّة وقفلناها.. عد ورقك وركز في النقط يا كابتن 🔒😎',
+    'القفلة دي معمولة بمعلمة.. مين معاه بونط؟ 🎲',
+    'قفلنا السكة بالضبة والمفتاح، عدوا على مهلكم 🔒😂',
+    'سدّة نااار ومين اللي هيشيل؟ 💥',
   ],
   OPPONENT_PASS: [
     'عدّي يا معلم.. مالكش في اللعبة دي 😏',
@@ -64,9 +76,32 @@ const GENERAL_FALLBACK_QUOTES: Record<BotChatTrigger, string[]> = {
     'أتقل تاخد حاجة نضيفة 😎',
     'نازل بالثقيل أهو.. وريني هتعمل إيه 😏',
   ],
+  PLAY_DOUBLE: [
+    'بلاطة تسد عين الشمس في وقتها تمام 😎🔥',
+    'البلاطة دي معمولة للي يقدرها 👌🎲',
+    'خد البلاطة دي وركز في اللي جاي 😏',
+    'بلاطة في الجون ومحدش هيلحقها 💥',
+  ],
+  OPENING_66: [
+    'الدوش ستات بيفتح الماتش للكبار بس 🔥',
+    'أول خطوة في طريق البونط.. دوش يا معلم 😎',
+    'الدوش نزل والماتش ولع من أولها 🎲💥',
+  ],
+  MATCH_WIN: [
+    'الماتش خلص والحريف بان.. ألف مبروك لينا وهاردلك ليكم 🏆👑',
+    'كده خلصنا الحساب وقفلنا الدكانة، روحوا استريحوا بقى 😎🔥',
+  ],
+  MATCH_LOSS: [
+    'الماتش راح في داهية بسبب التكتيك العبقري بتاع زميلي 🤦‍♂️😂',
+    'خيرها في غيرها.. بس محتاجين نغير الفريق كله بصراحة 💔😂',
+  ],
+  PARTNER_CHEER: [
+    'عاش يا زميلي والله، رمية معلم 👌🔥',
+    'هو ده اللعب الصح يا شريكي، كمل على كده 😎',
+  ],
 };
 
-const BOT_QUOTES: Record<BotChatTrigger, Partial<Record<BotId, string[]>>> = {
+const BOT_QUOTES: Partial<Record<BotChatTrigger, Partial<Record<BotId, string[]>>>> = {
   ROUND_WIN: {
     EL_SAMY: [
       'قولتلك بلاش تلعب مع المعلمين يا كابتن 😎',
@@ -238,12 +273,149 @@ const BOT_QUOTES: Record<BotChatTrigger, Partial<Record<BotId, string[]>>> = {
       'السرعة في اللعب دي لعبتي 🚀',
     ],
   },
+  OPENING_66: {
+    EL_SAMY: [
+      'الدوش ستات بيفتح الماتش للكبار بس 🔥',
+      'أول خطوة في طريق البونط.. دوش يا معلم 😎',
+      'الدوش ده معمول للي يفهم فيه 🎲👌',
+    ],
+    RAQAM_WAHED: [
+      'رقم واحد يبدأ بالدوش والباقي يسكت 👑',
+      'دي ضربة البداية والباقي تفاصيل 🏆',
+    ],
+    EL_RAYEQ: [
+      'دوش رايق على الصبح مع فنجان قهوة ☕😎',
+      'بداية حلوة والدور ماشي هادي ☕',
+    ],
+    EL_TITO: [
+      'نولع الماتش من أولها بالدوش 🔥💥',
+      'ستات يا رجالة وبداية نارية ⚡',
+    ],
+    EL_QETT: [
+      'القط فتح بالدوش واللعب سخن 😼👌',
+    ],
+    EL_HEMA: [
+      'الدوش ده نقطة ارتكاز نظرية الماتش 🧠📐',
+    ],
+    EL_HOBA: [
+      'دوش في ثانية وهوبا طايرين ⚡🚀',
+    ],
+  },
+  PLAY_DOUBLE: {
+    EL_SAMY: [
+      'بلاطة تسد عين الشمس في وقتها تمام 😎🔥',
+      'البلاطة دي معمولة للي يقدرها 👌🎲',
+      'خد البلاطة دي وركز في اللي جاي 😏',
+    ],
+    RAQAM_WAHED: [
+      'البلاطة دي عشان تعرفوا مين رقم واحد 👑',
+      'ضربة بلاطة بمقام ماتش كامل 🏆',
+    ],
+    EL_RAYEQ: [
+      'بلاطة بروقان ومن غير حرق دم ☕😎',
+      'نزلت البلاطة ومستني فنجان الشاي 👌',
+    ],
+    EL_TITO: [
+      'خد البلاطة دي وسخن اللعب 🔥',
+      'بلاطة في الجون ومحدش هيلحقها 💥',
+    ],
+    EL_QETT: [
+      'بلاطة قفلتها عليكم بمزاااج 😼👌',
+      'كمين بلاطات والقط مش بيرحم 😼',
+    ],
+    EL_HEMA: [
+      'بلاطة محسوبة هندسياً لقفل المسارات 🧠📐',
+      'حركة بلاطة استراتيجية 100% 🧠',
+    ],
+    EL_HOBA: [
+      'بلاطة على السريع وهوبا في مكانها ⚡',
+      'سرعة وبلاطة ومفيش وقت نضيعه 🚀',
+    ],
+  },
+  GAME_LOCKED: {
+    EL_SAMY: [
+      'سدّة وقفلناها.. عد ورقك وركز في النقط يا كابتن 🔒😎',
+      'القفلة دي معمولة بمعلمة.. مين معاه بونط؟ 🎲',
+    ],
+    RAQAM_WAHED: [
+      'قفلتها بإيدي عشان أحسمها بالنقط 👑🔒',
+      'السدّة دي فخ معمول لحضراتكم 🏆',
+    ],
+    EL_RAYEQ: [
+      'قفلنا الدور ونعد على مهلنا بروقان ☕🔒',
+      'سدّة رايقة وخيرها في غيرها لو خسرنا 😂',
+    ],
+    EL_TITO: [
+      'قفلناها وشيطنا الورق 🔥🔒',
+      'سدّة نااار ومين اللي هيشيل؟ 💥',
+    ],
+    EL_QETT: [
+      'مصيدة القفلة اشتغلت بنجاح 😼🔒',
+    ],
+    EL_HEMA: [
+      'سدّة بحسابات رياضية دقيقة لصالحنا 🧠🔒',
+    ],
+    EL_HOBA: [
+      'هوبا وقفلناها في ثانية ⚡🔒',
+    ],
+  },
+  ROUND_WIN_HIGH_POINTS: {
+    EL_SAMY: [
+      'بونط تقيل يشيل اللي ما يشتال يا مساكين 😂🔥',
+      'فوز عريض يرجعكم تلعبوا كوتشينة أحسن 😎',
+    ],
+    RAQAM_WAHED: [
+      'سكور تاريخي من رقم واحد.. اتعلموا بقى 👑🏆',
+      'ضربة موجعة وماتش بيقفل خلاص 😎',
+    ],
+    EL_RAYEQ: [
+      'بونط كبير ورايق زي ما الكتاب بيقول ☕😎',
+    ],
+    EL_TITO: [
+      'شيل النقط دي وألف سلامة عليك يا خصمي 🔥😂',
+    ],
+    EL_QETT: [
+      'عضة بونط كبير مش هتنسوها 😼🔥',
+    ],
+    EL_HEMA: [
+      'الفرق الرقمي في البونط ده غير قابل للتعويض 🧠😎',
+    ],
+    EL_HOBA: [
+      'هوبا وطيرنا بالبونط في السحاب ⚡🚀',
+    ],
+  },
 };
 
 @Injectable()
 export class BotService {
   private readonly logger = new Logger(BotService.name);
   private lastChatTimestamps: Map<string, number> = new Map(); // roomId_botId -> timestamp
+
+  /**
+   * Extensible context evaluator that determines if a move qualifies for a specialized dialogue trigger.
+   */
+  public evaluateContextualTrigger(
+    engine: DominoGameEngine,
+    seat: PlayerSeat,
+    baseTrigger: 'PLAY' | 'PASS' | 'ROUND_WIN' | 'ROUND_LOSS',
+    context?: BotReactionContext
+  ): BotChatTrigger {
+    if (baseTrigger === 'PLAY') {
+      if (context?.isOpening66) return 'OPENING_66';
+      if (context?.isDouble) return 'PLAY_DOUBLE';
+      return 'PLAY';
+    }
+    if (baseTrigger === 'ROUND_WIN') {
+      if (context?.isGameLocked) return 'GAME_LOCKED';
+      if ((context?.roundScore ?? 0) >= 25) return 'ROUND_WIN_HIGH_POINTS';
+      return 'ROUND_WIN';
+    }
+    if (baseTrigger === 'ROUND_LOSS') {
+      if (context?.isGameLocked) return 'GAME_LOCKED';
+      return 'ROUND_LOSS';
+    }
+    return baseTrigger;
+  }
 
   /**
    * Evaluates and selects a legal move for an Egyptian AI Bot based on personality and difficulty tier.
@@ -265,7 +437,16 @@ export class BotService {
     const chosenMove = this.selectMoveByDifficulty(legalMoves, profile.difficulty, engine, seat);
     const preferredEnd = chosenMove.validEnds[0] || 'LEFT';
 
-    const chat = this.generateSocialReaction(engine, seat, botId, 'PLAY');
+    // Contextual evaluation for special play triggers (Opening [6|6], Doubles, etc.)
+    const isDouble = chosenMove.tile[0] === chosenMove.tile[1];
+    const isOpening66 =
+      engine.getChain().getState().tiles.length === 0 &&
+      chosenMove.tile[0] === 6 &&
+      chosenMove.tile[1] === 6;
+    const context: BotReactionContext = { tile: chosenMove.tile, isDouble, isOpening66 };
+    const contextualTrigger = this.evaluateContextualTrigger(engine, seat, 'PLAY', context);
+
+    const chat = this.generateSocialReaction(engine, seat, botId, contextualTrigger, context);
 
     return {
       action: 'PLAY',
@@ -331,7 +512,8 @@ export class BotService {
     engine: DominoGameEngine,
     seat: PlayerSeat,
     botId: BotId,
-    trigger: BotChatTrigger
+    trigger: BotChatTrigger,
+    _context?: BotReactionContext
   ): BotChatMessage | undefined {
     const validBotId: BotId = (botId && OFFICIAL_BAFFA_BOTS[botId]) ? botId : 'EL_SAMY';
     const profile = OFFICIAL_BAFFA_BOTS[validBotId];
@@ -365,6 +547,7 @@ export class BotService {
       botName: profile.arabicName,
       seat,
       text,
+      trigger,
       timestamp: now,
     };
   }

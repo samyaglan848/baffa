@@ -1,4 +1,4 @@
-import type { PlayerSeat } from './domino';
+import type { PlayerSeat, DominoTile } from './domino';
 
 export type BotId =
   | 'EL_RAYEQ'      // الرايق (Weak, funny, makes obvious mistakes)
@@ -79,11 +79,35 @@ export const OFFICIAL_BAFFA_BOTS: Record<BotId, BotProfile> = {
   },
 };
 
+export type BotChatTrigger =
+  | 'PLAY'
+  | 'PLAY_DOUBLE'
+  | 'OPENING_66'
+  | 'GAME_LOCKED'
+  | 'PASS'
+  | 'OPPONENT_PASS'
+  | 'ROUND_WIN'
+  | 'ROUND_WIN_HIGH_POINTS'
+  | 'ROUND_LOSS'
+  | 'MATCH_WIN'
+  | 'MATCH_LOSS'
+  | 'PARTNER_CHEER';
+
+export interface BotReactionContext {
+  tile?: DominoTile;
+  isDouble?: boolean;
+  roundScore?: number;
+  isOpening66?: boolean;
+  isGameLocked?: boolean;
+  scoreDiff?: number;
+}
+
 export interface BotChatMessage {
   botId: BotId;
   botName: string;
   seat?: PlayerSeat;
   text: string;
   emoji?: string;
+  trigger?: BotChatTrigger;
   timestamp: number;
 }

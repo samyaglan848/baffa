@@ -470,6 +470,10 @@ describe('BAFFA Comprehensive Adversarial Security, Anti-Cheat & Data-Integrity 
         'Active Match Room'
       );
 
+      // Populate all 4 playing seats
+      room.seats[1] = { seat: 1, team: 2, occupied: true, playerId: 'p1', username: 'P1', avatar: '1', isBot: false, isConnected: true, isReady: true, presence: 'IN_ROOM' };
+      room.seats[2] = { seat: 2, team: 1, occupied: true, playerId: 'p2', username: 'P2', avatar: '1', isBot: false, isConnected: true, isReady: true, presence: 'IN_ROOM' };
+      room.seats[3] = { seat: 3, team: 2, occupied: true, playerId: 'p3', username: 'P3', avatar: '1', isBot: false, isConnected: true, isReady: true, presence: 'IN_ROOM' };
       room.matchStatus = 'PLAYING';
 
       // Outside attacker tries to join mid-match as a player -> not given a playing seat
@@ -488,7 +492,7 @@ describe('BAFFA Comprehensive Adversarial Security, Anti-Cheat & Data-Integrity 
 
       assert.throws(() => {
         roomService.updateSettings(room.id, 'admin_2', { targetScore: 151 });
-      }, /Cannot update settings while match is in progress/);
+      }, /Cannot update.*settings while match is in progress/);
 
       assert.throws(() => {
         roomService.toggleBot(room.id, 'admin_2', 1, true);

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   BotChatMessage,
   BotId,
+  BotReactionContext,
   ChainEnd,
   DominoTile,
   MatchResult,
@@ -1129,7 +1130,12 @@ export class GameSessionService {
     if (winningBots.length > 0) {
       const bot = winningBots[Math.floor(Math.random() * winningBots.length)];
       setTimeout(() => {
-        const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, 'ROUND_WIN');
+        const context: BotReactionContext = {
+          roundScore: roundResult.roundScore,
+          isGameLocked: roundResult.reason === 'BLOCKED',
+        };
+        const trigger = this.botService.evaluateContextualTrigger(engine, bot.seat, 'ROUND_WIN', context);
+        const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, trigger, context);
         if (chat) {
           engine.latestBotMessage = chat;
           try {
@@ -1144,7 +1150,11 @@ export class GameSessionService {
     if (losingBots.length > 0) {
       const bot = losingBots[Math.floor(Math.random() * losingBots.length)];
       setTimeout(() => {
-        const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, 'ROUND_LOSS');
+        const context: BotReactionContext = {
+          isGameLocked: roundResult.reason === 'BLOCKED',
+        };
+        const trigger = this.botService.evaluateContextualTrigger(engine, bot.seat, 'ROUND_LOSS', context);
+        const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, trigger, context);
         if (chat) {
           engine.latestBotMessage = chat;
           try {
