@@ -267,6 +267,37 @@ export const GameTable: React.FC<GameTableProps> = ({
   const hasAutoPassedRef = useRef(false);
   const [, setPassTick] = useState(0);
 
+  // Active bot speech bubbles by seat: seat -> { text: string; timestamp: number }
+  const [botSpeechBySeat, setBotSpeechBySeat] = useState<Record<number, { text: string; timestamp: number }>>({});
+
+  useEffect(() => {
+    if (!latestBotMessage) return;
+    const seatNum =
+      latestBotMessage.seat !== undefined && latestBotMessage.seat !== null
+        ? Number(latestBotMessage.seat)
+        : null;
+
+    if (seatNum !== null) {
+      setBotSpeechBySeat((prev) => ({
+        ...prev,
+        [seatNum]: { text: latestBotMessage.text, timestamp: latestBotMessage.timestamp },
+      }));
+
+      const timer = setTimeout(() => {
+        setBotSpeechBySeat((prev) => {
+          if (prev[seatNum]?.timestamp === latestBotMessage.timestamp) {
+            const next = { ...prev };
+            delete next[seatNum];
+            return next;
+          }
+          return prev;
+        });
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [latestBotMessage]);
+
   // Authoritative tile placement vs pass detection
   const prevChainTilesCountRef = useRef(gameState.chain.tiles.length);
   const prevConsecutivePassCountRef = useRef(gameState.consecutivePassCount);
@@ -1052,12 +1083,15 @@ export const GameTable: React.FC<GameTableProps> = ({
       (player.playerId && player.playerId.startsWith('bot_')) ||
       (seatInfo?.playerId && seatInfo.playerId.startsWith('bot_'))
     );
+    const botSpeech = botSpeechBySeat[Number(player.seat)];
     const isSpeakingBot = Boolean(
-      latestBotMessage &&
-      (latestBotMessage.seat !== undefined && latestBotMessage.seat !== null
-        ? Number(player.seat) === Number(latestBotMessage.seat)
-        : (isBotPlayer && (player.botId === latestBotMessage.botId || seatInfo?.botId === latestBotMessage.botId)))
+      (botSpeech && Date.now() - botSpeech.timestamp < 5000) ||
+      (latestBotMessage &&
+        (latestBotMessage.seat !== undefined && latestBotMessage.seat !== null
+          ? Number(player.seat) === Number(latestBotMessage.seat)
+          : (isBotPlayer && (player.botId === latestBotMessage.botId || seatInfo?.botId === latestBotMessage.botId))))
     );
+    const activeBotText = botSpeech?.text || latestBotMessage?.text;
     const isMe = mySeat !== null && mySeat !== undefined && Number(mySeat) === Number(player.seat);
     const isPassed =
       !isCurrentTurn &&
@@ -1189,7 +1223,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               pointerEvents: 'none',
             }}
           >
-            <span>{latestBotMessage?.text}</span>
+            <span>{activeBotText}</span>
             <div
               style={{
                 position: 'absolute',

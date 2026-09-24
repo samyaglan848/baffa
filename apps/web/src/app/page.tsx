@@ -269,6 +269,8 @@ export default function App() {
         allowJudge: true,
         allowSpectator: true,
         voiceEnabled: true,
+        quickChatEnabled: true,
+        reactionsEnabled: true,
         selectedBotId: 'EL_SAMY',
       },
       'ADMIN'

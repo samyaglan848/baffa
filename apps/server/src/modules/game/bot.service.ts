@@ -339,21 +339,6 @@ export class BotService {
 
     const key = `${engine.getRoomId()}_${validBotId}`;
     const now = Date.now();
-    const lastChat = this.lastChatTimestamps.get(key) || 0;
-
-    // Critical events ALWAYS trigger with 100% reliability and zero cooldown:
-    // ROUND_WIN (round victory celebration), ROUND_LOSS (round defeat blaming), OPPONENT_PASS (taunting passing player), PASS (bot excuse)
-    const isCritical = trigger === 'ROUND_WIN' || trigger === 'ROUND_LOSS' || trigger === 'OPPONENT_PASS' || trigger === 'PASS';
-
-    if (!isCritical) {
-      // Normal 'PLAY' turns: 3s cooldown per bot, high 70% probability
-      if (now - lastChat < 3000) {
-        return undefined;
-      }
-      if (Math.random() > 0.70) {
-        return undefined;
-      }
-    }
 
     const botPool = BOT_QUOTES[trigger]?.[validBotId] || [];
     const fallbackPool = GENERAL_FALLBACK_QUOTES[trigger] || [];
@@ -361,7 +346,18 @@ export class BotService {
 
     if (combinedQuotes.length === 0) return undefined;
 
-    const text = combinedQuotes[Math.floor(Math.random() * combinedQuotes.length)];
+    // Pick quote, rotating away from immediate previous quote if possible
+    let text = combinedQuotes[Math.floor(Math.random() * combinedQuotes.length)];
+    if (combinedQuotes.length > 1 && (this as any)._lastQuotes?.get(key) === text) {
+      const remaining = combinedQuotes.filter((q) => q !== text);
+      if (remaining.length > 0) {
+        text = remaining[Math.floor(Math.random() * remaining.length)];
+      }
+    }
+    if (!(this as any)._lastQuotes) {
+      (this as any)._lastQuotes = new Map<string, string>();
+    }
+    (this as any)._lastQuotes.set(key, text);
     this.lastChatTimestamps.set(key, now);
 
     return {

@@ -81,13 +81,25 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       },
       broadcastBotChat: (roomId: string, chat: BotChatMessage) => {
         const room = this.roomService.getRoom(roomId) || this.roomService.getRoomByCode(roomId);
-        if (room) {
-          this.server.to(room.id).emit(ServerEvents.BOT_MESSAGE, chat);
-          if (room.code && room.code !== room.id) {
-            this.server.to(room.code).emit(ServerEvents.BOT_MESSAGE, chat);
+        const actualRoomId = room ? room.id : roomId;
+        const roomCode = room?.code;
+
+        this.server.to(actualRoomId).emit(ServerEvents.BOT_MESSAGE, chat);
+        if (roomCode && roomCode !== actualRoomId) {
+          this.server.to(roomCode).emit(ServerEvents.BOT_MESSAGE, chat);
+        }
+        if (roomId !== actualRoomId && roomId !== roomCode) {
+          this.server.to(roomId).emit(ServerEvents.BOT_MESSAGE, chat);
+        }
+
+        // Direct emission to every connected player socket in this room
+        const connected = this.roomService.getConnectedPlayersInRoom(actualRoomId);
+        for (const cp of connected) {
+          if (cp.socketId) {
+            this.server.to(cp.socketId).emit(ServerEvents.BOT_MESSAGE, chat);
           }
         }
-        this.server.to(roomId).emit(ServerEvents.BOT_MESSAGE, chat);
+        this.logger.log(`[BOT_MESSAGE_BROADCAST] room=${actualRoomId} bot=${chat.botName} (seat ${chat.seat}) said: "${chat.text}" (targets: ${connected.length})`);
       },
       broadcastStatsUpdated: (roomId: string) => {
         this.server.to(roomId).emit(ServerEvents.STATS_UPDATED, { timestamp: Date.now() });
