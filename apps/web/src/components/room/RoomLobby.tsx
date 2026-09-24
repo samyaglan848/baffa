@@ -389,12 +389,12 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               }}
             >
               {isCurrentUser
-                ? '✨ مقعدك الحالي'
+                ? (isMobile ? '✨ مقعدك' : '✨ مقعدك الحالي')
                 : isBotSeat
-                ? '🤖 بوت (اضغط للجلوس مكانه)'
+                ? (isMobile ? '🤖 بوت' : '🤖 بوت (اضغط للجلوس مكانه)')
                 : isOtherHuman
-                ? '👤 لاعب حقيقي (مشغول)'
-                : '🟢 مقعد شاغر (اضغط للجلوس)'}
+                ? (isMobile ? '👤 لاعب' : '👤 لاعب حقيقي (مشغول)')
+                : (isMobile ? '🟢 شاغر' : '🟢 مقعد شاغر (اضغط للجلوس)')}
             </span>
 
             {isAdmin && (
@@ -433,7 +433,19 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
           </div>
         </div>
 
-        <span className="arabic-font" style={{ fontSize: '0.8rem', color: 'var(--baffa-text-muted)', fontWeight: 700 }}>
+        <span
+          className="arabic-font"
+          style={{
+            fontSize: isMobile ? '0.72rem' : '0.8rem',
+            color: 'var(--baffa-text-muted)',
+            fontWeight: 700,
+            maxWidth: isMobile ? '110px' : undefined,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            textAlign: 'center',
+          }}
+        >
           {positionLabel}
         </span>
       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import {
+  BotChatMessage,
   ClientEvents,
   EmoteReactionBroadcastPayload,
   PlayerSeat,
@@ -157,10 +158,31 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
       }, 4600);
     };
 
+    const onBotMessage = (payload: BotChatMessage) => {
+      const id = `bot-${payload.botId}-${payload.timestamp}`;
+      setActiveChats((prev) => [
+        ...prev,
+        {
+          id,
+          userId: `bot_${payload.seat}`,
+          senderName: payload.botName,
+          text: payload.text,
+          seat: payload.seat,
+          createdAt: payload.timestamp,
+        },
+      ]);
+      playSound('pop');
+      setTimeout(() => {
+        setActiveChats((prev) => prev.filter((c) => c.id !== id));
+      }, 5500);
+    };
+
+    socket.on(ServerEvents.BOT_MESSAGE, onBotMessage);
     socket.on(ServerEvents.QUICK_CHAT_BROADCAST, onQuickChat);
     socket.on(ServerEvents.EMOTE_REACTION_BROADCAST, onReaction);
 
     return () => {
+      socket.off(ServerEvents.BOT_MESSAGE, onBotMessage);
       socket.off(ServerEvents.QUICK_CHAT_BROADCAST, onQuickChat);
       socket.off(ServerEvents.EMOTE_REACTION_BROADCAST, onReaction);
     };

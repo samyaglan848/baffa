@@ -980,6 +980,7 @@ export class GameSessionService {
           engine.playTile(currentSeat, fallback.tile, fallback.validEnds[0] || 'LEFT');
         } else {
           engine.passTurn(currentSeat);
+          this.triggerBotOpponentPassReaction(roomId, currentSeat);
         }
       }
 
@@ -1121,8 +1122,8 @@ export class GameSessionService {
     const winningBots = botSeats.filter((b) => b.isWinner);
     const losingBots = botSeats.filter((b) => !b.isWinner);
 
-    // Winning bot taunts the defeated opponents (~600ms)
-    if (winningBots.length > 0 && Math.random() < 0.9) {
+    // Winning bot taunts the defeated opponents (~500ms)
+    if (winningBots.length > 0) {
       const bot = winningBots[Math.floor(Math.random() * winningBots.length)];
       setTimeout(() => {
         const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, 'ROUND_WIN');
@@ -1131,11 +1132,11 @@ export class GameSessionService {
             this.callbacks?.broadcastBotChat(roomId, chat);
           } catch {}
         }
-      }, 600);
+      }, 500);
     }
 
-    // Losing bot mocks/blames teammate ("أنا بلعب مع فردة تعبانة وضيعتني يا زميلي!") (~1600ms)
-    if (losingBots.length > 0 && Math.random() < 0.9) {
+    // Losing bot mocks/blames teammate ("أنا بلعب مع فردة تعبانة وضيعتني يا زميلي!") (~1800ms)
+    if (losingBots.length > 0) {
       const bot = losingBots[Math.floor(Math.random() * losingBots.length)];
       setTimeout(() => {
         const chat = this.botService.generateSocialReaction(engine, bot.seat, bot.botId, 'ROUND_LOSS');
@@ -1144,7 +1145,7 @@ export class GameSessionService {
             this.callbacks?.broadcastBotChat(roomId, chat);
           } catch {}
         }
-      }, 1600);
+      }, 1800);
     }
   }
 

@@ -1040,17 +1040,23 @@ export const GameTable: React.FC<GameTableProps> = ({
 
   const renderBadgeOnly = (player: SanitizedPlayerState | undefined, relation: string, orientation: 'row' | 'column' = 'row') => {
     if (!player) return null;
+    const seatInfo = room?.seats?.[player.seat];
     const isCurrentTurn =
       gameState.currentTurnSeat !== null &&
       gameState.currentTurnSeat !== undefined &&
       Number(gameState.currentTurnSeat) === Number(player.seat) &&
       gameState.status === 'PLAYING';
+    const isBotPlayer = Boolean(
+      player.isBot ||
+      seatInfo?.isBot ||
+      (player.playerId && player.playerId.startsWith('bot_')) ||
+      (seatInfo?.playerId && seatInfo.playerId.startsWith('bot_'))
+    );
     const isSpeakingBot = Boolean(
       latestBotMessage &&
-      player.isBot &&
       (latestBotMessage.seat !== undefined && latestBotMessage.seat !== null
         ? Number(player.seat) === Number(latestBotMessage.seat)
-        : player.botId === latestBotMessage.botId)
+        : (isBotPlayer && (player.botId === latestBotMessage.botId || seatInfo?.botId === latestBotMessage.botId)))
     );
     const isMe = mySeat !== null && mySeat !== undefined && Number(mySeat) === Number(player.seat);
     const isPassed =
@@ -1061,7 +1067,6 @@ export const GameTable: React.FC<GameTableProps> = ({
       (Date.now() - (recentlyPassedSeats[Number(player.seat)] || 0)) < 2200;
     const isPlayerSpeaking = Boolean(player.playerId && isSpeaking(player.playerId));
     const warnings = player.warnings || 0;
-    const seatInfo = room?.seats?.[player.seat];
     const effectiveAvatar = (isMe ? (currentUserAvatar || player.avatar) : player.avatar) || seatInfo?.avatar;
     const isAway = Boolean(!player.isBot && (seatInfo?.presence === 'AWAY' || (player as any).presence === 'AWAY'));
 
@@ -1112,7 +1117,7 @@ export const GameTable: React.FC<GameTableProps> = ({
         )}
 
         {/* Pass Announcement Bubble on Avatar */}
-        {isPassed && !isAway && (
+        {isPassed && !isAway && !isSpeakingBot && (
           <div
             className="animate-float arabic-font"
             style={{
@@ -1155,15 +1160,17 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         )}
 
-        {isSpeakingBot && !isPassed && (
+        {isSpeakingBot && (
           <div
             className="animate-float arabic-font"
             style={{
               position: 'absolute',
-              bottom: orientation === 'column' ? '100%' : '110%',
+              top: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? '110%' : undefined,
+              bottom: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? undefined : (orientation === 'column' ? '100%' : '110%'),
               left: '50%',
               transform: 'translateX(-50%)',
-              marginBottom: '10px',
+              marginTop: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? '8px' : undefined,
+              marginBottom: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? undefined : '10px',
               padding: isMobile ? '4px 10px' : '6px 14px',
               borderRadius: isMobile ? '12px' : '16px',
               backgroundColor: 'var(--baffa-gold-primary)',
@@ -1175,7 +1182,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               lineHeight: 1.3,
               width: 'max-content',
               maxWidth: isLandscape ? '140px' : isMobile ? '160px' : '220px',
-              zIndex: 55,
+              zIndex: 65,
               boxShadow: '0 6px 18px rgba(0, 0, 0, 0.75), 0 0 10px rgba(245, 158, 11, 0.4)',
               border: '1.5px solid rgba(255, 255, 255, 0.3)',
               wordBreak: 'break-word',
@@ -1186,14 +1193,16 @@ export const GameTable: React.FC<GameTableProps> = ({
             <div
               style={{
                 position: 'absolute',
-                bottom: '-6px',
+                top: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? '-6px' : undefined,
+                bottom: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? undefined : '-6px',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 width: 0,
                 height: 0,
                 borderLeft: '6px solid transparent',
                 borderRight: '6px solid transparent',
-                borderTop: '6px solid var(--baffa-gold-primary)',
+                borderTop: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? undefined : '6px solid var(--baffa-gold-primary)',
+                borderBottom: relation === 'زميلك' || (relativePlayers.TOP && Number(relativePlayers.TOP.seat) === Number(player.seat)) ? '6px solid var(--baffa-gold-primary)' : undefined,
               }}
             />
           </div>
@@ -1201,15 +1210,21 @@ export const GameTable: React.FC<GameTableProps> = ({
 
         <div style={{
           padding: orientation === 'column'
-            ? (isLandscape ? '2px 4px' : '5px 8px')
-            : (isLandscape ? '2px 6px' : '4px 10px'),
+            ? (isLandscape ? '2px 4px' : isMobile ? '3px 5px' : '5px 8px')
+            : (isLandscape ? '2px 6px' : isMobile ? '3px 7px' : '4px 10px'),
           borderRadius: isLandscape ? '8px' : '12px',
           backgroundColor: isCurrentTurn ? 'rgba(245, 158, 11, 0.15)' : 'rgba(18, 29, 45, 0.82)',
           border: isCurrentTurn ? '2px solid var(--baffa-gold-primary)' : '1px solid var(--baffa-surface-glass-border)',
           boxShadow: isCurrentTurn ? 'var(--baffa-shadow-glow-gold)' : '0 4px 12px rgba(0,0,0,0.5)',
-          display: 'flex', flexDirection: orientation, alignItems: 'center', gap: isLandscape ? '4px' : '6px', transition: 'all 0.3s ease',
+          display: 'flex',
+          flexDirection: orientation,
+          alignItems: 'center',
+          gap: isLandscape ? '3px' : isMobile ? (orientation === 'column' ? '3px' : '5px') : '6px',
+          transition: 'all 0.3s ease',
           backdropFilter: 'blur(4px)',
           position: 'relative',
+          maxWidth: isMobile && orientation === 'column' ? '64px' : undefined,
+          boxSizing: 'border-box',
         }}>
           {isCurrentTurn && turnSecondsLeft !== null && (
             <div style={{
@@ -1235,26 +1250,70 @@ export const GameTable: React.FC<GameTableProps> = ({
             </div>
           )}
 
-          {/* Player Avatar */}
-          <div style={{
-            width: isLandscape ? '22px' : '28px', height: isLandscape ? '22px' : '28px', borderRadius: '50%', backgroundColor: 'var(--baffa-bg-elevated)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: isCurrentTurn ? '2px solid var(--baffa-gold-primary)' : '1px solid rgba(255,255,255,0.15)',
-            boxShadow: isCurrentTurn ? '0 0 10px rgba(245, 158, 11, 0.7), inset 0 0 6px rgba(245, 158, 11, 0.3)' : 'none',
-            position: 'relative', transition: 'all 0.3s ease', flexShrink: 0,
-            overflow: 'hidden'
-          }}>
-            <UserAvatar
-              avatar={effectiveAvatar}
-              username={player.username}
-              isBot={player.isBot}
-              botId={player.botId}
-              size={isLandscape ? 22 : 28}
-            />
+          {/* Player Avatar with Mobile Mic Badge Overlay */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{
+              width: isLandscape ? '22px' : '28px', height: isLandscape ? '22px' : '28px', borderRadius: '50%', backgroundColor: 'var(--baffa-bg-elevated)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: isCurrentTurn ? '2px solid var(--baffa-gold-primary)' : '1px solid rgba(255,255,255,0.15)',
+              boxShadow: isCurrentTurn ? '0 0 10px rgba(245, 158, 11, 0.7), inset 0 0 6px rgba(245, 158, 11, 0.3)' : 'none',
+              overflow: 'hidden'
+            }}>
+              <UserAvatar
+                avatar={effectiveAvatar}
+                username={player.username}
+                isBot={player.isBot}
+                botId={player.botId}
+                size={isLandscape ? 22 : 28}
+              />
+            </div>
+
+            {/* Compact Corner Mic Indicator for Mobile (Zero vertical space overhead) */}
+            {!player.isBot && isMobile && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '-2px',
+                  right: '-2px',
+                  width: '13px',
+                  height: '13px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '7px',
+                  backgroundColor: isPlayerSpeaking
+                    ? 'rgba(34, 197, 94, 0.95)'
+                    : player.isVoiceMuted
+                    ? 'rgba(239, 68, 68, 0.95)'
+                    : 'rgba(18, 29, 45, 0.95)',
+                  border: isPlayerSpeaking
+                    ? '1.5px solid #22c55e'
+                    : player.isVoiceMuted
+                    ? '1.5px solid #ef4444'
+                    : '1px solid rgba(255, 255, 255, 0.35)',
+                  boxShadow: isPlayerSpeaking
+                    ? '0 0 8px rgba(34, 197, 94, 0.9)'
+                    : '0 2px 4px rgba(0,0,0,0.6)',
+                  color: isPlayerSpeaking ? '#fff' : player.isVoiceMuted ? '#f87171' : '#9ca3af',
+                  animation: isPlayerSpeaking ? 'pulse 0.8s infinite' : 'none',
+                  zIndex: 5,
+                }}
+                title={
+                  isPlayerSpeaking
+                    ? `${player.username} يتحدث الآن 🎙️`
+                    : player.isVoiceMuted
+                    ? 'الميكروفون مكتوم بقرار من الحكم 🔇'
+                    : 'الميكروفون متصل'
+                }
+              >
+                {player.isVoiceMuted ? '🔇' : '🎙️'}
+              </div>
+            )}
           </div>
 
-          {/* Active Speaking Mic Indicator next to each player */}
-          {!player.isBot && (
+          {/* Active Speaking Mic Indicator for Desktop */}
+          {!player.isBot && !isMobile && (
             <div
               style={{
                 width: isLandscape ? '16px' : '20px',
@@ -1294,9 +1353,29 @@ export const GameTable: React.FC<GameTableProps> = ({
           )}
 
           {/* Player Name and Role/Warnings */}
-          <div style={{ textAlign: orientation === 'column' ? 'center' : 'left' }}>
-            <div style={{ fontSize: isLandscape ? '0.7rem' : isMobile ? '0.75rem' : '0.8rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span>{player.username}</span>
+          <div style={{ textAlign: orientation === 'column' ? 'center' : 'left', minWidth: 0, overflow: 'hidden' }}>
+            <div style={{
+              fontSize: isLandscape ? '0.7rem' : isMobile ? '0.74rem' : '0.8rem',
+              fontWeight: 800,
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: orientation === 'column' ? 'center' : 'flex-start',
+              gap: '3px',
+              minWidth: 0,
+            }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  maxWidth: isMobile ? (orientation === 'column' ? '54px' : '72px') : undefined,
+                  overflow: isMobile ? 'hidden' : undefined,
+                  textOverflow: isMobile ? 'ellipsis' : undefined,
+                  whiteSpace: 'nowrap',
+                }}
+                title={player.username}
+              >
+                {player.username}
+              </span>
               {isAway && (
                 <span
                   className="arabic-font"
@@ -1305,15 +1384,17 @@ export const GameTable: React.FC<GameTableProps> = ({
                     color: '#fff',
                     fontSize: '0.62rem',
                     fontWeight: 900,
-                    padding: '1px 5px',
-                    borderRadius: '6px',
+                    padding: isMobile && orientation === 'column' ? '0 2px' : '1px 5px',
+                    borderRadius: '4px',
                     border: '1px solid rgba(255, 255, 255, 0.4)',
                     boxShadow: '0 0 6px rgba(239, 68, 68, 0.8)',
                     animation: 'pulse 1s infinite',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
                   }}
                   title="اللاعب في تبويب أو نافذة أخرى حالياً"
                 >
-                  ⚠️ خارج اللعبة
+                  {isMobile && orientation === 'column' ? '⚠️' : '⚠️ خارج اللعبة'}
                 </span>
               )}
               {warnings === 1 && (
@@ -1499,7 +1580,12 @@ export const GameTable: React.FC<GameTableProps> = ({
       : '';
 
     return (
-      <div style={{ display: 'flex', flexDirection: orientation, gap: isLandscape ? '2px' : isMobile ? '2px' : '4px' }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: orientation,
+        gap: orientation === 'column' ? 0 : (isLandscape ? '2px' : isMobile ? '2px' : '4px'),
+        flexShrink: 0,
+      }}>
         {Array.from({ length: tileCount }).map((_, idx) => (
           <div
             key={idx}
@@ -1507,6 +1593,7 @@ export const GameTable: React.FC<GameTableProps> = ({
             style={{
               animationDelay: isDealingRound ? `${idx * 90}ms` : undefined,
               marginTop: orientation === 'column' && idx > 0 ? (isLandscape ? '-22px' : isMobile ? '-18px' : '-8px') : undefined,
+              flexShrink: 0,
             }}
           >
             <DominoTile
@@ -2020,10 +2107,10 @@ export const GameTable: React.FC<GameTableProps> = ({
                 renderHiddenCards(relativePlayers.TOP, 'row', 'TOP')
               )}
             </div>
-            <div style={{ gridColumn: '1 / 2', gridRow: '2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ gridColumn: '1 / 2', gridRow: '2', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '100%', overflow: 'visible' }}>
               {/* In RTL, gridColumn 1 is visually on the RIGHT. The Right opponent should sit here. */}
               {(isMobile || isLandscape) ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: isMobile ? '2px' : '4px', flexShrink: 0 }}>
                   {renderBadgeOnly(
                     relativePlayers.RIGHT,
                     getTeamLabel(relativePlayers.RIGHT?.team ?? 2),
@@ -2035,10 +2122,10 @@ export const GameTable: React.FC<GameTableProps> = ({
                 renderHiddenCards(relativePlayers.RIGHT, 'column', 'RIGHT')
               )}
             </div>
-            <div style={{ gridColumn: '3 / 4', gridRow: '2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ gridColumn: '3 / 4', gridRow: '2', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '100%', overflow: 'visible' }}>
               {/* In RTL, gridColumn 3 is visually on the LEFT. The Left opponent should sit here. */}
               {(isMobile || isLandscape) ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: isMobile ? '2px' : '4px', flexShrink: 0 }}>
                   {renderBadgeOnly(
                     relativePlayers.LEFT,
                     getTeamLabel(relativePlayers.LEFT?.team ?? 2),

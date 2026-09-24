@@ -333,32 +333,29 @@ export class BotService {
     botId: BotId,
     trigger: BotChatTrigger
   ): BotChatMessage | undefined {
-    const key = `${engine.getRoomId()}_${botId}`;
+    const validBotId: BotId = (botId && OFFICIAL_BAFFA_BOTS[botId]) ? botId : 'EL_SAMY';
+    const profile = OFFICIAL_BAFFA_BOTS[validBotId];
+    if (!profile) return undefined;
+
+    const key = `${engine.getRoomId()}_${validBotId}`;
     const now = Date.now();
     const lastChat = this.lastChatTimestamps.get(key) || 0;
 
-    // Cooldown based on trigger importance
-    const cooldownMs = trigger === 'ROUND_WIN' || trigger === 'ROUND_LOSS' ? 3000 : 5000;
-    if (now - lastChat < cooldownMs) {
-      return undefined;
+    // Critical events ALWAYS trigger with 100% reliability and zero cooldown:
+    // ROUND_WIN (round victory celebration), ROUND_LOSS (round defeat blaming), OPPONENT_PASS (taunting passing player), PASS (bot excuse)
+    const isCritical = trigger === 'ROUND_WIN' || trigger === 'ROUND_LOSS' || trigger === 'OPPONENT_PASS' || trigger === 'PASS';
+
+    if (!isCritical) {
+      // Normal 'PLAY' turns: 3s cooldown per bot, high 70% probability
+      if (now - lastChat < 3000) {
+        return undefined;
+      }
+      if (Math.random() > 0.70) {
+        return undefined;
+      }
     }
 
-    const profile = OFFICIAL_BAFFA_BOTS[botId];
-    if (!profile) return undefined;
-
-    // Trigger probability: High for critical events (win/loss/pass), moderate for casual plays
-    const probability =
-      trigger === 'ROUND_WIN' || trigger === 'ROUND_LOSS'
-        ? 0.9
-        : trigger === 'OPPONENT_PASS' || trigger === 'PASS'
-        ? 0.8
-        : 0.45;
-
-    if (Math.random() > probability) {
-      return undefined;
-    }
-
-    const botPool = BOT_QUOTES[trigger]?.[botId] || [];
+    const botPool = BOT_QUOTES[trigger]?.[validBotId] || [];
     const fallbackPool = GENERAL_FALLBACK_QUOTES[trigger] || [];
     const combinedQuotes = botPool.length > 0 ? botPool : fallbackPool;
 
@@ -368,7 +365,7 @@ export class BotService {
     this.lastChatTimestamps.set(key, now);
 
     return {
-      botId,
+      botId: validBotId,
       botName: profile.arabicName,
       seat,
       text,

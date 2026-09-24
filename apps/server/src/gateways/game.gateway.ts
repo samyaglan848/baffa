@@ -80,6 +80,13 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.server.to(socketId).emit(ServerEvents.MOVE_REJECTED, { reason: error });
       },
       broadcastBotChat: (roomId: string, chat: BotChatMessage) => {
+        const room = this.roomService.getRoom(roomId) || this.roomService.getRoomByCode(roomId);
+        if (room) {
+          this.server.to(room.id).emit(ServerEvents.BOT_MESSAGE, chat);
+          if (room.code && room.code !== room.id) {
+            this.server.to(room.code).emit(ServerEvents.BOT_MESSAGE, chat);
+          }
+        }
         this.server.to(roomId).emit(ServerEvents.BOT_MESSAGE, chat);
       },
       broadcastStatsUpdated: (roomId: string) => {
