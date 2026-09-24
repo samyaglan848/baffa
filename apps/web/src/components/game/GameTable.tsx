@@ -1409,9 +1409,9 @@ export const GameTable: React.FC<GameTableProps> = ({
             ? (isLandscape ? '2px 4px' : isMobile ? '3px 5px' : '5px 8px')
             : (isLandscape ? '2px 6px' : isMobile ? '3px 7px' : '4px 10px'),
           borderRadius: isLandscape ? '8px' : '12px',
-          backgroundColor: isCurrentTurn ? 'rgba(245, 158, 11, 0.15)' : 'rgba(18, 29, 45, 0.82)',
-          border: isCurrentTurn ? '2px solid var(--baffa-gold-primary)' : '1px solid var(--baffa-surface-glass-border)',
-          boxShadow: isCurrentTurn ? 'var(--baffa-shadow-glow-gold)' : '0 4px 12px rgba(0,0,0,0.5)',
+          backgroundColor: isCurrentTurn ? 'rgba(245, 158, 11, 0.18)' : 'rgba(10, 16, 30, 0.88)',
+          border: isCurrentTurn ? '2px solid var(--baffa-gold-primary)' : '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow: isCurrentTurn ? '0 0 20px rgba(245, 158, 11, 0.6), inset 0 0 10px rgba(245, 158, 11, 0.2)' : '0 6px 16px rgba(0,0,0,0.65)',
           display: 'flex',
           flexDirection: orientation,
           alignItems: 'center',
@@ -1805,7 +1805,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxHeight: '100dvh', width: '100vw', maxWidth: '100vw', backgroundColor: '#090d13', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxHeight: '100dvh', width: '100vw', maxWidth: '100vw', background: 'radial-gradient(ellipse at 50% 30%, #0d152a 0%, #04070e 100%)', backgroundColor: '#04070e', overflow: 'hidden' }}>
       {isJudge && (
         <div style={{ zIndex: 40, width: '100%', padding: '2px 8px 0', display: 'flex', justifyContent: 'center' }}>
           <RefereeControlHub
@@ -2089,19 +2089,19 @@ export const GameTable: React.FC<GameTableProps> = ({
         zIndex: 45,
         boxSizing: 'border-box',
         flexShrink: 0,
-        backgroundColor: 'rgba(8, 13, 22, 0.7)',
-        backdropFilter: 'blur(8px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+        backgroundColor: 'rgba(7, 12, 24, 0.88)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(245, 158, 11, 0.15)',
       }}>
-        {/* Left: Exit Button & Baffa Logo */}
+        {/* Left: Exit Button & Baffa Logo with Emblem */}
         <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '6px' : '10px' }}>
           <button 
             onClick={() => setShowLeaveConfirm(true)} 
             style={{ 
               color: 'var(--baffa-text-muted)',
-              backgroundColor: 'rgba(18, 29, 45, 0.75)',
+              backgroundColor: 'rgba(14, 21, 38, 0.85)',
               backdropFilter: 'blur(6px)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.2)',
               borderRadius: '50%',
               width: isLandscape ? '28px' : '32px',
               height: isLandscape ? '28px' : '32px',
@@ -2115,7 +2115,25 @@ export const GameTable: React.FC<GameTableProps> = ({
           >
             <ArrowLeft size={isLandscape ? 14 : 16} />
           </button>
-          <span className="arabic-font" style={{ fontSize: isLandscape ? '1.05rem' : '1.25rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>بَفّة</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <div
+              style={{
+                width: isLandscape ? '22px' : '26px',
+                height: isLandscape ? '22px' : '26px',
+                borderRadius: '7px',
+                background: 'linear-gradient(145deg, #fbbf24 0%, #d97706 50%, #92400e 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 10px rgba(245, 158, 11, 0.45)',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                userSelect: 'none',
+              }}
+            >
+              <span style={{ fontSize: isLandscape ? '0.78rem' : '0.92rem', fontWeight: 900, color: '#080d1a', lineHeight: 1 }}>B</span>
+            </div>
+            <span className="arabic-font" style={{ fontSize: isLandscape ? '1.05rem' : '1.25rem', fontWeight: 900, color: 'var(--baffa-gold-primary)', letterSpacing: '0.5px' }}>بَفّة</span>
+          </div>
         </div>
 
         {/* Center: Sleek Unified Score Badge (Target for flying round-end cards) */}
@@ -2127,12 +2145,12 @@ export const GameTable: React.FC<GameTableProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: isLandscape ? '4px' : isMobile ? '6px' : '10px',
-            backgroundColor: 'rgba(10, 24, 20, 0.92)',
-            backdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(8, 13, 26, 0.94)',
+            backdropFilter: 'blur(10px)',
             padding: isLandscape ? '2px 8px' : isMobile ? '3px 10px' : '5px 16px',
             borderRadius: '24px',
-            border: '1px solid rgba(245, 158, 11, 0.35)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+            border: '1.5px solid rgba(245, 158, 11, 0.45)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.7), 0 0 16px rgba(245, 158, 11, 0.2)',
             userSelect: 'none',
           }}
         >
@@ -2272,7 +2290,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           </>
         )}
 
-        {/* INNER WOODEN TABLE */}
+        {/* INNER SOVEREIGN TABLE */}
         <div 
           data-table-felt="true"
           style={{
@@ -2282,10 +2300,19 @@ export const GameTable: React.FC<GameTableProps> = ({
           gridTemplateColumns: 'auto 1fr auto',
           gridTemplateRows: 'auto 1fr auto',
           gap: isLandscape ? '2px' : isMobile ? '4px' : '10px',
-          background: 'radial-gradient(circle at center, #1b4d3e 0%, #0c261e 100%)', // Real green casino felt
-          boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,1)',
-          border: isLandscape ? '3px solid #3b2818' : isMobile ? '5px solid #3b2818' : '12px solid #3b2818', // Wooden table border
-          borderRadius: isLandscape ? '14px' : isMobile ? '18px' : '40px',
+          background: 'radial-gradient(ellipse at 50% 50%, #151f38 0%, #0c1326 65%, #050812 100%)', // Signature BAFFA Royal Midnight Velvet Felt
+          boxShadow: 'inset 0 0 70px rgba(0,0,0,0.92), inset 0 0 20px rgba(0,0,0,0.95), 0 12px 40px rgba(0,0,0,0.85), 0 0 25px rgba(245, 158, 11, 0.12)',
+          border: isLandscape
+            ? '3px solid #141a29'
+            : isMobile
+            ? '4px solid #141a29'
+            : '10px solid #141a29', // Premium Ebony Obsidian Rim
+          outline: isLandscape
+            ? '1.5px solid rgba(245, 158, 11, 0.45)'
+            : isMobile
+            ? '2px solid rgba(245, 158, 11, 0.45)'
+            : '2.5px solid rgba(245, 158, 11, 0.5)', // Inlaid 24K Gold Bevel
+          borderRadius: isLandscape ? '16px' : isMobile ? '20px' : '44px',
           padding: isLandscape ? '2px 6px' : isMobile ? '4px 6px' : '16px',
           minHeight: 0,
         }}>
@@ -2533,6 +2560,57 @@ export const GameTable: React.FC<GameTableProps> = ({
               gridColumn: '2 / 3', gridRow: '2', position: 'relative',
               display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center'
             }}>
+              {/* Signature BAFFA Center Watermark Felt Emblem */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  userSelect: 'none',
+                  opacity: 0.12,
+                }}
+              >
+                <div
+                  style={{
+                    width: isLandscape ? '85px' : isMobile ? '110px' : '170px',
+                    height: isLandscape ? '85px' : isMobile ? '110px' : '170px',
+                    borderRadius: '50%',
+                    border: '2.5px solid var(--baffa-gold-primary)',
+                    boxShadow: '0 0 30px rgba(245, 158, 11, 0.35), inset 0 0 30px rgba(245, 158, 11, 0.2)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <span
+                    className="arabic-font"
+                    style={{
+                      fontSize: isLandscape ? '1.7rem' : isMobile ? '2.2rem' : '3.4rem',
+                      fontWeight: 900,
+                      color: 'var(--baffa-gold-primary)',
+                      letterSpacing: '1px',
+                      textShadow: '0 0 15px rgba(245, 158, 11, 0.6)',
+                      lineHeight: 1,
+                    }}
+                  >
+                    بَفّة
+                  </span>
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--baffa-gold-primary)' }} />
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--baffa-gold-primary)' }} />
+                  </div>
+                </div>
+              </div>
+
               {/* Dealing in progress badge */}
               {isDealingRound && gameState.chain.tiles.length === 0 && (
                 <div
@@ -2545,12 +2623,12 @@ export const GameTable: React.FC<GameTableProps> = ({
                     zIndex: 25,
                     padding: '8px 22px',
                     borderRadius: '24px',
-                    backgroundColor: 'rgba(12, 38, 30, 0.94)',
+                    backgroundColor: 'rgba(8, 13, 26, 0.94)',
                     border: '1.5px solid var(--baffa-gold-primary)',
                     color: 'var(--baffa-gold-primary)',
                     fontWeight: 800,
                     fontSize: '0.95rem',
-                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6), 0 0 15px rgba(245, 158, 11, 0.3)',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.7), 0 0 18px rgba(245, 158, 11, 0.35)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',

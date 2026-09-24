@@ -1,16 +1,18 @@
 :root {
-  /* Background Palette */
-  --baffa-bg-canvas: #06090e;
-  --baffa-bg-base: #0b111a;
-  --baffa-bg-surface: #121d2d;
-  --baffa-bg-elevated: #1a283e;
-  --baffa-bg-table: #0a1b18; /* Rich deep Egyptian felt emerald/slate */
-  --baffa-bg-table-border: #14352f;
+  /* Background Palette — Signature BAFFA Royal Midnight & Obsidian */
+  --baffa-bg-canvas: #04070e;
+  --baffa-bg-base: #070c18;
+  --baffa-bg-surface: #0e1526;
+  --baffa-bg-elevated: #151f38;
+  --baffa-bg-table: #0c1326; /* Signature BAFFA Royal Midnight Velvet Felt */
+  --baffa-bg-table-border: #141a29; /* Black Ebony Rim */
+  --baffa-table-rim-gold: rgba(245, 158, 11, 0.48); /* Inlaid 24K Gold Bevel */
+  --baffa-table-felt-glow: rgba(245, 158, 11, 0.08);
 
   /* Surfaces & Glass */
-  --baffa-surface-glass: rgba(18, 29, 45, 0.75);
+  --baffa-surface-glass: rgba(14, 21, 38, 0.82);
   --baffa-surface-glass-border: rgba(255, 255, 255, 0.08);
-  --baffa-surface-illuminated: rgba(245, 158, 11, 0.08);
+  --baffa-surface-illuminated: rgba(245, 158, 11, 0.1);
 
   /* Primary Accent - Egyptian Sun Gold */
   --baffa-gold-primary: #f59e0b;
