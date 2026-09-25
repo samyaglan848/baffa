@@ -520,5 +520,29 @@ body.reduced-motion *,
   animation: referee-toast-progress 6s linear forwards;
 }
 
+/* Responsive Navigation Utilities */
+.desktop-nav-tabs {
+  display: flex;
+  align-items: center;
+}
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-nav-tabs {
+    display: none !important;
+  }
+
+  .mobile-bottom-nav {
+    display: flex !important;
+  }
+
+  .baffa-mobile-nav-pad {
+    padding-bottom: 74px !important;
+  }
+}
+
 
 

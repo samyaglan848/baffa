@@ -45,7 +45,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   return (
-    <header
+    <>
+      <header
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -139,13 +140,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs (Only when not actively inside a game table) */}
+        {/* Navigation Tabs (Only when not actively inside a game table) - Desktop Header */}
         {!inRoom && (
-          <nav style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '2px' : '4px', marginLeft: isMobile ? '4px' : '12px' }}>
+          <nav
+            className="desktop-nav-tabs"
+            style={{
+              gap: '4px',
+              marginLeft: '12px',
+            }}
+          >
             <button
               onClick={() => onNavigate('HOME')}
               style={{
-                padding: isMobile ? '6px 8px' : '6px 12px',
+                padding: '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
                 backgroundColor: currentView === 'HOME' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
                 color: currentView === 'HOME' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
@@ -158,13 +165,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               title="العب"
             >
-              <Play size={14} style={{ color: currentView === 'HOME' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> {!isMobile && 'Play (العب)'}
+              <Play size={14} style={{ color: currentView === 'HOME' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> Play (العب)
             </button>
 
             <button
               onClick={() => onNavigate('HISTORY')}
               style={{
-                padding: isMobile ? '6px 8px' : '6px 12px',
+                padding: '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
                 backgroundColor: currentView === 'HISTORY' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
                 color: currentView === 'HISTORY' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
@@ -177,13 +184,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               title="السجل"
             >
-              <History size={14} style={{ color: currentView === 'HISTORY' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> {!isMobile && 'History (السجل)'}
+              <History size={14} style={{ color: currentView === 'HISTORY' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> History (السجل)
             </button>
 
             <button
               onClick={() => onNavigate('STATS')}
               style={{
-                padding: isMobile ? '6px 8px' : '6px 12px',
+                padding: '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
                 backgroundColor: currentView === 'STATS' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
                 color: currentView === 'STATS' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
@@ -196,13 +203,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               title="الإحصائيات"
             >
-              <BarChart3 size={14} style={{ color: currentView === 'STATS' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> {!isMobile && 'Stats (الإحصائيات)'}
+              <BarChart3 size={14} style={{ color: currentView === 'STATS' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> Stats (الإحصائيات)
             </button>
 
             <button
               onClick={() => onNavigate('PROFILE')}
               style={{
-                padding: isMobile ? '6px 8px' : '6px 12px',
+                padding: '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
                 backgroundColor: currentView === 'PROFILE' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
                 color: currentView === 'PROFILE' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
@@ -215,7 +222,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               title="حسابي"
             >
-              <UserIcon size={14} style={{ color: currentView === 'PROFILE' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> {!isMobile && 'Profile (حسابي)'}
+              <UserIcon size={14} style={{ color: currentView === 'PROFILE' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> Profile (حسابي)
             </button>
           </nav>
         )}
@@ -239,7 +246,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* User Controls & Presence */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '12px', flexShrink: 0 }}>
         {/* Connection status badge (Deep Emerald when online) */}
         <div
           title={isConnected ? 'Connected to BAFFA Server' : 'Disconnected'}
@@ -263,7 +270,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           onClick={onOpenSettings}
           style={{
-            padding: '8px',
+            padding: isMobile ? '6px' : '8px',
             borderRadius: 'var(--baffa-radius-md)',
             backgroundColor: 'var(--baffa-bg-elevated)',
             color: 'var(--baffa-text-secondary)',
@@ -274,7 +281,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           }}
           title="Settings"
         >
-          <Settings size={18} />
+          <Settings size={isMobile ? 16 : 18} />
         </button>
 
         {/* User Badge */}
@@ -283,37 +290,164 @@ export const Navbar: React.FC<NavbarProps> = ({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: isMobile ? '6px' : '8px',
-            padding: isMobile ? '4px 8px' : '5px 12px',
+            gap: isMobile ? '4px' : '8px',
+            padding: isMobile ? '3px 6px' : '5px 12px',
             borderRadius: 'var(--baffa-radius-md)',
             backgroundColor: currentView === 'PROFILE' ? 'rgba(245, 158, 11, 0.15)' : 'var(--baffa-bg-surface)',
             border: currentView === 'PROFILE' ? '1px solid var(--baffa-gold-primary)' : '1px solid var(--baffa-surface-glass-border)',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            maxWidth: isMobile ? '120px' : '200px',
+            maxWidth: isMobile ? '110px' : '200px',
           }}
           title="عرض الملف الشخصي"
         >
           <UserAvatar
             avatar={currentUser.avatar}
             username={currentUser.username}
-            size={isMobile ? 24 : 28}
+            size={isMobile ? 22 : 28}
             border="1.5px solid var(--baffa-gold-primary)"
             boxShadow="0 0 8px rgba(245, 158, 11, 0.35)"
           />
-          <span style={{ 
-            fontSize: isMobile ? '0.78rem' : '0.85rem', 
-            fontWeight: 700, 
-            color: currentView === 'PROFILE' ? 'var(--baffa-gold-hover)' : 'var(--baffa-text-primary)',
-            maxWidth: isMobile ? '70px' : '140px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
-            {currentUser.username}
-          </span>
+          {!isMobile && (
+            <span style={{ 
+              fontSize: '0.85rem', 
+              fontWeight: 700, 
+              color: currentView === 'PROFILE' ? 'var(--baffa-gold-hover)' : 'var(--baffa-text-primary)',
+              maxWidth: '140px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {currentUser.username}
+            </span>
+          )}
         </div>
       </div>
     </header>
+
+    {/* Mobile Bottom Navigation Bar (Phone Screens Only) */}
+    {!inRoom && (
+      <nav
+        className="mobile-bottom-nav"
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'rgba(8, 13, 22, 0.96)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: '0 -4px 25px rgba(0, 0, 0, 0.6)',
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          padding: '6px 4px calc(6px + env(safe-area-inset-bottom, 4px))',
+          zIndex: 60,
+          maxWidth: '100vw',
+          boxSizing: 'border-box',
+        }}
+      >
+        {/* 1. Play (العب) */}
+        <button
+          onClick={() => onNavigate('HOME')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '2px',
+            padding: '6px 2px',
+            borderRadius: '10px',
+            backgroundColor: currentView === 'HOME' ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+            color: currentView === 'HOME' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-muted)',
+            transition: 'all 0.2s ease',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <Play size={18} fill={currentView === 'HOME' ? 'var(--baffa-gold-primary)' : 'none'} />
+          <span className="arabic-font" style={{ fontSize: '0.72rem', fontWeight: currentView === 'HOME' ? 900 : 700 }}>
+            العب
+          </span>
+        </button>
+
+        {/* 2. History (السجل) */}
+        <button
+          onClick={() => onNavigate('HISTORY')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '2px',
+            padding: '6px 2px',
+            borderRadius: '10px',
+            backgroundColor: currentView === 'HISTORY' ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+            color: currentView === 'HISTORY' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-muted)',
+            transition: 'all 0.2s ease',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <History size={18} />
+          <span className="arabic-font" style={{ fontSize: '0.72rem', fontWeight: currentView === 'HISTORY' ? 900 : 700 }}>
+            السجل
+          </span>
+        </button>
+
+        {/* 3. Stats (الإحصائيات) */}
+        <button
+          onClick={() => onNavigate('STATS')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '2px',
+            padding: '6px 2px',
+            borderRadius: '10px',
+            backgroundColor: currentView === 'STATS' ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+            color: currentView === 'STATS' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-muted)',
+            transition: 'all 0.2s ease',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <BarChart3 size={18} />
+          <span className="arabic-font" style={{ fontSize: '0.72rem', fontWeight: currentView === 'STATS' ? 900 : 700 }}>
+            الإحصائيات
+          </span>
+        </button>
+
+        {/* 4. Profile (حسابي) */}
+        <button
+          onClick={() => onNavigate('PROFILE')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '2px',
+            padding: '6px 2px',
+            borderRadius: '10px',
+            backgroundColor: currentView === 'PROFILE' ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+            color: currentView === 'PROFILE' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-muted)',
+            transition: 'all 0.2s ease',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <UserIcon size={18} />
+          <span className="arabic-font" style={{ fontSize: '0.72rem', fontWeight: currentView === 'PROFILE' ? 900 : 700 }}>
+            حسابي
+          </span>
+        </button>
+      </nav>
+    )}
+  </>
   );
 };

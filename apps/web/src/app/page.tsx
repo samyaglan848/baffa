@@ -408,6 +408,8 @@ export default function App() {
         minHeight: isPlayingGame ? undefined : '100vh',
         maxHeight: isPlayingGame ? '100dvh' : undefined,
         overflow: isPlayingGame ? 'hidden' : 'auto',
+        overflowX: 'hidden',
+        maxWidth: '100vw',
         backgroundColor: 'var(--baffa-bg-canvas)',
       }}
     >
@@ -519,7 +521,19 @@ export default function App() {
       )}
 
       {/* Main Content View Switcher */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, height: isPlayingGame ? '100%' : undefined, overflow: isPlayingGame ? 'hidden' : 'auto' }}>
+      <main
+        className={!isPlayingGame && !room ? 'baffa-mobile-nav-pad' : undefined}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          height: isPlayingGame ? '100%' : undefined,
+          overflow: isPlayingGame ? 'hidden' : 'auto',
+          overflowX: 'hidden',
+          maxWidth: '100vw',
+        }}
+      >
         {/* If in Room Lobby */}
         {room && !isPlayingGame && (
           <RoomLobby
