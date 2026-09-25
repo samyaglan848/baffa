@@ -270,51 +270,6 @@ export const GameTable: React.FC<GameTableProps> = ({
   const hasAutoPassedRef = useRef(false);
   const [, setPassTick] = useState(0);
 
-  // Active bot speech bubbles by seat: seat -> { text: string; timestamp: number }
-  const [botSpeechBySeat, setBotSpeechBySeat] = useState<Record<number, { text: string; timestamp: number }>>({});
-  const botSpeechTimersRef = useRef<Record<number, NodeJS.Timeout>>({});
-  const lastProcessedBotMsgTimestampRef = useRef<number>(0);
-
-  useEffect(() => {
-    const msg = latestBotMessage || gameState.latestBotMessage;
-    if (!msg || !msg.timestamp) return;
-    if (msg.timestamp === lastProcessedBotMsgTimestampRef.current) return;
-    if (Date.now() - msg.timestamp > 7000) return; // Skip stale messages
-
-    lastProcessedBotMsgTimestampRef.current = msg.timestamp;
-
-    const seatNum =
-      msg.seat !== undefined && msg.seat !== null
-        ? Number(msg.seat)
-        : (gameState.players || []).find(
-            (p) => p && (p.botId === msg.botId || room?.seats?.[p.seat]?.botId === msg.botId)
-          )?.seat ?? null;
-
-    if (seatNum !== null && seatNum !== undefined) {
-      const s = Number(seatNum);
-      setBotSpeechBySeat((prev) => ({
-        ...prev,
-        [s]: { text: msg.text, timestamp: msg.timestamp },
-      }));
-
-      if (botSpeechTimersRef.current[s]) {
-        clearTimeout(botSpeechTimersRef.current[s]);
-      }
-
-      botSpeechTimersRef.current[s] = setTimeout(() => {
-        setBotSpeechBySeat((prev) => {
-          if (prev[s]?.timestamp === msg.timestamp) {
-            const next = { ...prev };
-            delete next[s];
-            return next;
-          }
-          return prev;
-        });
-        delete botSpeechTimersRef.current[s];
-      }, 5500);
-    }
-  }, [latestBotMessage, gameState.latestBotMessage, gameState.players, room?.seats]);
-
   // Authoritative tile placement vs pass detection
   const prevChainTilesCountRef = useRef(gameState.chain.tiles.length);
   const prevConsecutivePassCountRef = useRef(gameState.consecutivePassCount);
@@ -1105,9 +1060,6 @@ export const GameTable: React.FC<GameTableProps> = ({
       (player.playerId && player.playerId.startsWith('bot_')) ||
       (seatInfo?.playerId && seatInfo.playerId.startsWith('bot_'))
     );
-    const botSpeech = botSpeechBySeat[Number(player.seat)];
-    const isSpeakingBot = Boolean(botSpeech && Date.now() - botSpeech.timestamp < 5500);
-    const activeBotText = botSpeech?.text;
     const isMe = mySeat !== null && mySeat !== undefined && Number(mySeat) === Number(player.seat);
     const isPassed =
       !isCurrentTurn &&
@@ -1220,7 +1172,7 @@ export const GameTable: React.FC<GameTableProps> = ({
         )}
 
         {/* Pass Announcement Bubble on Avatar */}
-        {isPassed && !isAway && !isSpeakingBot && (
+        {isPassed && !isAway && (
           <div
             className="animate-float arabic-font"
             style={{
@@ -1307,100 +1259,6 @@ export const GameTable: React.FC<GameTableProps> = ({
                   ? '6px solid transparent'
                   : resolvedPos === 'LEFT'
                   ? '6px solid rgba(220, 38, 38, 0.95)'
-                  : undefined,
-              }}
-            />
-          </div>
-        )}
-
-        {isSpeakingBot && (
-          <div
-            className="animate-float arabic-font"
-            style={{
-              position: 'absolute',
-              top: resolvedPos === 'TOP'
-                ? (isMobile ? '104%' : '110%')
-                : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
-                ? '50%'
-                : undefined,
-              bottom: resolvedPos === 'BOTTOM'
-                ? (isMobile ? '104%' : '110%')
-                : undefined,
-              left: resolvedPos === 'LEFT'
-                ? (isMobile ? 'calc(100% + 4px)' : 'calc(100% + 10px)')
-                : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
-                ? '50%'
-                : undefined,
-              right: resolvedPos === 'RIGHT'
-                ? (isMobile ? 'calc(100% + 4px)' : 'calc(100% + 10px)')
-                : undefined,
-              transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
-                ? 'translateY(-50%)'
-                : 'translateX(-50%)',
-              marginTop: resolvedPos === 'TOP' ? (isMobile ? '2px' : '8px') : undefined,
-              marginBottom: resolvedPos === 'BOTTOM' ? (isMobile ? '2px' : '10px') : undefined,
-              padding: isLandscape ? '2px 6px' : isMobile ? '2px 7px' : '6px 14px',
-              borderRadius: isLandscape ? '8px' : isMobile ? '8px' : '16px',
-              backgroundColor: 'var(--baffa-gold-primary)',
-              color: '#080d1a',
-              fontWeight: 800,
-              fontSize: isLandscape ? '0.62rem' : isMobile ? '0.62rem' : '0.84rem',
-              whiteSpace: 'normal',
-              textAlign: 'center',
-              lineHeight: isMobile ? 1.15 : 1.3,
-              width: 'max-content',
-              maxWidth: isLandscape ? '100px' : isMobile ? '105px' : '200px',
-              zIndex: 65,
-              boxShadow: isMobile ? '0 3px 10px rgba(0, 0, 0, 0.6)' : '0 6px 18px rgba(0, 0, 0, 0.75), 0 0 10px rgba(245, 158, 11, 0.4)',
-              border: isMobile ? '1px solid rgba(255, 255, 255, 0.35)' : '1.5px solid rgba(255, 255, 255, 0.3)',
-              wordBreak: 'break-word',
-              pointerEvents: 'none',
-            }}
-          >
-            <span>{activeBotText}</span>
-            <div
-              style={{
-                position: 'absolute',
-                top: resolvedPos === 'TOP'
-                  ? (isMobile ? '-4px' : '-6px')
-                  : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
-                  ? '50%'
-                  : undefined,
-                bottom: resolvedPos === 'BOTTOM'
-                  ? (isMobile ? '-4px' : '-6px')
-                  : undefined,
-                left: resolvedPos === 'LEFT'
-                  ? (isMobile ? '-4px' : '-6px')
-                  : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
-                  ? '50%'
-                  : undefined,
-                right: resolvedPos === 'RIGHT'
-                  ? (isMobile ? '-4px' : '-6px')
-                  : undefined,
-                transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
-                  ? 'translateY(-50%)'
-                  : 'translateX(-50%)',
-                width: 0,
-                height: 0,
-                borderTop: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
-                  ? (isMobile ? '3px solid transparent' : '5px solid transparent')
-                  : resolvedPos === 'BOTTOM'
-                  ? (isMobile ? '4px solid var(--baffa-gold-primary)' : '6px solid var(--baffa-gold-primary)')
-                  : undefined,
-                borderBottom: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
-                  ? (isMobile ? '3px solid transparent' : '5px solid transparent')
-                  : resolvedPos === 'TOP'
-                  ? (isMobile ? '4px solid var(--baffa-gold-primary)' : '6px solid var(--baffa-gold-primary)')
-                  : undefined,
-                borderLeft: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
-                  ? (isMobile ? '4px solid transparent' : '6px solid transparent')
-                  : resolvedPos === 'RIGHT'
-                  ? (isMobile ? '4px solid var(--baffa-gold-primary)' : '6px solid var(--baffa-gold-primary)')
-                  : undefined,
-                borderRight: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
-                  ? (isMobile ? '4px solid transparent' : '6px solid transparent')
-                  : resolvedPos === 'LEFT'
-                  ? (isMobile ? '4px solid var(--baffa-gold-primary)' : '6px solid var(--baffa-gold-primary)')
                   : undefined,
               }}
             />
@@ -1808,7 +1666,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxHeight: '100dvh', width: '100vw', maxWidth: '100vw', backgroundColor: '#090d13', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxHeight: '100dvh', width: '100vw', maxWidth: '100vw', backgroundColor: '#090d13', overflow: 'hidden', position: 'relative' }}>
       {isJudge && (
         <div style={{ zIndex: 40, width: '100%', padding: '2px 8px 0', display: 'flex', justifyContent: 'center' }}>
           <RefereeControlHub
@@ -2073,6 +1931,7 @@ export const GameTable: React.FC<GameTableProps> = ({
         mySeat={gameState.mySeat}
         isMobile={isMobile}
         isLandscape={isLandscape}
+        latestBotMessage={latestBotMessage || gameState.latestBotMessage}
       />
 
       {/* Smart In-Game Microphone Permission Guidance for Mobile & PC */}
@@ -2310,8 +2169,8 @@ export const GameTable: React.FC<GameTableProps> = ({
           gridTemplateColumns: 'auto 1fr auto',
           gridTemplateRows: 'auto 1fr auto',
           gap: isLandscape ? '2px' : isMobile ? '4px' : '10px',
-          background: 'radial-gradient(circle at center, #257560 0%, #175444 65%, #103b2e 100%)', // Brighter emerald green casino felt
-          boxShadow: 'inset 0 0 45px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 0, 0, 0.65)',
+          background: 'radial-gradient(circle at center, #349179 0%, #22705b 65%, #184e3f 100%)', // Brighter & lighter emerald green casino felt
+          boxShadow: 'inset 0 0 45px rgba(0, 0, 0, 0.38), inset 0 0 10px rgba(0, 0, 0, 0.5)',
           border: isLandscape ? '3px solid #4a3320' : isMobile ? '5px solid #4a3320' : '12px solid #4a3320', // Wooden table border
           borderRadius: isLandscape ? '14px' : isMobile ? '18px' : '40px',
           padding: isLandscape ? '2px 6px' : isMobile ? '4px 6px' : '16px',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import {
   BotChatMessage,
@@ -59,6 +59,7 @@ interface ChatAndReactionsProps {
   mySeat?: PlayerSeat | null;
   isMobile?: boolean;
   isLandscape?: boolean;
+  latestBotMessage?: BotChatMessage | null;
 }
 
 export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
@@ -73,11 +74,52 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
   mySeat = null,
   isMobile = false,
   isLandscape = false,
+  latestBotMessage = null,
 }) => {
   const { playSound } = useGameAudio();
   const [isOpen, setIsOpen] = useState(false);
   const [activeChats, setActiveChats] = useState<ActiveChat[]>([]);
   const [activeReactions, setActiveReactions] = useState<ActiveReaction[]>([]);
+  const lastHandledBotTimestampRef = useRef<number>(0);
+
+  // Sync bot messages from props (e.g. gameState sync or hook)
+  useEffect(() => {
+    if (!latestBotMessage || !latestBotMessage.timestamp) return;
+    if (latestBotMessage.timestamp === lastHandledBotTimestampRef.current) return;
+    if (Date.now() - latestBotMessage.timestamp > 7000) return;
+
+    lastHandledBotTimestampRef.current = latestBotMessage.timestamp;
+
+    let seat = latestBotMessage.seat !== undefined && latestBotMessage.seat !== null ? Number(latestBotMessage.seat) : null;
+    if (seat === null) {
+      const found = players.find(
+        (p) => p && (p.botId === latestBotMessage.botId || (p.playerId && p.playerId.startsWith('bot_')))
+      );
+      if (found && found.seat !== undefined && found.seat !== null) {
+        seat = Number(found.seat);
+      }
+    }
+
+    const id = `bot-${latestBotMessage.botId}-${latestBotMessage.timestamp}`;
+    setActiveChats((prev) => {
+      if (prev.some((c) => c.id === id)) return prev;
+      return [
+        ...prev,
+        {
+          id,
+          userId: `bot_${seat ?? 0}`,
+          senderName: latestBotMessage.botName,
+          text: latestBotMessage.text,
+          seat,
+          createdAt: latestBotMessage.timestamp,
+        },
+      ];
+    });
+    playSound('pop');
+    setTimeout(() => {
+      setActiveChats((prev) => prev.filter((c) => c.id !== id));
+    }, 4600);
+  }, [latestBotMessage, players, playSound]);
 
   // Relative seat calculation for visual positioning on the felt table
   const getRelativeSeat = useCallback(
@@ -159,22 +201,39 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
     };
 
     const onBotMessage = (payload: BotChatMessage) => {
+      if (!payload || !payload.timestamp) return;
+      if (payload.timestamp === lastHandledBotTimestampRef.current) return;
+      lastHandledBotTimestampRef.current = payload.timestamp;
+
+      let seat = payload.seat !== undefined && payload.seat !== null ? Number(payload.seat) : null;
+      if (seat === null) {
+        const found = players.find(
+          (p) => p && (p.botId === payload.botId || (p.playerId && p.playerId.startsWith('bot_')))
+        );
+        if (found && found.seat !== undefined && found.seat !== null) {
+          seat = Number(found.seat);
+        }
+      }
+
       const id = `bot-${payload.botId}-${payload.timestamp}`;
-      setActiveChats((prev) => [
-        ...prev,
-        {
-          id,
-          userId: `bot_${payload.seat}`,
-          senderName: payload.botName,
-          text: payload.text,
-          seat: payload.seat,
-          createdAt: payload.timestamp,
-        },
-      ]);
+      setActiveChats((prev) => {
+        if (prev.some((c) => c.id === id)) return prev;
+        return [
+          ...prev,
+          {
+            id,
+            userId: `bot_${seat ?? 0}`,
+            senderName: payload.botName,
+            text: payload.text,
+            seat,
+            createdAt: payload.timestamp,
+          },
+        ];
+      });
       playSound('pop');
       setTimeout(() => {
         setActiveChats((prev) => prev.filter((c) => c.id !== id));
-      }, 5500);
+      }, 4600);
     };
 
     socket.on(ServerEvents.BOT_MESSAGE, onBotMessage);
@@ -573,13 +632,13 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
               style={{
                 position: 'absolute',
                 ...containerStyle,
-                padding: isLandscape ? '2px 6px' : isMobile ? '2px 7px' : '6px 14px',
+                padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 14px',
                 background: 'linear-gradient(135deg, rgba(14, 26, 42, 0.98) 0%, rgba(20, 36, 58, 0.96) 100%)',
                 border: isMobile ? '1px solid var(--baffa-gold-primary)' : '1.5px solid var(--baffa-gold-primary)',
-                borderRadius: isLandscape ? '8px' : isMobile ? '8px' : '18px',
-                boxShadow: isMobile ? '0 4px 14px rgba(0,0,0,0.7)' : '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
+                borderRadius: isLandscape ? '10px' : isMobile ? '12px' : '18px',
+                boxShadow: isMobile ? '0 4px 14px rgba(0,0,0,0.7), 0 0 10px rgba(245, 158, 11, 0.3)' : '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
                 backdropFilter: 'blur(10px)',
-                maxWidth: isLandscape ? '100px' : isMobile ? '105px' : '220px',
+                maxWidth: isLandscape ? '130px' : isMobile ? '145px' : '220px',
                 textAlign: 'center',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -590,11 +649,11 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
               {tailStyle && <div style={tailStyle} />}
               <span
                 style={{
-                  fontSize: isLandscape ? '0.62rem' : isMobile ? '0.65rem' : '0.9rem',
+                  fontSize: isLandscape ? '0.70rem' : isMobile ? '0.74rem' : '0.88rem',
                   fontWeight: 900,
                   color: '#fff',
                   textAlign: 'center',
-                  lineHeight: isMobile ? 1.15 : 1.25,
+                  lineHeight: isMobile ? 1.2 : 1.25,
                   wordBreak: 'break-word',
                 }}
               >

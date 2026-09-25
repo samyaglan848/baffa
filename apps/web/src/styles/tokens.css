@@ -17,10 +17,10 @@
   --baffa-bg-elevated: #1a283e;
 
   /* Classic Green Felt Domino Table - Lighter & Richer Emerald */
-  --baffa-bg-table: #144435; /* Lighter Egyptian casino emerald felt */
+  --baffa-bg-table: #206d58; /* Lighter Egyptian casino emerald felt */
   --baffa-bg-table-border: #4a3320; /* Polished Mahogany wooden rim */
-  --baffa-table-felt-green-light: #257560;
-  --baffa-table-felt-green-dark: #123d2f;
+  --baffa-table-felt-green-light: #349179;
+  --baffa-table-felt-green-dark: #184e3f;
 
   /* Surfaces & Glass */
   --baffa-surface-glass: rgba(18, 29, 45, 0.75);
