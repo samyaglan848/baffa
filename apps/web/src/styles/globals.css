@@ -44,8 +44,8 @@ button {
 /* Reusable BAFFA UI Utilities */
 
 .baffa-card {
-  background: var(--baffa-bg-surface);
-  border: 1.5px solid var(--baffa-gold-frame);
+  background: var(--baffa-surface-glass);
+  border: 1px solid var(--baffa-surface-glass-border);
   border-radius: var(--baffa-radius-lg);
   box-shadow: var(--baffa-shadow-elevated);
   backdrop-filter: blur(16px);
@@ -53,12 +53,12 @@ button {
 
 .baffa-btn-primary {
   background: linear-gradient(135deg, var(--baffa-gold-primary) 0%, var(--baffa-gold-dark) 100%);
-  color: var(--baffa-black);
-  border: 1.5px solid var(--baffa-gold-frame);
+  color: #080d1a;
+  border: 1px solid var(--baffa-gold-hover);
   font-weight: 800;
   padding: 12px 24px;
   border-radius: var(--baffa-radius-md);
-  box-shadow: 0 4px 16px rgba(217, 164, 4, 0.32);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -69,7 +69,7 @@ button {
 .baffa-btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--baffa-gold-hover) 0%, var(--baffa-gold-primary) 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(245, 197, 24, 0.45);
+  box-shadow: 0 6px 20px rgba(245, 197, 24, 0.55);
 }
 
 .baffa-btn-primary:active:not(:disabled) {
@@ -85,7 +85,7 @@ button {
 .baffa-btn-secondary {
   background: var(--baffa-bg-elevated);
   color: var(--baffa-text-primary);
-  border: 1.5px solid var(--baffa-gold-frame);
+  border: 1px solid var(--baffa-surface-glass-border);
   font-weight: 700;
   padding: 12px 24px;
   border-radius: var(--baffa-radius-md);
@@ -97,8 +97,8 @@ button {
 }
 
 .baffa-btn-secondary:hover:not(:disabled) {
-  background: var(--baffa-amber-light);
-  border-color: var(--baffa-gold-dark);
+  background: var(--baffa-bg-surface);
+  border-color: var(--baffa-gold-muted);
   transform: translateY(-1px);
 }
 

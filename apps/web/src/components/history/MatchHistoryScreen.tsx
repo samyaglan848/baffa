@@ -52,24 +52,24 @@ export const MatchHistoryScreen: React.FC<MatchHistoryScreenProps> = ({
         <div>
           <h1
             className="arabic-font"
-            style={{ fontSize: '1.8rem', fontWeight: 900, color: '#111827' }}
+            style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--baffa-gold-hover)' }}
           >
-            سجل المباريات 🎴
+            سجل المباريات
           </h1>
-          <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-            أرشيف المباريات ونتائج الجولات السابقة
+          <span style={{ fontSize: '0.85rem', color: 'var(--baffa-text-muted)' }}>
+            Completed Match History & Archive
           </span>
         </div>
 
         <button onClick={onBackToHome} className="baffa-btn-secondary">
-          العودة للرئيسية
+          Back to Home
         </button>
       </div>
 
       {/* Content Area */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>
-          جاري تحميل سجل المباريات...
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--baffa-text-muted)' }}>
+          Loading match records...
         </div>
       ) : historyData?.matches.length === 0 ? (
         <div
@@ -77,20 +77,19 @@ export const MatchHistoryScreen: React.FC<MatchHistoryScreenProps> = ({
           style={{
             padding: '48px 24px',
             textAlign: 'center',
-            color: '#6b7280',
+            color: 'var(--baffa-text-muted)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '12px',
-            border: '2px solid rgba(245, 158, 11, 0.3)',
           }}
         >
-          <History size={40} style={{ color: '#d97706' }} />
-          <h3 className="arabic-font" style={{ fontSize: '1.3rem', fontWeight: 900, color: '#111827' }}>
+          <History size={40} style={{ color: 'var(--baffa-text-disabled)' }} />
+          <h3 className="arabic-font" style={{ fontSize: '1.3rem', color: '#fff' }}>
             لا توجد مباريات مسجلة حتى الآن
           </h3>
-          <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-            العب أول ماتش لك لحفظ النتيجة والجدول الزمني وإحصائيات الفوز.
+          <p style={{ fontSize: '0.85rem' }}>
+            Complete your first match to record scores, timeline, and player statistics.
           </p>
         </div>
       ) : (
@@ -106,11 +105,11 @@ export const MatchHistoryScreen: React.FC<MatchHistoryScreenProps> = ({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                border: '1.5px solid rgba(245, 158, 11, 0.25)',
+                border: '1px solid var(--baffa-surface-glass-border)',
                 transition: 'all 0.2s ease',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)')}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.25)')}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--baffa-surface-glass-border)')}
             >
               {/* Score & Winner Tag */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -119,9 +118,8 @@ export const MatchHistoryScreen: React.FC<MatchHistoryScreenProps> = ({
                     width: '42px',
                     height: '42px',
                     borderRadius: '50%',
-                    backgroundColor: '#fef3c7',
-                    color: '#d97706',
-                    border: '1.5px solid #f59e0b',
+                    backgroundColor: 'var(--baffa-gold-muted)',
+                    color: 'var(--baffa-gold-primary)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -131,26 +129,26 @@ export const MatchHistoryScreen: React.FC<MatchHistoryScreenProps> = ({
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#111827' }}>
-                    <span style={{ color: match.winningTeam === 1 ? 'var(--baffa-team1-color)' : '#9ca3af' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff' }}>
+                    <span style={{ color: match.winningTeam === 1 ? 'var(--baffa-team1-color)' : 'var(--baffa-text-muted)' }}>
                       {match.team1Score}
                     </span>
-                    <span style={{ margin: '0 6px', color: '#d1d5db' }}>-</span>
-                    <span style={{ color: match.winningTeam === 2 ? 'var(--baffa-team2-color)' : '#9ca3af' }}>
+                    <span style={{ margin: '0 6px', color: 'var(--baffa-text-disabled)' }}>-</span>
+                    <span style={{ color: match.winningTeam === 2 ? 'var(--baffa-team2-color)' : 'var(--baffa-text-muted)' }}>
                       {match.team2Score}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
-                    الهدف: {match.targetScore} • {match.roundsCount} جولات
+                  <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '2px' }}>
+                    Target: {match.targetScore} • {match.roundsCount} Rounds
                   </div>
                 </div>
               </div>
 
               {/* Participants */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#4b5563' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--baffa-text-secondary)' }}>
                 {match.hasBots && (
-                  <span style={{ padding: '2px 8px', borderRadius: '6px', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #f59e0b', fontSize: '0.72rem', fontWeight: 700 }}>
-                    مع بوتات
+                  <span style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(6, 182, 212, 0.15)', color: 'var(--baffa-cyan-primary)', fontSize: '0.7rem' }}>
+                    With Bots
                   </span>
                 )}
                 <span>{new Date(match.startedAt).toLocaleDateString()}</span>

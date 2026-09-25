@@ -73,7 +73,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(17, 24, 39, 0.65)',
+        backgroundColor: 'rgba(6, 9, 14, 0.88)',
         backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
@@ -87,118 +87,90 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           width: '90%',
           maxWidth: '460px',
           padding: '28px',
-          backgroundColor: '#ffffff',
-          borderRadius: '20px',
-          border: '2px solid #f59e0b',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.25), 0 0 35px rgba(245, 158, 11, 0.2)',
+          border: '1px solid var(--baffa-surface-glass-border)',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div>
-            <h2 className="arabic-font" style={{ fontSize: '1.5rem', fontWeight: 900, color: '#111827', margin: 0 }}>
-              الإعدادات ⚙️
+            <h2 className="arabic-font" style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--baffa-gold-hover)' }}>
+              الإعدادات
             </h2>
-            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-              التحكم في الصوت والصورة واللغة
+            <span style={{ fontSize: '0.8rem', color: 'var(--baffa-text-muted)' }}>
+              Preferences & Audio Controls
             </span>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="إغلاق"
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f3f4f6',
-              border: '1px solid #e5e7eb',
-              color: '#4b5563',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
-              e.currentTarget.style.color = '#dc2626';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
-              e.currentTarget.style.color = '#4b5563';
-            }}
-          >
-            <X size={18} />
+          <button onClick={onClose} style={{ color: 'var(--baffa-text-muted)', padding: '4px' }}>
+            <X size={20} />
           </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Sound Toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--baffa-surface-glass-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Volume2 size={18} style={{ color: '#d97706' }} />
+              <Volume2 size={18} style={{ color: 'var(--baffa-gold-primary)' }} />
               <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#111827' }}>المؤثرات الصوتية</div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>أصوات رمي الدومينو والطاولة</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>Sound Effects</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>Tile click & table sounds</div>
               </div>
             </div>
             <input
               type="checkbox"
               checked={soundEnabled}
               onChange={(e) => handleToggleSound(e.target.checked)}
-              style={{ width: '18px', height: '18px', accentColor: '#f59e0b' }}
+              style={{ width: '18px', height: '18px', accentColor: 'var(--baffa-gold-primary)' }}
             />
           </div>
 
           {/* Voice Chat Toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--baffa-surface-glass-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Mic size={18} style={{ color: '#d97706' }} />
+              <Mic size={18} style={{ color: 'var(--baffa-cyan-primary)' }} />
               <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#111827' }}>الدردشة الصوتية</div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>بث صوتي حي عبر WebRTC</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>Voice Chat</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>WebRTC audio streaming</div>
               </div>
             </div>
             <input
               type="checkbox"
               checked={voiceEnabled}
               onChange={(e) => handleToggleVoice(e.target.checked)}
-              style={{ width: '18px', height: '18px', accentColor: '#f59e0b' }}
+              style={{ width: '18px', height: '18px', accentColor: 'var(--baffa-gold-primary)' }}
             />
           </div>
 
           {/* Reduced Motion Toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--baffa-surface-glass-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Eye size={18} style={{ color: '#d97706' }} />
+              <Eye size={18} style={{ color: 'var(--baffa-warning)' }} />
               <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#111827' }}>تقليل الحركات (Reduced Motion)</div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>تقليل تأثيرات الحركة للمحافظة على الأداء</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>Reduced Motion</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>Minimize animations</div>
               </div>
             </div>
             <input
               type="checkbox"
               checked={reducedMotion}
               onChange={(e) => handleToggleReducedMotion(e.target.checked)}
-              style={{ width: '18px', height: '18px', accentColor: '#f59e0b' }}
+              style={{ width: '18px', height: '18px', accentColor: 'var(--baffa-gold-primary)' }}
             />
           </div>
 
           {/* Language Foundation */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--baffa-surface-glass-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Globe size={18} style={{ color: '#d97706' }} />
-              <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#111827' }}>اللغة (Language)</span>
+              <Globe size={18} style={{ color: 'var(--baffa-text-secondary)' }} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>Language (اللغة)</span>
             </div>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value as any)}
               style={{
-                padding: '6px 12px',
+                padding: '6px 10px',
                 borderRadius: 'var(--baffa-radius-md)',
-                backgroundColor: '#fcfbf7',
-                color: '#111827',
-                fontWeight: 700,
-                border: '1.5px solid #e5e7eb',
+                backgroundColor: 'var(--baffa-bg-elevated)',
+                color: '#fff',
+                border: '1px solid var(--baffa-surface-glass-border)',
                 outline: 'none',
                 fontSize: '0.85rem',
               }}
@@ -218,7 +190,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className="baffa-btn-danger"
               style={{ width: '100%', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              <LogOut size={16} /> تسجيل الخروج ({currentUser.username})
+              <LogOut size={16} /> Sign Out ({currentUser.username})
             </button>
           )}
         </div>

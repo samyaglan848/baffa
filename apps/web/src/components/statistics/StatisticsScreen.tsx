@@ -53,72 +53,72 @@ export const StatisticsScreen: React.FC<StatisticsScreenProps> = ({
         <div>
           <h1
             className="arabic-font"
-            style={{ fontSize: '1.8rem', fontWeight: 900, color: '#111827' }}
+            style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--baffa-gold-hover)' }}
           >
-            الإحصائيات الشاملة 📊
+            الإحصائيات الشاملة
           </h1>
-          <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-            تحليل الأداء التنافسي ونسب الفوز وسجل الجولات
+          <span style={{ fontSize: '0.85rem', color: 'var(--baffa-text-muted)' }}>
+            Comprehensive Performance & Competitive Analytics
           </span>
         </div>
 
         <button onClick={onBackToHome} className="baffa-btn-secondary">
-          <ArrowLeft size={16} /> العودة للرئيسية
+          <ArrowLeft size={16} /> Back to Home
         </button>
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>
-          جاري تحميل الإحصائيات...
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--baffa-text-muted)' }}>
+          Loading statistics...
         </div>
       )}
 
       {stats && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Overall Section */}
-          <div className="baffa-card" style={{ padding: '24px', border: '1.5px solid rgba(245, 158, 11, 0.25)' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#111827', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Trophy size={20} style={{ color: '#d97706' }} /> المؤشرات التنافسية العامة
+          <div className="baffa-card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Trophy size={20} style={{ color: 'var(--baffa-gold-primary)' }} /> Overall Match Metrics
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
-              <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fcfbf7', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6b7280' }}>نسبة الفوز</span>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#d97706' }}>{stats.winRate}%</div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'var(--baffa-bg-elevated)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>Win Rate</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>{stats.winRate}%</div>
               </div>
-              <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fcfbf7', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6b7280' }}>إجمالي الجولات</span>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111827' }}>{stats.totalRounds}</div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'var(--baffa-bg-elevated)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>Total Rounds</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>{stats.totalRounds}</div>
               </div>
-              <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fcfbf7', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6b7280' }}>فوز الجولات</span>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#10b981' }}>{stats.roundWinRate}%</div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'var(--baffa-bg-elevated)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>Round Win Rate</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--baffa-success)' }}>{stats.roundWinRate}%</div>
               </div>
-              <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fcfbf7', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6b7280' }}>إجمالي النقط المحروقة</span>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#b45309' }}>{stats.totalPipsScored}</div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'var(--baffa-bg-elevated)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>Total Pips Scored</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--baffa-cyan-primary)' }}>{stats.totalPipsScored}</div>
               </div>
             </div>
           </div>
 
           {/* Streaks & Performance */}
-          <div className="baffa-card" style={{ padding: '24px', border: '1.5px solid rgba(245, 158, 11, 0.25)' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#111827', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Flame size={20} style={{ color: '#d97706' }} /> سلسلة الانتصارات والمعدلات
+          <div className="baffa-card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Flame size={20} style={{ color: 'var(--baffa-warning)' }} /> Streaks & Milestones
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
-              <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fcfbf7', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6b7280' }}>السلسلة الحالية</span>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#d97706' }}>{stats.currentStreak}</div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'var(--baffa-bg-elevated)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>Current Streak</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--baffa-warning)' }}>{stats.currentStreak}</div>
               </div>
-              <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fcfbf7', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6b7280' }}>أفضل سلسلة</span>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#b45309' }}>{stats.bestStreak}</div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'var(--baffa-bg-elevated)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>Best Win Streak</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--baffa-gold-hover)' }}>{stats.bestStreak}</div>
               </div>
-              <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fcfbf7', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6b7280' }}>متوسط الجولات/ماتش</span>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111827' }}>{stats.averageRoundsPerMatch}</div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'var(--baffa-bg-elevated)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>Avg Rounds / Match</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>{stats.averageRoundsPerMatch}</div>
               </div>
             </div>
           </div>
@@ -126,34 +126,34 @@ export const StatisticsScreen: React.FC<StatisticsScreenProps> = ({
           {/* Human vs Bot Statistics Separation */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             {/* Human vs Human */}
-            <div className="baffa-card" style={{ padding: '20px', border: '1.5px solid rgba(245, 158, 11, 0.3)' }}>
+            <div className="baffa-card" style={{ padding: '20px', border: '1px solid rgba(6, 182, 212, 0.3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                <Users size={20} style={{ color: '#d97706' }} />
-                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: '#111827' }}>
-                  مواجهات اللاعبين البشر
+                <Users size={20} style={{ color: 'var(--baffa-cyan-primary)' }} />
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--baffa-cyan-primary)' }}>
+                  Human Matches
                 </h4>
               </div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#111827' }}>
-                {stats.humanMatchesWon} فوز / {stats.humanMatchesLost} خسارة
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff' }}>
+                {stats.humanMatchesWon}W / {stats.humanMatchesLost}L
               </div>
-              <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                نسبة الفوز التنافسي: {stats.humanWinRate}%
+              <span style={{ fontSize: '0.8rem', color: 'var(--baffa-text-muted)' }}>
+                Competitive Win Rate: {stats.humanWinRate}%
               </span>
             </div>
 
             {/* Against Bots */}
-            <div className="baffa-card" style={{ padding: '20px', border: '1.5px solid rgba(245, 158, 11, 0.3)' }}>
+            <div className="baffa-card" style={{ padding: '20px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                <Bot size={20} style={{ color: '#d97706' }} />
-                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: '#111827' }}>
-                  مواجهات البوتات
+                <Bot size={20} style={{ color: 'var(--baffa-gold-primary)' }} />
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--baffa-gold-primary)' }}>
+                  Bot Matches
                 </h4>
               </div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#111827' }}>
-                {stats.botMatchesWon} فوز / {stats.botMatchesLost} خسارة
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff' }}>
+                {stats.botMatchesWon}W / {stats.botMatchesLost}L
               </div>
-              <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                نسبة الفوز ضد الذكاء الاصطناعي: {stats.botWinRate}%
+              <span style={{ fontSize: '0.8rem', color: 'var(--baffa-text-muted)' }}>
+                Practice Win Rate: {stats.botWinRate}%
               </span>
             </div>
           </div>

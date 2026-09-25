@@ -10,68 +10,66 @@
      7. Deep Emerald:   #0F6B4C (لون مساعد / فوز وتأكيد)
      ========================================================================== */
 
-  /* Background Backdrops & Canvases */
-  --baffa-bg-canvas: #FFFBEA; /* Cream Ivory (خلفية التطبيق) */
-  --baffa-bg-base: #FFFDF2; /* Warm Luminous Cream */
-  --baffa-bg-surface: #ffffff; /* Crisp Pure Card White */
-  --baffa-bg-elevated: #FFFDF0; /* Cream-tinted Elevated Surface */
+  /* Dark Luxury Background Palette */
+  --baffa-bg-canvas: #06090e;
+  --baffa-bg-base: #0b111a;
+  --baffa-bg-surface: #121d2d;
+  --baffa-bg-elevated: #1a283e;
 
-  /* Dominos Salon Felt Table */
-  --baffa-bg-table: #F5C518; /* Sunflower Gold Velvet Felt */
-  --baffa-bg-table-border: #1A1A1A; /* Ink Black Ebony Outer Table Rim */
-  --baffa-table-rim-gold: #B8860B; /* Antique Gold Inlaid Rim Bevel */
-  --baffa-table-felt-glow: rgba(245, 197, 24, 0.35);
+  /* Classic Green Felt Domino Table */
+  --baffa-bg-table: #0c261e; /* Rich deep Egyptian emerald casino felt */
+  --baffa-bg-table-border: #3b2818; /* Rich Mahogany wooden rim */
+  --baffa-table-felt-green-light: #1b4d3e;
+  --baffa-table-felt-green-dark: #0c261e;
 
   /* Surfaces & Glass */
-  --baffa-surface-glass: rgba(255, 255, 255, 0.95);
-  --baffa-surface-glass-border: #B8860B; /* Antique Gold */
-  --baffa-surface-glass-border-subtle: rgba(184, 134, 11, 0.35);
-  --baffa-surface-illuminated: rgba(245, 197, 24, 0.15);
+  --baffa-surface-glass: rgba(18, 29, 45, 0.75);
+  --baffa-surface-glass-border: rgba(255, 255, 255, 0.08);
+  --baffa-surface-illuminated: rgba(245, 197, 24, 0.08);
 
-  /* Brand Yellow & Gold Progression */
+  /* Primary Accent - Egyptian Sun Gold */
   --baffa-gold-primary: #F5C518; /* Sunflower Gold */
   --baffa-gold-hover: #FDE68A;   /* Butter Cream */
   --baffa-gold-dark: #D9A404;    /* Amber Wheat */
   --baffa-gold-frame: #B8860B;   /* Antique Gold */
-  --baffa-gold-muted: rgba(245, 197, 24, 0.18);
-  --baffa-gold-glow: rgba(245, 197, 24, 0.45);
+  --baffa-gold-muted: rgba(245, 197, 24, 0.2);
+  --baffa-gold-glow: rgba(245, 197, 24, 0.4);
 
-  /* Brand Contrast Accents */
-  --baffa-amber-light: #FDE68A; /* Butter Cream */
-  --baffa-amber-dark: #D9A404;  /* Amber Wheat */
-  --baffa-black: #1A1A1A;       /* Ink Black */
-  --baffa-ivory: #FFFBEA;       /* Cream Ivory */
+  /* Secondary Nile Cyan Accent */
+  --baffa-cyan-primary: #06b6d4;
+  --baffa-cyan-hover: #22d3ee;
+  --baffa-cyan-muted: rgba(6, 182, 212, 0.2);
 
   /* Team Palettes */
-  --baffa-team1-color: #dc2626; /* Crimson Red */
-  --baffa-team1-glow: rgba(220, 38, 38, 0.35);
-  --baffa-team1-bg: rgba(220, 38, 38, 0.08);
+  --baffa-team1-color: #ef4444; /* Team 1 Crimson */
+  --baffa-team1-glow: rgba(239, 68, 68, 0.4);
+  --baffa-team1-bg: rgba(239, 68, 68, 0.12);
 
-  --baffa-team2-color: #0284c7; /* Sapphire Blue */
-  --baffa-team2-glow: rgba(2, 132, 199, 0.35);
-  --baffa-team2-bg: rgba(2, 132, 199, 0.08);
+  --baffa-team2-color: #0ea5e9; /* Team 2 Sky Blue */
+  --baffa-team2-glow: rgba(14, 165, 233, 0.4);
+  --baffa-team2-bg: rgba(14, 165, 233, 0.12);
 
   /* Functional Colors & Success Accent */
-  --baffa-success: #0F6B4C; /* Deep Emerald (لون مساعد فوز/نجاح) */
+  --baffa-success: #10b981;
   --baffa-accent-emerald: #0F6B4C;
-  --baffa-warning: #D9A404; /* Amber Wheat */
-  --baffa-error: #e11d48;
-  --baffa-info: #0284c7;
+  --baffa-warning: #f59e0b;
+  --baffa-error: #f43f5e;
+  --baffa-info: #3b82f6;
 
-  /* Typography / Text Hierarchy (Ink Black) */
-  --baffa-text-primary: #1A1A1A; /* Ink Black (الخط والنقط) */
-  --baffa-text-secondary: #4a4a4a;
-  --baffa-text-muted: #737373;
-  --baffa-text-disabled: #a3a3a3;
+  /* Text Contrast Hierarchy (Dark Mode Crisp Typography) */
+  --baffa-text-primary: #f8fafc;
+  --baffa-text-secondary: #cbd5e1;
+  --baffa-text-muted: #94a3b8;
+  --baffa-text-disabled: #64748b;
 
   /* Tactile Domino Tile Resin */
-  --baffa-domino-bg: #FFFDF5;
-  --baffa-domino-grad: linear-gradient(135deg, #ffffff 0%, #FFFBEA 100%);
-  --baffa-domino-bevel: #FDE68A;
-  --baffa-domino-border: #D9A404;
-  --baffa-domino-pip: #1A1A1A; /* Ink Black Dots */
-  --baffa-domino-spinner: #B8860B; /* Antique Gold Brass Spinner */
-  --baffa-domino-shadow: 0 4px 10px rgba(26, 26, 26, 0.22), 0 1px 3px rgba(26, 26, 26, 0.12), inset 0 2px 4px rgba(255, 255, 255, 0.9), inset 0 -2px 4px rgba(217, 164, 4, 0.15);
+  --baffa-domino-bg: #fffdf5;
+  --baffa-domino-grad: linear-gradient(135deg, #fffcf0 0%, #f4ebd8 100%);
+  --baffa-domino-bevel: #e8ded1;
+  --baffa-domino-border: #d2c5af;
+  --baffa-domino-pip: #171b26;
+  --baffa-domino-spinner: #cba258;
+  --baffa-domino-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.8), inset 0 -2px 4px rgba(0, 0, 0, 0.1);
 
   /* Spacing */
   --baffa-space-xs: 4px;
@@ -88,10 +86,10 @@
   --baffa-radius-xl: 24px;
   --baffa-radius-full: 9999px;
 
-  /* Shadows with Warm Amber Tone */
-  --baffa-shadow-subtle: 0 4px 6px -1px rgba(26, 26, 26, 0.05), 0 2px 4px -2px rgba(26, 26, 26, 0.03);
-  --baffa-shadow-elevated: 0 10px 25px -5px rgba(217, 164, 4, 0.16), 0 8px 10px -6px rgba(26, 26, 26, 0.06);
-  --baffa-shadow-glow-gold: 0 0 24px rgba(245, 197, 24, 0.45);
+  /* Shadows */
+  --baffa-shadow-subtle: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --baffa-shadow-elevated: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  --baffa-shadow-glow-gold: 0 0 24px rgba(245, 197, 24, 0.35);
 
   /* Typography */
   --baffa-font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

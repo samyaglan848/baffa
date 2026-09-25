@@ -146,11 +146,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             fontSize: isMobile ? '2.5rem' : 'clamp(2.6rem, 5.5vw, 4.2rem)',
             fontWeight: 900,
             letterSpacing: isMobile ? '2px' : '4px',
-            color: 'var(--baffa-black)',
+            background: 'linear-gradient(135deg, #ffffff 20%, #cbd5e1 60%, #94a3b8 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
             margin: 0,
             lineHeight: 1.1,
             zIndex: 1,
-            textShadow: '0 2px 10px rgba(217, 164, 4, 0.15)',
           }}
         >
           BAFFA
@@ -160,9 +161,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           className="arabic-font"
           style={{
             fontSize: isMobile ? '1.15rem' : '1.4rem',
-            color: 'var(--baffa-gold-dark)',
+            color: 'var(--baffa-gold-hover)',
             marginTop: '6px',
             fontWeight: 900,
+            textShadow: '0 0 20px rgba(245, 197, 24, 0.45)',
             zIndex: 1,
           }}
         >
@@ -192,9 +194,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             marginTop: isMobile ? '14px' : '22px',
             padding: isMobile ? '8px 16px' : '12px 24px',
             borderRadius: 'var(--baffa-radius-full)',
-            backgroundColor: '#ffffff',
-            border: '2px solid var(--baffa-gold-frame)',
-            boxShadow: '0 8px 24px rgba(184, 134, 11, 0.15), 0 2px 6px rgba(0, 0, 0, 0.04)',
+            backgroundColor: 'var(--baffa-bg-elevated)',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(245, 158, 11, 0.15)',
             zIndex: 1,
           }}
         >
@@ -227,25 +229,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             alignItems: 'center',
             textAlign: 'center',
             cursor: 'pointer',
-            border: '2px solid var(--baffa-gold-frame)',
-            boxShadow: '0 8px 30px rgba(184, 134, 11, 0.18), var(--baffa-shadow-elevated)',
-            background: 'linear-gradient(170deg, #ffffff 0%, #fffef8 60%, var(--baffa-gold-hover) 100%)',
+            border: '2px solid var(--baffa-gold-primary)',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.45), 0 0 25px rgba(245, 158, 11, 0.25)',
+            background: 'linear-gradient(170deg, rgba(26, 40, 62, 0.95) 0%, rgba(18, 29, 45, 0.98) 100%)',
             transition: 'all 0.25s ease',
             position: 'relative',
             overflow: 'hidden',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-6px)';
-            e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)';
-            e.currentTarget.style.boxShadow = '0 0 35px rgba(245, 197, 24, 0.45)';
+            e.currentTarget.style.boxShadow = '0 0 40px rgba(245, 158, 11, 0.55)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.borderColor = 'var(--baffa-gold-frame)';
-            e.currentTarget.style.boxShadow = '0 8px 30px rgba(184, 134, 11, 0.18), var(--baffa-shadow-elevated)';
+            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.45), 0 0 25px rgba(245, 158, 11, 0.25)';
           }}
         >
-          {/* Top Pill Tag in Deep Emerald (#0F6B4C) for Instant/Active */}
+          {/* Top Pill Tag */}
           <div
             style={{
               position: 'absolute',
@@ -253,11 +253,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               right: '10px',
               padding: '3px 8px',
               borderRadius: '4px',
-              backgroundColor: 'var(--baffa-success)',
-              color: '#ffffff',
+              backgroundColor: 'var(--baffa-gold-primary)',
+              color: '#080d1a',
               fontSize: '0.65rem',
               fontWeight: 900,
-              boxShadow: '0 2px 6px rgba(15, 107, 76, 0.35)',
+              boxShadow: '0 2px 6px rgba(245, 158, 11, 0.4)',
             }}
           >
             بدون انتظار • فوري
@@ -269,25 +269,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               height: isMobile ? '46px' : '60px',
               borderRadius: '50%',
               backgroundColor: 'var(--baffa-gold-primary)',
-              color: 'var(--baffa-black)',
+              color: '#080d1a',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: isMobile ? '10px' : '16px',
-              boxShadow: '0 4px 16px rgba(217, 164, 4, 0.4)',
-              border: '1.5px solid var(--baffa-gold-frame)',
+              boxShadow: '0 0 20px rgba(245, 158, 11, 0.5)',
             }}
           >
-            <Play size={isMobile ? 22 : 30} fill="var(--baffa-black)" />
+            <Play size={isMobile ? 22 : 30} fill="#080d1a" />
           </div>
 
           <h2
             className="arabic-font"
-            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-black)', margin: 0 }}
+            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-text-primary)', margin: 0 }}
           >
             لعب سريع
           </h2>
-          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-gold-dark)', marginTop: '2px' }}>
+          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-gold-hover)', marginTop: '2px' }}>
             Quick Play with Bots
           </span>
           <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
@@ -322,21 +321,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             alignItems: 'center',
             textAlign: 'center',
             cursor: 'pointer',
-            border: '2px solid var(--baffa-gold-frame)',
-            boxShadow: '0 8px 30px rgba(184, 134, 11, 0.15), var(--baffa-shadow-elevated)',
-            background: 'linear-gradient(170deg, #ffffff 0%, #fffef8 60%, var(--baffa-gold-hover) 100%)',
+            border: '1.5px solid rgba(245, 158, 11, 0.35)',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.35)',
+            background: 'linear-gradient(170deg, rgba(26, 40, 62, 0.75) 0%, rgba(18, 29, 45, 0.9) 100%)',
             transition: 'all 0.25s ease',
             position: 'relative',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-6px)';
             e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)';
-            e.currentTarget.style.boxShadow = '0 0 35px rgba(245, 197, 24, 0.35)';
+            e.currentTarget.style.boxShadow = '0 0 35px rgba(245, 158, 11, 0.4)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.borderColor = 'var(--baffa-gold-frame)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.35)';
           }}
         >
           <div
@@ -346,11 +345,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               right: '10px',
               padding: '3px 8px',
               borderRadius: '4px',
-              backgroundColor: 'var(--baffa-gold-hover)',
-              color: 'var(--baffa-black)',
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              color: 'var(--baffa-gold-hover)',
               fontSize: '0.62rem',
               fontWeight: 800,
-              border: '1px solid var(--baffa-gold-frame)',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
             }}
           >
             هدف 101 أو 151
@@ -361,26 +360,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               width: isMobile ? '46px' : '60px',
               height: isMobile ? '46px' : '60px',
               borderRadius: '50%',
-              background: 'linear-gradient(145deg, var(--baffa-gold-hover) 0%, var(--baffa-gold-primary) 60%, var(--baffa-gold-dark) 100%)',
-              color: 'var(--baffa-black)',
+              background: 'linear-gradient(145deg, var(--baffa-gold-hover) 0%, var(--baffa-gold-primary) 100%)',
+              color: '#080d1a',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: isMobile ? '10px' : '16px',
-              boxShadow: '0 4px 16px rgba(217, 164, 4, 0.35)',
-              border: '1.5px solid var(--baffa-gold-frame)',
+              boxShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
             }}
           >
-            <PlusCircle size={isMobile ? 22 : 30} color="var(--baffa-black)" />
+            <PlusCircle size={isMobile ? 22 : 30} color="#080d1a" />
           </div>
 
           <h2
             className="arabic-font"
-            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-black)', margin: 0 }}
+            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-text-primary)', margin: 0 }}
           >
             إنشاء غرفة
           </h2>
-          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-gold-dark)', marginTop: '2px' }}>
+          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-gold-primary)', marginTop: '2px' }}>
             Create Custom Room
           </span>
           <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
@@ -399,21 +397,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             alignItems: 'center',
             textAlign: 'center',
             cursor: 'pointer',
-            border: '2px solid var(--baffa-gold-frame)',
-            boxShadow: '0 8px 30px rgba(184, 134, 11, 0.12), var(--baffa-shadow-elevated)',
-            background: 'linear-gradient(170deg, #ffffff 0%, #fffef8 60%, var(--baffa-gold-hover) 100%)',
+            border: '1.5px solid var(--baffa-surface-glass-border)',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.35)',
+            background: 'linear-gradient(170deg, rgba(26, 40, 62, 0.75) 0%, rgba(18, 29, 45, 0.9) 100%)',
             transition: 'all 0.25s ease',
             position: 'relative',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-6px)';
             e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)';
-            e.currentTarget.style.boxShadow = '0 0 35px rgba(245, 197, 24, 0.35)';
+            e.currentTarget.style.boxShadow = '0 0 35px rgba(245, 158, 11, 0.35)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.borderColor = 'var(--baffa-gold-frame)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.borderColor = 'var(--baffa-surface-glass-border)';
+            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.35)';
           }}
         >
           <div
@@ -423,11 +421,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               right: '10px',
               padding: '3px 8px',
               borderRadius: '4px',
-              backgroundColor: 'var(--baffa-gold-hover)',
-              color: 'var(--baffa-black)',
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              color: 'var(--baffa-gold-hover)',
               fontSize: '0.62rem',
               fontWeight: 800,
-              border: '1px solid var(--baffa-gold-frame)',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
             }}
           >
             كود الغرفة
@@ -438,14 +436,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               width: isMobile ? '46px' : '60px',
               height: isMobile ? '46px' : '60px',
               borderRadius: '50%',
-              backgroundColor: 'var(--baffa-black)',
+              backgroundColor: 'var(--baffa-bg-elevated)',
               color: 'var(--baffa-gold-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: isMobile ? '10px' : '16px',
-              boxShadow: '0 4px 15px rgba(26, 26, 26, 0.2)',
-              border: '1.5px solid var(--baffa-gold-frame)',
+              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
             }}
           >
             <LogIn size={isMobile ? 22 : 30} color="var(--baffa-gold-primary)" />
@@ -453,11 +451,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           <h2
             className="arabic-font"
-            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-black)', margin: 0 }}
+            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-text-primary)', margin: 0 }}
           >
             انضمام لغرفة
           </h2>
-          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-gold-dark)', marginTop: '2px' }}>
+          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-gold-primary)', marginTop: '2px' }}>
             Join with Code
           </span>
           <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
@@ -484,18 +482,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            color: 'var(--baffa-black)',
+            color: 'var(--baffa-text-primary)',
             fontSize: isMobile ? '0.82rem' : '0.9rem',
             fontWeight: 700,
             padding: isMobile ? '8px 16px' : '10px 20px',
             borderRadius: 'var(--baffa-radius-full)',
-            backgroundColor: '#ffffff',
-            border: '1.5px solid var(--baffa-gold-frame)',
-            boxShadow: '0 4px 16px rgba(184, 134, 11, 0.15)',
+            backgroundColor: 'var(--baffa-bg-elevated)',
+            border: '1px solid var(--baffa-gold-primary)',
+            boxShadow: '0 0 16px rgba(245, 158, 11, 0.2)',
             cursor: 'pointer',
           }}
         >
-          <BookOpen size={isMobile ? 15 : 18} style={{ color: 'var(--baffa-gold-dark)' }} />
+          <BookOpen size={isMobile ? 15 : 18} style={{ color: 'var(--baffa-gold-primary)' }} />
           <span className="arabic-font">قواعد لعبة بَفّة (Game Rules)</span>
         </button>
 
@@ -504,13 +502,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            color: 'var(--baffa-black)',
+            color: 'var(--baffa-text-secondary)',
             fontSize: isMobile ? '0.75rem' : '0.85rem',
             padding: isMobile ? '6px 12px' : '8px 16px',
             borderRadius: 'var(--baffa-radius-full)',
-            backgroundColor: '#ffffff',
-            border: '1.5px solid var(--baffa-gold-frame)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+            backgroundColor: 'rgba(18, 29, 45, 0.7)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
             textAlign: 'center',
           }}
         >
@@ -554,32 +552,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               padding: '36px 30px',
               maxHeight: '85vh',
               overflowY: 'auto',
-              backgroundColor: 'var(--baffa-bg-canvas)',
-              border: '2.5px solid var(--baffa-gold-frame)',
-              boxShadow: '0 12px 48px rgba(26, 26, 26, 0.25)',
+              backgroundColor: 'var(--baffa-bg-base)',
+              border: '1.5px solid var(--baffa-gold-primary)',
+              boxShadow: '0 0 45px rgba(245, 158, 11, 0.35)',
             }}
           >
             <h2
               className="arabic-font"
-              style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--baffa-black)', marginBottom: '18px', textAlign: 'center' }}
+              style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--baffa-gold-hover)', marginBottom: '18px', textAlign: 'center' }}
             >
               قواعد وأصول لعبة بَفّة (BAFFA Rules)
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem', color: 'var(--baffa-black)', lineHeight: 1.7 }}>
-              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: '#ffffff', border: '1.5px solid var(--baffa-gold-frame)' }}>
-                <strong style={{ color: 'var(--baffa-gold-dark)' }}>1. 28 بلاطة (28 Tiles):</strong> اللعبة تستخدم مجموعة الدومينو الكلاسيكية المزدوجة من 0|0 حتى 6|6 وتوزع 7 بلاطات لكل لاعب بالتساوي.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem', color: 'var(--baffa-text-secondary)', lineHeight: 1.7 }}>
+              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--baffa-bg-elevated)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                <strong style={{ color: 'var(--baffa-gold-primary)' }}>1. 28 بلاطة (28 Tiles):</strong> اللعبة تستخدم مجموعة الدومينو الكلاسيكية المزدوجة من 0|0 حتى 6|6 وتوزع 7 بلاطات لكل لاعب بالتساوي.
               </div>
-              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: '#ffffff', border: '1.5px solid var(--baffa-gold-frame)' }}>
-                <strong style={{ color: 'var(--baffa-gold-dark)' }}>2. البداية بالدوش (6|6 Start):</strong> أول جولة في الماتش تبدأ إلزاميًا بصاحب الـ 6|6.
+              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--baffa-bg-elevated)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                <strong style={{ color: 'var(--baffa-gold-primary)' }}>2. البداية بالدوش (6|6 Start):</strong> أول جولة في الماتش تبدأ إلزاميًا بصاحب الـ 6|6.
               </div>
-              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: '#ffffff', border: '1.5px solid var(--baffa-gold-frame)' }}>
-                <strong style={{ color: 'var(--baffa-gold-dark)' }}>3. اتجاه اللعب (Counter-Clockwise):</strong> عكس عقارب الساعة إلزاميًا (جنوب ← شرق ← شمال ← غرب)، والزميل يجلس أمامك مباشرة.
+              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--baffa-bg-elevated)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                <strong style={{ color: 'var(--baffa-gold-primary)' }}>3. اتجاه اللعب (Counter-Clockwise):</strong> عكس عقارب الساعة إلزاميًا (جنوب ← شرق ← شمال ← غرب)، والزميل يجلس أمامك مباشرة.
               </div>
-              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: '#ffffff', border: '1.5px solid var(--baffa-gold-frame)' }}>
-                <strong style={{ color: 'var(--baffa-gold-dark)' }}>4. الفوت والقفلة (Pass & Blocked):</strong> اللاعب يفوت ("فوت / عدي") فقط إذا لم يكن لديه أي حركة قانونية. عند القفلة، الفريق صاحب المجموع الأصغر من البونت يفوز بالراوند.
+              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--baffa-bg-elevated)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                <strong style={{ color: 'var(--baffa-gold-primary)' }}>4. الفوت والقفلة (Pass & Blocked):</strong> اللاعب يفوت ("فوت / عدي") فقط إذا لم يكن لديه أي حركة قانونية. عند القفلة، الفريق صاحب المجموع الأصغر من البونت يفوز بالراوند.
               </div>
-              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: '#ffffff', border: '1.5px solid var(--baffa-gold-frame)' }}>
-                <strong style={{ color: 'var(--baffa-gold-dark)' }}>5. سكور الفوز (101 أو 151 Target):</strong> أول فريق يصل أو يتجاوز النقاط المحددة يفوز بالمباراة كاملة.
+              <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--baffa-bg-elevated)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                <strong style={{ color: 'var(--baffa-gold-primary)' }}>5. سكور الفوز (101 أو 151 Target):</strong> أول فريق يصل أو يتجاوز النقاط المحددة يفوز بالمباراة كاملة.
               </div>
 
               {/* Real Server-Enforced Anti-Cheat & Penalties Section */}
@@ -588,36 +586,36 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   marginTop: '12px',
                   padding: '16px',
                   borderRadius: '10px',
-                  backgroundColor: '#fef2f2',
-                  border: '1.5px solid #f87171',
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', fontWeight: 900, marginBottom: '10px', fontSize: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f87171', fontWeight: 900, marginBottom: '10px', fontSize: '1rem' }}>
                   <ShieldAlert size={20} />
                   <span className="arabic-font">عواقب الغش ونظام الأمان المبرمج بالسيرفر:</span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', color: '#7f1d1d', lineHeight: 1.6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', color: '#fecaca', lineHeight: 1.6 }}>
                   <div>
-                    <strong style={{ color: '#991b1b' }}>⚖️ عقوبة ثبوت الغش من الحَكَم أو السيرفر (Cheating Disqualification):</strong>
+                    <strong style={{ color: '#fca5a5' }}>⚖️ عقوبة ثبوت الغش من الحَكَم أو السيرفر (Cheating Disqualification):</strong>
                     <br />
                     تُطبق هذه العقوبة فقط عند ثبوت حالة غش متعمدة (مثل الاتفاق غير المشروع بين اللاعبين أو التلاعب الأمني): <span style={{ textDecoration: 'underline' }}>تُنهى الجولة فوراً</span> في نفس اللحظة وتُحسب جميع نقاط وبناط بلاطات الفريق المخالف كاملة لصالح الفريق المنافس.
                   </div>
 
                   <div>
-                    <strong style={{ color: '#991b1b' }}>🚫 المنع التلقائي للتمرير الخاطئ (Pass Verification):</strong>
+                    <strong style={{ color: '#fca5a5' }}>🚫 المنع التلقائي للتمرير الخاطئ (Pass Verification):</strong>
                     <br />
                     محرك السيرفر لا يسمح بأي أمر "فوت / Pass" طالما أن يد اللاعب بها بلاطة صالحة للعب، ويمنع تفويت الدور بدون داعٍ لحماية زميلك.
                   </div>
 
                   <div>
-                    <strong style={{ color: '#991b1b' }}>🔒 العزل التام للأوراق (Zero Hand Exposure):</strong>
+                    <strong style={{ color: '#fca5a5' }}>🔒 العزل التام للأوراق (Zero Hand Exposure):</strong>
                     <br />
                     أوراق كل لاعب مشفرة ومعزولة بالسيرفر ولا تُرسل لشبكة أي خصم أو مشاهد نهائياً، مما يجعل برامج كشف الأوراق مستحيلة تقنياً 100%.
                   </div>
 
                   <div>
-                    <strong style={{ color: '#991b1b' }}>⚡ رصد البوتات والتوقيت المشبوه (Cumulative Risk Score):</strong>
+                    <strong style={{ color: '#fca5a5' }}>⚡ رصد البوتات والتوقيت المشبوه (Cumulative Risk Score):</strong>
                     <br />
                     أي استخدام لأدوات مؤتمتة بحركات غير بشرية بأقل من 200 ملي ثانية ترفع نقاط الخطورة في السيرفر وتؤدي لطرد اللاعب وتصفير سلسلة انتصاراته (Streak Reset).
                   </div>
@@ -629,24 +627,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 style={{
                   padding: '16px',
                   borderRadius: '10px',
-                  backgroundColor: '#ffffff',
-                  border: '1.5px solid var(--baffa-gold-frame)',
+                  backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--baffa-gold-dark)', fontWeight: 900, marginBottom: '10px', fontSize: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--baffa-gold-hover)', fontWeight: 900, marginBottom: '10px', fontSize: '1rem' }}>
                   <Gavel size={20} />
                   <span className="arabic-font">صلاحيات الحَكَم والمتفرّج (Judge & Spectator Roles):</span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', color: 'var(--baffa-black)', lineHeight: 1.6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', color: '#fef3c7', lineHeight: 1.6 }}>
                   <div>
-                    <strong style={{ color: 'var(--baffa-gold-dark)' }}>👨‍⚖️ الحَكَم (Judge - كحد أقصى 1 بكل غرفة):</strong>
+                    <strong style={{ color: '#fde047' }}>👨‍⚖️ الحَكَم (Judge - كحد أقصى 1 بكل غرفة):</strong>
                     <br />
-                    يشاهد سير الطاولة، توقيت الرمي، وترتيب الأدوار مباشرة مع الصوت، ويمتلك زر <strong>إعلان الغش</strong> لإنهاء الجولة ومعاقبة المخالف. <span style={{ color: 'var(--baffa-gold-dark)', fontWeight: 700 }}>لا يرى الحَكَم أوراق يد اللاعبين الخاصة</span> لضمان النزاهة التامة والحيادية.
+                    يشاهد سير الطاولة، توقيت الرمي، وترتيب الأدوار مباشرة مع الصوت، ويمتلك زر <strong>إعلان الغش</strong> لإنهاء الجولة ومعاقبة المخالف. <span style={{ color: 'var(--baffa-gold-hover)' }}>لا يرى الحَكَم أوراق يد اللاعبين الخاصة</span> لضمان النزاهة التامة والحيادية.
                   </div>
 
                   <div>
-                    <strong style={{ color: 'var(--baffa-gold-dark)' }}>👀 المتفرّج (Spectator - كحد أقصى 1 بكل غرفة):</strong>
+                    <strong style={{ color: '#fde047' }}>👀 المتفرّج (Spectator - كحد أقصى 1 بكل غرفة):</strong>
                     <br />
                     يشاهد طاولة اللعب الحية وسلسلة الدومينو ويستمع لصوت القعدة للتشجيع فقط. لا يمكنه اللعب أو التأثير على الماتش، ولا يرى أوراق أي لاعب مطلقاً.
                   </div>
@@ -658,16 +656,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 style={{
                   padding: '16px',
                   borderRadius: '10px',
-                  backgroundColor: 'rgba(15, 107, 76, 0.06)',
-                  border: '1.5px solid var(--baffa-success)',
+                  backgroundColor: 'rgba(6, 182, 212, 0.08)',
+                  border: '1px solid rgba(6, 182, 212, 0.3)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--baffa-success)', fontWeight: 900, marginBottom: '10px', fontSize: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#67e8f9', fontWeight: 900, marginBottom: '10px', fontSize: '1rem' }}>
                   <Cpu size={20} />
                   <span className="arabic-font">التحكيم الرقمي التلقائي (في حالة عدم وجود حَكَم):</span>
                 </div>
 
-                <div style={{ fontSize: '0.85rem', color: 'var(--baffa-black)', lineHeight: 1.6 }}>
+                <div style={{ fontSize: '0.85rem', color: '#cffafe', lineHeight: 1.6 }}>
                   إذا لُعبت المباراة بدون حَكَم بشري، يتولى **محرك السيرفر التلقائي (Server-Authoritative Referee)** التحكيم اللحظي 100%:
                   <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
                     <li>التأكد من صحة أطراف السلسلة ومنع لعب أي بلاطة غير متطابقة.</li>
@@ -682,30 +680,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 style={{
                   padding: '16px',
                   borderRadius: '10px',
-                  backgroundColor: '#ffffff',
-                  border: '1.5px solid var(--baffa-gold-frame)',
+                  backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                  border: '1px solid rgba(139, 92, 246, 0.3)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--baffa-black)', fontWeight: 900, marginBottom: '10px', fontSize: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#c4b5fd', fontWeight: 900, marginBottom: '10px', fontSize: '1rem' }}>
                   <WifiOff size={20} />
                   <span className="arabic-font">نظام انقطاع الاتصال وخروج اللاعبين (Disconnect & Bot Takeover):</span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', color: 'var(--baffa-black)', lineHeight: 1.6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', color: '#ede9fe', lineHeight: 1.6 }}>
                   <div>
-                    <strong style={{ color: 'var(--baffa-gold-dark)' }}>🔴 التنبيه الفوري:</strong>
+                    <strong style={{ color: '#a78bfa' }}>🔴 التنبيه الفوري:</strong>
                     <br />
                     عند خروج أي لاعب أو انقطاع اتصاله، يظهر لجميع الحاضرين إشعار فوري بأن اللاعب <strong>(منقطع الاتصال - Disconnected)</strong> مع شارة تنبيهية على مقعده.
                   </div>
 
                   <div>
-                    <strong style={{ color: 'var(--baffa-gold-dark)' }}>🤖 استلام البوت التلقائي (AI Bot Takeover):</strong>
+                    <strong style={{ color: '#a78bfa' }}>🤖 استلام البوت التلقائي (AI Bot Takeover):</strong>
                     <br />
                     تبدأ مهلة عودة مدتها <strong>120 ثانية</strong>، وخلالها يتولى <strong>بوت مصري ذكي</strong> اللعب مكانه بنفس أوراقه الأصلية فوراً حتى لا تتوقف متعة المباراة.
                   </div>
 
                   <div>
-                    <strong style={{ color: 'var(--baffa-gold-dark)' }}>🔄 استعادة المقعد والأدمن:</strong>
+                    <strong style={{ color: '#a78bfa' }}>🔄 استعادة المقعد والأدمن:</strong>
                     <br />
                     بمجرد عودة اللاعب، يستلم أوراقه الأصلية فوراً ويكمل الماتش. وفي حال خروج منشئ الغرفة (الأدمن)، تنتقل صلاحيات الغرفة تلقائياً لزميله المتصل (Admin Transfer).
                   </div>

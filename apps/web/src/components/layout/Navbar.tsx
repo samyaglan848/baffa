@@ -51,10 +51,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: isMobile ? '8px 12px' : '10px 20px',
-        backgroundColor: 'rgba(255, 255, 255, 0.96)',
-        borderBottom: '2px solid var(--baffa-gold-frame)',
-        boxShadow: '0 2px 12px rgba(217, 164, 4, 0.12)',
-        backdropFilter: 'blur(12px)',
+        backgroundColor: 'rgba(8, 13, 22, 0.85)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(16px)',
         zIndex: 40,
         position: 'sticky',
         top: 0,
@@ -100,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 fontSize: '1.45rem',
                 fontWeight: 900,
                 fontFamily: 'var(--baffa-font-sans), sans-serif',
-                color: 'var(--baffa-black)',
+                color: '#080d1a',
                 lineHeight: 1,
                 letterSpacing: '-0.5px',
                 textShadow: '0 1px 0 rgba(255, 255, 255, 0.5)',
@@ -129,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               style={{
                 fontSize: '0.65rem',
                 fontWeight: 800,
-                color: 'var(--baffa-gold-dark)',
+                color: 'var(--baffa-gold-primary)',
                 letterSpacing: '0.5px',
                 lineHeight: 1,
               }}
@@ -147,9 +147,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               style={{
                 padding: isMobile ? '6px 8px' : '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
-                backgroundColor: currentView === 'HOME' ? 'var(--baffa-bg-canvas)' : 'transparent',
-                color: currentView === 'HOME' ? 'var(--baffa-black)' : 'var(--baffa-text-secondary)',
-                border: currentView === 'HOME' ? '1.5px solid var(--baffa-gold-frame)' : '1.5px solid transparent',
+                backgroundColor: currentView === 'HOME' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                color: currentView === 'HOME' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
+                border: currentView === 'HOME' ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid transparent',
                 fontSize: '0.82rem',
                 fontWeight: 800,
                 display: 'flex',
@@ -158,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               title="العب"
             >
-              <Play size={14} style={{ color: currentView === 'HOME' ? 'var(--baffa-gold-dark)' : 'inherit' }} /> {!isMobile && 'Play (العب)'}
+              <Play size={14} style={{ color: currentView === 'HOME' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> {!isMobile && 'Play (العب)'}
             </button>
 
             <button
@@ -166,9 +166,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               style={{
                 padding: isMobile ? '6px 8px' : '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
-                backgroundColor: currentView === 'HISTORY' ? 'var(--baffa-bg-canvas)' : 'transparent',
-                color: currentView === 'HISTORY' ? 'var(--baffa-black)' : 'var(--baffa-text-secondary)',
-                border: currentView === 'HISTORY' ? '1.5px solid var(--baffa-gold-frame)' : '1.5px solid transparent',
+                backgroundColor: currentView === 'HISTORY' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                color: currentView === 'HISTORY' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
+                border: currentView === 'HISTORY' ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid transparent',
                 fontSize: '0.82rem',
                 fontWeight: 800,
                 display: 'flex',
@@ -177,7 +177,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               title="السجل"
             >
-              <History size={14} style={{ color: currentView === 'HISTORY' ? 'var(--baffa-gold-dark)' : 'inherit' }} /> {!isMobile && 'History (السجل)'}
+              <History size={14} style={{ color: currentView === 'HISTORY' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> {!isMobile && 'History (السجل)'}
             </button>
 
             <button
@@ -185,9 +185,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               style={{
                 padding: isMobile ? '6px 8px' : '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
-                backgroundColor: currentView === 'STATS' ? 'var(--baffa-bg-canvas)' : 'transparent',
-                color: currentView === 'STATS' ? 'var(--baffa-black)' : 'var(--baffa-text-secondary)',
-                border: currentView === 'STATS' ? '1.5px solid var(--baffa-gold-frame)' : '1.5px solid transparent',
+                backgroundColor: currentView === 'STATS' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                color: currentView === 'STATS' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
+                border: currentView === 'STATS' ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid transparent',
                 fontSize: '0.82rem',
                 fontWeight: 800,
                 display: 'flex',
@@ -196,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               title="الإحصائيات"
             >
-              <BarChart3 size={14} style={{ color: currentView === 'STATS' ? 'var(--baffa-gold-dark)' : 'inherit' }} /> {!isMobile && 'Stats (الإحصائيات)'}
+              <BarChart3 size={14} style={{ color: currentView === 'STATS' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> {!isMobile && 'Stats (الإحصائيات)'}
             </button>
 
             <button
@@ -204,9 +204,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               style={{
                 padding: isMobile ? '6px 8px' : '6px 12px',
                 borderRadius: 'var(--baffa-radius-md)',
-                backgroundColor: currentView === 'PROFILE' ? 'var(--baffa-bg-canvas)' : 'transparent',
-                color: currentView === 'PROFILE' ? 'var(--baffa-black)' : 'var(--baffa-text-secondary)',
-                border: currentView === 'PROFILE' ? '1.5px solid var(--baffa-gold-frame)' : '1.5px solid transparent',
+                backgroundColor: currentView === 'PROFILE' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                color: currentView === 'PROFILE' ? 'var(--baffa-gold-primary)' : 'var(--baffa-text-secondary)',
+                border: currentView === 'PROFILE' ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid transparent',
                 fontSize: '0.82rem',
                 fontWeight: 800,
                 display: 'flex',
@@ -215,7 +215,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               title="حسابي"
             >
-              <UserIcon size={14} style={{ color: currentView === 'PROFILE' ? 'var(--baffa-gold-dark)' : 'inherit' }} /> {!isMobile && 'Profile (حسابي)'}
+              <UserIcon size={14} style={{ color: currentView === 'PROFILE' ? 'var(--baffa-gold-primary)' : 'inherit' }} /> {!isMobile && 'Profile (حسابي)'}
             </button>
           </nav>
         )}
