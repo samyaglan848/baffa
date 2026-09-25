@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, PlusCircle, LogIn, BookOpen, ShieldCheck, UserCheck, Gavel, Eye, ShieldAlert, WifiOff, Cpu, Bot, Radio, X } from 'lucide-react';
 import { JoinRoomModal } from '../room/JoinRoomModal';
+import { CreateRoomModal } from '../room/CreateRoomModal';
 import { AuthModal } from '../auth/AuthModal';
 import { RoomSettings, UserRole } from '@baffa/shared';
 import { DominoTile } from '../common/DominoTile';
@@ -27,6 +28,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onQuickPlay,
   onAuthSuccess,
 }) => {
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -94,45 +96,33 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           }}
         />
 
-        {/* Master Luxury 3D Brand Badge */}
+        {/* Master Luxury 3D Brand Badge - Crisp & Defined */}
         <div
           className="animate-float"
           style={{
             width: isMobile ? '68px' : '92px',
             height: isMobile ? '68px' : '92px',
             borderRadius: isMobile ? '18px' : '26px',
-            background: 'linear-gradient(145deg, var(--baffa-gold-hover) 0%, var(--baffa-gold-primary) 50%, var(--baffa-gold-dark) 100%)',
+            background: 'linear-gradient(145deg, #F5C518 0%, #D9A404 60%, #854d0e 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 32px rgba(245, 197, 24, 0.55), inset 0 2px 2px rgba(255, 255, 255, 0.8), inset 0 -3px 6px rgba(26, 26, 26, 0.4)',
+            boxShadow: '0 0 28px rgba(245, 197, 24, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3), inset 0 -3px 6px rgba(0, 0, 0, 0.5)',
             marginBottom: isMobile ? '12px' : '20px',
-            border: '2px solid var(--baffa-gold-frame)',
+            border: '2px solid #B8860B',
             position: 'relative',
             zIndex: 1,
           }}
         >
-          {/* Subtle Metallic Sheen */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: '-50%',
-              width: '200%',
-              height: '100%',
-              background: 'linear-gradient(60deg, transparent 40%, rgba(255, 255, 255, 0.4) 50%, transparent 60%)',
-              pointerEvents: 'none',
-            }}
-          />
           <span
             style={{
               fontSize: isMobile ? '2.4rem' : '3.2rem',
               fontWeight: 900,
               fontFamily: 'var(--baffa-font-sans), sans-serif',
-              color: 'var(--baffa-black)',
+              color: '#080d1a',
               lineHeight: 1,
               letterSpacing: '-1px',
-              textShadow: '0 1px 1px rgba(255, 255, 255, 0.5)',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.35)',
               transform: 'translateY(-1px)',
               userSelect: 'none',
             }}
@@ -146,12 +136,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             fontSize: isMobile ? '2.5rem' : 'clamp(2.6rem, 5.5vw, 4.2rem)',
             fontWeight: 900,
             letterSpacing: isMobile ? '2px' : '4px',
-            background: 'linear-gradient(135deg, #ffffff 20%, #cbd5e1 60%, #94a3b8 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: '#f8fafc',
             margin: 0,
             lineHeight: 1.1,
             zIndex: 1,
+            textShadow: '0 2px 20px rgba(245, 197, 24, 0.25)',
           }}
         >
           BAFFA
@@ -296,23 +285,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* 2. Create Room */}
         <div
-          onClick={() => {
-            onCreateRoom(
-              'قعدة بَفّة المعلمين 🎴',
-              {
-                targetScore: 101,
-                roundTimerSeconds: 20,
-                fillWithBots: false,
-                allowJudge: true,
-                allowSpectator: true,
-                voiceEnabled: true,
-                quickChatEnabled: true,
-                reactionsEnabled: true,
-                maxPlayers: 4,
-              },
-              'ADMIN'
-            );
-          }}
+          onClick={() => setShowCreateModal(true)}
           className="baffa-card"
           style={{
             padding: isMobile ? '18px 16px' : '30px 24px',
@@ -518,6 +491,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </div>
 
       {/* Modals */}
+      <CreateRoomModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={onCreateRoom}
+        defaultRoomName={`بَفّة ${currentUser.username}`}
+      />
+
       <JoinRoomModal
         isOpen={showJoinModal}
         onClose={() => setShowJoinModal(false)}

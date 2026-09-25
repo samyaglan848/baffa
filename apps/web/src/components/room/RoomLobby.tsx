@@ -34,6 +34,7 @@ import {
   X,
   Link,
   Share2,
+  Edit2,
 } from 'lucide-react';
 
 interface RoomLobbyProps {
@@ -71,6 +72,20 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
   const [swapFromSeat, setSwapFromSeat] = useState<PlayerSeat | null>(null);
   const [editingBotSeat, setEditingBotSeat] = useState<PlayerSeat | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(room.name);
+
+  useEffect(() => {
+    setEditedName(room.name);
+  }, [room.name]);
+
+  const handleSaveName = () => {
+    const trimmed = editedName.trim();
+    if (trimmed && trimmed !== room.name) {
+      onAdminUpdateSettings({ roomName: trimmed } as any);
+    }
+    setIsEditingName(false);
+  };
 
   // Responsive device state for mobile screen optimization
   const [isMobile, setIsMobile] = useState(false);
@@ -476,10 +491,105 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--baffa-text-primary)' }}>
-              {room.name}
-            </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {isEditingName ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveName();
+                    if (e.key === 'Escape') {
+                      setEditedName(room.name);
+                      setIsEditingName(false);
+                    }
+                  }}
+                  autoFocus
+                  maxLength={40}
+                  className="arabic-font"
+                  style={{
+                    backgroundColor: 'rgba(26, 40, 62, 0.95)',
+                    border: '1.5px solid var(--baffa-gold-primary)',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    padding: '4px 10px',
+                    fontSize: '1.2rem',
+                    fontWeight: 800,
+                    outline: 'none',
+                    boxShadow: '0 0 10px rgba(245, 158, 11, 0.3)',
+                  }}
+                />
+                <button
+                  onClick={handleSaveName}
+                  style={{
+                    backgroundColor: 'var(--baffa-gold-primary)',
+                    color: '#080d1a',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontWeight: 800,
+                  }}
+                  title="حفظ اسم الغرفة"
+                >
+                  <Check size={16} />
+                </button>
+                <button
+                  onClick={() => {
+                    setEditedName(room.name);
+                    setIsEditingName(false);
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    color: 'var(--baffa-text-muted)',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                  title="إلغاء"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--baffa-text-primary)', margin: 0 }}>
+                  {room.name}
+                </h1>
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      setEditedName(room.name);
+                      setIsEditingName(true);
+                    }}
+                    style={{
+                      color: 'var(--baffa-gold-primary)',
+                      backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      borderRadius: '6px',
+                      padding: '3px 8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="تعديل اسم الغرفة"
+                  >
+                    <Edit2 size={13} />
+                    <span>تعديل الاسم</span>
+                  </button>
+                )}
+              </div>
+            )}
             {isAdmin && (
               <span
                 style={{

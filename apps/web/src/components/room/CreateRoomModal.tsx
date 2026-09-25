@@ -26,14 +26,16 @@ interface CreateRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (name: string, settings: Partial<RoomSettings>, initialRole?: UserRole) => void;
+  defaultRoomName?: string;
 }
 
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   isOpen,
   onClose,
   onCreate,
+  defaultRoomName = 'بَفّة',
 }) => {
-  const [roomName, setRoomName] = useState('قعدة بَفّة المعلمين 🎴');
+  const [roomName, setRoomName] = useState(defaultRoomName);
   const [targetScore, setTargetScore] = useState<101 | 151>(101);
   const [roundTimerSeconds, setRoundTimerSeconds] = useState<number>(20);
   const [teamPreset, setTeamPreset] = useState<'SOLO_VS_BOTS' | 'FOUR_HUMANS' | 'TWO_HUMANS_VS_BOTS'>('SOLO_VS_BOTS');
@@ -43,6 +45,13 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [quickChatEnabled, setQuickChatEnabled] = useState(true);
   const [reactionsEnabled, setReactionsEnabled] = useState(true);
+
+  // Sync default room name on open
+  useEffect(() => {
+    if (isOpen && defaultRoomName) {
+      setRoomName(defaultRoomName);
+    }
+  }, [isOpen, defaultRoomName]);
 
   // Close on Escape key
   useEffect(() => {
@@ -61,7 +70,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onCreate(
-      roomName.trim() || 'قعدة بَفّة المعلمين 🎴',
+      roomName.trim() || defaultRoomName || 'بَفّة',
       {
         targetScore,
         roundTimerSeconds,

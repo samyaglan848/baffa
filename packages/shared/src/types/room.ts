@@ -23,6 +23,7 @@ export interface RoomSettings {
   quickChatEnabled: boolean;
   reactionsEnabled: boolean;
   selectedBotId?: BotId;
+  roomName?: string;
 }
 
 export interface RoomSeatInfo {

@@ -567,6 +567,7 @@ export default function App() {
             onRematch={requestRematch}
             onLeaveMatch={handleLeaveRoom}
             onTriggerBot={triggerBotTurn}
+            onOpenSettings={() => setShowSettings(true)}
           />
         )}
 

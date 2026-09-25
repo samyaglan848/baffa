@@ -41,6 +41,7 @@ import {
   Zap,
   Eye,
   X,
+  Settings,
 } from 'lucide-react';
 import { API_URL } from '@/config/api';
 
@@ -83,6 +84,7 @@ interface GameTableProps {
   onRematch?: (roomId?: string) => void;
   onLeaveMatch: () => void;
   onTriggerBot?: (roomId?: string) => void;
+  onOpenSettings?: () => void;
 }
 
 export const GameTable: React.FC<GameTableProps> = ({
@@ -111,6 +113,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   onRematch,
   onLeaveMatch,
   onTriggerBot,
+  onOpenSettings,
 }) => {
   const { playSound } = useGameAudio(true);
   
@@ -2197,10 +2200,11 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         </div>
 
-        {/* Right: Floating Voice Audio Controls */}
+        {/* Right: Floating Voice Audio Controls & Isolated Settings Gear */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
+          gap: isLandscape ? '4px' : '8px',
           transform: isLandscape ? 'scale(0.78)' : isMobile ? 'scale(0.85)' : 'none',
           transformOrigin: 'right center',
         }}>
@@ -2212,6 +2216,30 @@ export const GameTable: React.FC<GameTableProps> = ({
             onToggleMute={handleToggleVoice}
             isMobile={isMobile || isLandscape}
           />
+
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              style={{
+                color: 'var(--baffa-gold-primary)',
+                backgroundColor: 'rgba(18, 29, 45, 0.85)',
+                backdropFilter: 'blur(6px)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                borderRadius: '50%',
+                width: isLandscape ? '28px' : '32px',
+                height: isLandscape ? '28px' : '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+              }}
+              title="الإعدادات والصوت"
+            >
+              <Settings size={isLandscape ? 15 : 17} />
+            </button>
+          )}
         </div>
       </div>
 

@@ -875,6 +875,13 @@ export class RoomService {
       }
     }
 
+    if ((settings as any)?.roomName || (settings as any)?.name) {
+      const newName = ((settings as any).roomName || (settings as any).name).trim();
+      if (newName) {
+        room.name = newName;
+      }
+    }
+
     room.settings = {
       ...room.settings,
       ...settings,
