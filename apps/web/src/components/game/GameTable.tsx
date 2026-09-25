@@ -1319,40 +1319,40 @@ export const GameTable: React.FC<GameTableProps> = ({
             style={{
               position: 'absolute',
               top: resolvedPos === 'TOP'
-                ? '110%'
+                ? (isMobile ? '104%' : '110%')
                 : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
                 ? '50%'
                 : undefined,
               bottom: resolvedPos === 'BOTTOM'
-                ? '110%'
+                ? (isMobile ? '104%' : '110%')
                 : undefined,
               left: resolvedPos === 'LEFT'
-                ? (isMobile ? 'calc(100% + 6px)' : 'calc(100% + 10px)')
+                ? (isMobile ? 'calc(100% + 4px)' : 'calc(100% + 10px)')
                 : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
                 ? '50%'
                 : undefined,
               right: resolvedPos === 'RIGHT'
-                ? (isMobile ? 'calc(100% + 6px)' : 'calc(100% + 10px)')
+                ? (isMobile ? 'calc(100% + 4px)' : 'calc(100% + 10px)')
                 : undefined,
               transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
                 ? 'translateY(-50%)'
                 : 'translateX(-50%)',
-              marginTop: resolvedPos === 'TOP' ? '8px' : undefined,
-              marginBottom: resolvedPos === 'BOTTOM' ? '10px' : undefined,
-              padding: isMobile ? '4px 10px' : '6px 14px',
-              borderRadius: isMobile ? '12px' : '16px',
+              marginTop: resolvedPos === 'TOP' ? (isMobile ? '2px' : '8px') : undefined,
+              marginBottom: resolvedPos === 'BOTTOM' ? (isMobile ? '2px' : '10px') : undefined,
+              padding: isLandscape ? '2px 6px' : isMobile ? '2px 7px' : '6px 14px',
+              borderRadius: isLandscape ? '8px' : isMobile ? '8px' : '16px',
               backgroundColor: 'var(--baffa-gold-primary)',
               color: '#080d1a',
               fontWeight: 800,
-              fontSize: isLandscape ? '0.7rem' : isMobile ? '0.74rem' : '0.84rem',
+              fontSize: isLandscape ? '0.62rem' : isMobile ? '0.62rem' : '0.84rem',
               whiteSpace: 'normal',
               textAlign: 'center',
-              lineHeight: 1.3,
+              lineHeight: isMobile ? 1.15 : 1.3,
               width: 'max-content',
-              maxWidth: isLandscape ? '135px' : isMobile ? '150px' : '200px',
+              maxWidth: isLandscape ? '100px' : isMobile ? '105px' : '200px',
               zIndex: 65,
-              boxShadow: '0 6px 18px rgba(0, 0, 0, 0.75), 0 0 10px rgba(245, 158, 11, 0.4)',
-              border: '1.5px solid rgba(255, 255, 255, 0.3)',
+              boxShadow: isMobile ? '0 3px 10px rgba(0, 0, 0, 0.6)' : '0 6px 18px rgba(0, 0, 0, 0.75), 0 0 10px rgba(245, 158, 11, 0.4)',
+              border: isMobile ? '1px solid rgba(255, 255, 255, 0.35)' : '1.5px solid rgba(255, 255, 255, 0.3)',
               wordBreak: 'break-word',
               pointerEvents: 'none',
             }}
@@ -1362,20 +1362,20 @@ export const GameTable: React.FC<GameTableProps> = ({
               style={{
                 position: 'absolute',
                 top: resolvedPos === 'TOP'
-                  ? '-6px'
+                  ? (isMobile ? '-4px' : '-6px')
                   : (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
                   ? '50%'
                   : undefined,
                 bottom: resolvedPos === 'BOTTOM'
-                  ? '-6px'
+                  ? (isMobile ? '-4px' : '-6px')
                   : undefined,
                 left: resolvedPos === 'LEFT'
-                  ? '-6px'
+                  ? (isMobile ? '-4px' : '-6px')
                   : (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
                   ? '50%'
                   : undefined,
                 right: resolvedPos === 'RIGHT'
-                  ? '-6px'
+                  ? (isMobile ? '-4px' : '-6px')
                   : undefined,
                 transform: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
                   ? 'translateY(-50%)'
@@ -1383,24 +1383,24 @@ export const GameTable: React.FC<GameTableProps> = ({
                 width: 0,
                 height: 0,
                 borderTop: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
-                  ? '5px solid transparent'
+                  ? (isMobile ? '3px solid transparent' : '5px solid transparent')
                   : resolvedPos === 'BOTTOM'
-                  ? '6px solid var(--baffa-gold-primary)'
+                  ? (isMobile ? '4px solid var(--baffa-gold-primary)' : '6px solid var(--baffa-gold-primary)')
                   : undefined,
                 borderBottom: (resolvedPos === 'LEFT' || resolvedPos === 'RIGHT')
-                  ? '5px solid transparent'
+                  ? (isMobile ? '3px solid transparent' : '5px solid transparent')
                   : resolvedPos === 'TOP'
-                  ? '6px solid var(--baffa-gold-primary)'
+                  ? (isMobile ? '4px solid var(--baffa-gold-primary)' : '6px solid var(--baffa-gold-primary)')
                   : undefined,
                 borderLeft: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
-                  ? '6px solid transparent'
+                  ? (isMobile ? '4px solid transparent' : '6px solid transparent')
                   : resolvedPos === 'RIGHT'
-                  ? '6px solid var(--baffa-gold-primary)'
+                  ? (isMobile ? '4px solid var(--baffa-gold-primary)' : '6px solid var(--baffa-gold-primary)')
                   : undefined,
                 borderRight: (resolvedPos === 'TOP' || resolvedPos === 'BOTTOM')
-                  ? '6px solid transparent'
+                  ? (isMobile ? '4px solid transparent' : '6px solid transparent')
                   : resolvedPos === 'LEFT'
-                  ? '6px solid var(--baffa-gold-primary)'
+                  ? (isMobile ? '4px solid var(--baffa-gold-primary)' : '6px solid var(--baffa-gold-primary)')
                   : undefined,
               }}
             />

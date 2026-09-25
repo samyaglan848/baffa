@@ -573,13 +573,13 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
               style={{
                 position: 'absolute',
                 ...containerStyle,
-                padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 14px',
+                padding: isLandscape ? '2px 6px' : isMobile ? '2px 7px' : '6px 14px',
                 background: 'linear-gradient(135deg, rgba(14, 26, 42, 0.98) 0%, rgba(20, 36, 58, 0.96) 100%)',
-                border: '1.5px solid var(--baffa-gold-primary)',
-                borderRadius: isLandscape ? '12px' : isMobile ? '14px' : '18px',
-                boxShadow: '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
+                border: isMobile ? '1px solid var(--baffa-gold-primary)' : '1.5px solid var(--baffa-gold-primary)',
+                borderRadius: isLandscape ? '8px' : isMobile ? '8px' : '18px',
+                boxShadow: isMobile ? '0 4px 14px rgba(0,0,0,0.7)' : '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
                 backdropFilter: 'blur(10px)',
-                maxWidth: isLandscape ? '140px' : isMobile ? '160px' : '220px',
+                maxWidth: isLandscape ? '100px' : isMobile ? '105px' : '220px',
                 textAlign: 'center',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -590,11 +590,11 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
               {tailStyle && <div style={tailStyle} />}
               <span
                 style={{
-                  fontSize: isLandscape ? '0.72rem' : isMobile ? '0.78rem' : '0.9rem',
+                  fontSize: isLandscape ? '0.62rem' : isMobile ? '0.65rem' : '0.9rem',
                   fontWeight: 900,
                   color: '#fff',
                   textAlign: 'center',
-                  lineHeight: 1.25,
+                  lineHeight: isMobile ? 1.15 : 1.25,
                   wordBreak: 'break-word',
                 }}
               >
