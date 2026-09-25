@@ -2310,9 +2310,9 @@ export const GameTable: React.FC<GameTableProps> = ({
           gridTemplateColumns: 'auto 1fr auto',
           gridTemplateRows: 'auto 1fr auto',
           gap: isLandscape ? '2px' : isMobile ? '4px' : '10px',
-          background: 'radial-gradient(circle at center, #1b4d3e 0%, #0c261e 100%)', // Real green casino felt
-          boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,1)',
-          border: isLandscape ? '3px solid #3b2818' : isMobile ? '5px solid #3b2818' : '12px solid #3b2818', // Wooden table border
+          background: 'radial-gradient(circle at center, #257560 0%, #175444 65%, #103b2e 100%)', // Brighter emerald green casino felt
+          boxShadow: 'inset 0 0 45px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 0, 0, 0.65)',
+          border: isLandscape ? '3px solid #4a3320' : isMobile ? '5px solid #4a3320' : '12px solid #4a3320', // Wooden table border
           borderRadius: isLandscape ? '14px' : isMobile ? '18px' : '40px',
           padding: isLandscape ? '2px 6px' : isMobile ? '4px 6px' : '16px',
           minHeight: 0,
