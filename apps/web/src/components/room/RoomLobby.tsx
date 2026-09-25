@@ -545,19 +545,20 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '7px 12px',
+              padding: '7px 14px',
               borderRadius: 'var(--baffa-radius-md)',
-              backgroundColor: 'var(--baffa-bg-elevated)',
-              border: '1px solid var(--baffa-surface-glass-border)',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--baffa-gold-frame)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             }}
           >
-            <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>الكود:</span>
-            <span style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '2px', color: 'var(--baffa-gold-hover)' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--baffa-black)', fontWeight: 700 }}>الكود:</span>
+            <span style={{ fontSize: '1.05rem', fontWeight: 900, letterSpacing: '2px', color: 'var(--baffa-black)' }}>
               {room.code}
             </span>
             <button
               onClick={handleCopyCode}
-              style={{ color: copiedCode ? 'var(--baffa-success)' : 'var(--baffa-text-secondary)', padding: '2px 4px' }}
+              style={{ color: copiedCode ? 'var(--baffa-success)' : 'var(--baffa-gold-dark)', padding: '2px 4px', cursor: 'pointer' }}
               title="نسخ كود الغرفة"
             >
               {copiedCode ? <Check size={16} /> : <Copy size={16} />}
@@ -572,13 +573,13 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '7px 12px',
+              padding: '7px 14px',
               borderRadius: 'var(--baffa-radius-md)',
-              backgroundColor: copiedLink ? 'rgba(16, 185, 129, 0.2)' : 'var(--baffa-bg-elevated)',
-              border: copiedLink ? '1px solid rgba(16, 185, 129, 0.6)' : '1px solid var(--baffa-surface-glass-border)',
-              color: copiedLink ? '#34d399' : 'var(--baffa-text-primary)',
+              backgroundColor: copiedLink ? 'rgba(15, 107, 76, 0.12)' : '#ffffff',
+              border: copiedLink ? '1.5px solid var(--baffa-success)' : '1.5px solid var(--baffa-gold-frame)',
+              color: copiedLink ? 'var(--baffa-success)' : 'var(--baffa-black)',
               fontSize: '0.8rem',
-              fontWeight: 700,
+              fontWeight: 800,
               cursor: 'pointer',
               transition: 'all 0.15s ease',
             }}
@@ -624,18 +625,18 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
           flexDirection: 'column',
           gap: '12px',
           backgroundColor: '#ffffff',
-          border: '1.5px solid rgba(245, 158, 11, 0.35)',
-          boxShadow: '0 4px 20px rgba(245, 158, 11, 0.08)',
+          border: '1.5px solid var(--baffa-gold-frame)',
+          boxShadow: '0 4px 20px rgba(184, 134, 11, 0.1)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '1.2rem' }}>🎭</span>
-            <span className="arabic-font" style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--baffa-text-primary)' }}>
+            <span className="arabic-font" style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--baffa-black)' }}>
               اختر دورك الحالي في الغرفة:
             </span>
           </div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--baffa-text-muted)' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--baffa-text-secondary)' }}>
             يمكنك تغيير دورك في أي وقت قبل بدء الماتش
           </span>
         </div>
@@ -647,9 +648,9 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
             style={{
               padding: isMobile ? '8px 4px' : '12px 14px',
               borderRadius: 'var(--baffa-radius-md)',
-              backgroundColor: isPlayer ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
-              color: isPlayer ? '#080d1a' : 'var(--baffa-text-primary)',
-              border: isPlayer ? '2px solid var(--baffa-gold-hover)' : '1px solid var(--baffa-surface-glass-border)',
+              backgroundColor: isPlayer ? 'var(--baffa-gold-primary)' : '#ffffff',
+              color: 'var(--baffa-black)',
+              border: isPlayer ? '2px solid var(--baffa-gold-frame)' : '1.5px solid var(--baffa-gold-frame)',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
@@ -657,7 +658,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               justifyContent: 'center',
               gap: isMobile ? '4px' : '8px',
               transition: 'all 0.2s ease',
-              boxShadow: isPlayer ? '0 0 16px rgba(245, 158, 11, 0.5)' : 'none',
+              boxShadow: isPlayer ? '0 0 16px rgba(184, 134, 11, 0.4)' : 'none',
             }}
           >
             <span style={{ fontSize: isMobile ? '0.9rem' : '1.1rem' }}>🎮</span>
@@ -670,9 +671,9 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
             style={{
               padding: isMobile ? '8px 4px' : '12px 14px',
               borderRadius: 'var(--baffa-radius-md)',
-              backgroundColor: isJudge ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
-              color: isJudge ? '#080d1a' : 'var(--baffa-text-primary)',
-              border: isJudge ? '2px solid var(--baffa-gold-hover)' : '1px solid var(--baffa-surface-glass-border)',
+              backgroundColor: isJudge ? 'var(--baffa-gold-primary)' : '#ffffff',
+              color: 'var(--baffa-black)',
+              border: isJudge ? '2px solid var(--baffa-gold-frame)' : '1.5px solid var(--baffa-gold-frame)',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
@@ -680,7 +681,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               justifyContent: 'center',
               gap: isMobile ? '4px' : '8px',
               transition: 'all 0.2s ease',
-              boxShadow: isJudge ? '0 0 16px rgba(245, 158, 11, 0.5)' : 'none',
+              boxShadow: isJudge ? '0 0 16px rgba(184, 134, 11, 0.4)' : 'none',
             }}
           >
             <Gavel size={isMobile ? 14 : 18} />
@@ -693,9 +694,9 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
             style={{
               padding: isMobile ? '8px 4px' : '12px 14px',
               borderRadius: 'var(--baffa-radius-md)',
-              backgroundColor: isSpectator ? '#111827' : 'var(--baffa-bg-elevated)',
-              color: isSpectator ? '#fbbf24' : 'var(--baffa-text-primary)',
-              border: isSpectator ? '2px solid #f59e0b' : '1px solid var(--baffa-surface-glass-border)',
+              backgroundColor: isSpectator ? 'var(--baffa-black)' : '#ffffff',
+              color: isSpectator ? 'var(--baffa-gold-primary)' : 'var(--baffa-black)',
+              border: '2px solid var(--baffa-gold-frame)',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
@@ -703,7 +704,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               justifyContent: 'center',
               gap: isMobile ? '4px' : '8px',
               transition: 'all 0.2s ease',
-              boxShadow: isSpectator ? '0 0 16px rgba(245, 158, 11, 0.4)' : 'none',
+              boxShadow: isSpectator ? '0 0 16px rgba(26, 26, 26, 0.4)' : 'none',
             }}
           >
             <Eye size={isMobile ? 14 : 18} />
@@ -966,11 +967,11 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
           justifyContent: 'center',
           gap: isMobile ? '12px' : '24px',
           position: 'relative',
-          background: 'radial-gradient(ellipse at 50% 50%, #fef08a 0%, #f59e0b 50%, #d97706 100%)',
-          border: '3px solid #111827',
-          outline: '2.5px solid #fbbf24',
+          background: 'radial-gradient(ellipse at 50% 50%, var(--baffa-gold-hover) 0%, var(--baffa-gold-primary) 55%, var(--baffa-gold-dark) 100%)',
+          border: '4px solid var(--baffa-black)',
+          outline: '3px solid var(--baffa-gold-frame)',
           borderRadius: isMobile ? '16px' : '32px',
-          boxShadow: '0 8px 30px rgba(245, 158, 11, 0.25)',
+          boxShadow: '0 8px 30px rgba(184, 134, 11, 0.25)',
         }}
       >
         {/* North Seat (Team 1 Partner) */}
@@ -1008,23 +1009,23 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               flex: isMobile ? '0 1 55px' : 1,
               height: isMobile ? '55px' : '120px',
               borderRadius: isMobile ? '8px' : 'var(--baffa-radius-xl)',
-              border: '2px dashed #111827',
+              border: '2px solid var(--baffa-gold-frame)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               padding: isMobile ? '2px' : '12px',
               textAlign: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              backgroundColor: '#ffffff',
               minWidth: isMobile ? '36px' : '120px',
               maxWidth: isMobile ? '60px' : 'none',
-              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 4px 15px rgba(184, 134, 11, 0.2)',
             }}
           >
-            <span className="arabic-font" style={{ fontSize: isMobile ? '0.9rem' : '1.4rem', fontWeight: 900, color: '#111827' }}>
+            <span className="arabic-font" style={{ fontSize: isMobile ? '0.9rem' : '1.4rem', fontWeight: 900, color: 'var(--baffa-black)' }}>
               بَفّة
             </span>
-            <span style={{ fontSize: isMobile ? '0.55rem' : '0.75rem', color: 'var(--baffa-text-secondary)', marginTop: '1px' }}>
+            <span style={{ fontSize: isMobile ? '0.55rem' : '0.75rem', color: 'var(--baffa-gold-dark)', marginTop: '1px', fontWeight: 700 }}>
               فريق 1 ضد 2
             </span>
           </div>
@@ -1091,8 +1092,6 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
                   width: isMobile ? '100%' : 'auto',
                   padding: isMobile ? '12px 20px' : '14px 36px',
                   fontSize: isMobile ? '1rem' : '1.1rem',
-                  backgroundColor: isSpectator ? 'var(--baffa-cyan-primary)' : undefined,
-                  color: isSpectator ? '#080d1a' : undefined,
                   opacity: !canClickStart || isStarting ? 0.6 : 1,
                   cursor: !canClickStart || isStarting ? 'not-allowed' : 'pointer',
                   display: 'flex',

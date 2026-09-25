@@ -45,19 +45,20 @@ button {
 
 .baffa-card {
   background: var(--baffa-bg-surface);
-  border: 1px solid var(--baffa-surface-glass-border);
+  border: 1.5px solid var(--baffa-gold-frame);
   border-radius: var(--baffa-radius-lg);
   box-shadow: var(--baffa-shadow-elevated);
   backdrop-filter: blur(16px);
 }
 
 .baffa-btn-primary {
-  background: linear-gradient(135deg, var(--baffa-gold-primary), #d97706);
-  color: #080d1a;
-  font-weight: 700;
+  background: linear-gradient(135deg, var(--baffa-gold-primary) 0%, var(--baffa-gold-dark) 100%);
+  color: var(--baffa-black);
+  border: 1.5px solid var(--baffa-gold-frame);
+  font-weight: 800;
   padding: 12px 24px;
   border-radius: var(--baffa-radius-md);
-  box-shadow: var(--baffa-shadow-glow-gold);
+  box-shadow: 0 4px 16px rgba(217, 164, 4, 0.32);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -66,9 +67,9 @@ button {
 }
 
 .baffa-btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--baffa-gold-hover), var(--baffa-gold-primary));
+  background: linear-gradient(135deg, var(--baffa-gold-hover) 0%, var(--baffa-gold-primary) 100%);
   transform: translateY(-2px);
-  box-shadow: 0 0 25px rgba(245, 158, 11, 0.5);
+  box-shadow: 0 6px 20px rgba(245, 197, 24, 0.45);
 }
 
 .baffa-btn-primary:active:not(:disabled) {
@@ -84,8 +85,8 @@ button {
 .baffa-btn-secondary {
   background: var(--baffa-bg-elevated);
   color: var(--baffa-text-primary);
-  border: 1px solid var(--baffa-surface-glass-border);
-  font-weight: 600;
+  border: 1.5px solid var(--baffa-gold-frame);
+  font-weight: 700;
   padding: 12px 24px;
   border-radius: var(--baffa-radius-md);
   display: inline-flex;
@@ -97,14 +98,28 @@ button {
 
 .baffa-btn-secondary:hover:not(:disabled) {
   background: var(--baffa-amber-light);
-  border-color: var(--baffa-gold-primary);
+  border-color: var(--baffa-gold-dark);
   transform: translateY(-1px);
+}
+
+.baffa-btn-emerald {
+  background: var(--baffa-success);
+  color: #ffffff;
+  border: 1.5px solid #0b5038;
+  font-weight: 800;
+  padding: 10px 20px;
+  border-radius: var(--baffa-radius-md);
+  box-shadow: 0 4px 14px rgba(15, 107, 76, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .baffa-btn-danger {
   background: linear-gradient(135deg, var(--baffa-error), #be123c);
   color: #fff;
-  font-weight: 600;
+  font-weight: 700;
   padding: 10px 20px;
   border-radius: var(--baffa-radius-md);
 }
