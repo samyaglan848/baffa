@@ -96,8 +96,8 @@ button {
 }
 
 .baffa-btn-secondary:hover:not(:disabled) {
-  background: #243550;
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--baffa-amber-light);
+  border-color: var(--baffa-gold-primary);
   transform: translateY(-1px);
 }
 

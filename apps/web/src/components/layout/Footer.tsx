@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
         fontSize: '0.85rem',
         fontWeight: 800,
         letterSpacing: '1px',
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+        borderTop: '1.5px solid rgba(245, 158, 11, 0.25)',
         backgroundColor: 'var(--baffa-bg-canvas)',
         userSelect: 'none',
         zIndex: 10,

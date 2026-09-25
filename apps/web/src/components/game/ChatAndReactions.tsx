@@ -366,7 +366,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
             border: (!quickChatEnabled && !reactionsEnabled) || (isChatMuted && isReactionsMuted)
               ? '2px solid rgba(239, 68, 68, 0.6)'
               : '2px solid var(--baffa-gold-primary)',
-            boxShadow: '0 4px 18px rgba(6, 182, 212, 0.25), 0 2px 8px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 4px 18px rgba(245, 158, 11, 0.35), 0 2px 8px rgba(0, 0, 0, 0.1)',
             backdropFilter: 'blur(10px)',
             cursor: 'pointer',
             transition: 'all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -407,7 +407,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
             borderRadius: isMobile ? '18px' : '24px',
             border: '2px solid #f59e0b',
             padding: isLandscape ? '10px' : isMobile ? '12px' : '18px',
-            boxShadow: '0 12px 40px rgba(6, 182, 212, 0.25), 0 0 25px rgba(245, 158, 11, 0.25)',
+            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.2), 0 0 25px rgba(245, 158, 11, 0.25)',
             zIndex: 65,
             display: 'flex',
             flexDirection: 'column',
@@ -536,7 +536,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                       backgroundColor: '#f8fafc',
                       color: '#0f172a',
                       borderRadius: isMobile ? '8px' : '12px',
-                      border: '1px solid rgba(6, 182, 212, 0.25)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
                       fontSize: isLandscape ? '0.75rem' : isMobile ? '0.78rem' : '0.9rem',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -548,7 +548,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                       e.currentTarget.style.backgroundColor = 'rgba(254, 243, 199, 0.9)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.25)';
+                      e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.3)';
                       e.currentTarget.style.color = '#0f172a';
                       e.currentTarget.style.backgroundColor = '#f8fafc';
                     }}
@@ -574,10 +574,10 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                 position: 'absolute',
                 ...containerStyle,
                 padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 14px',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                background: 'linear-gradient(135deg, #ffffff 0%, #fffdfa 100%)',
                 border: '2px solid #f59e0b',
                 borderRadius: isLandscape ? '12px' : isMobile ? '14px' : '18px',
-                boxShadow: '0 8px 30px rgba(6, 182, 212, 0.3), 0 2px 8px rgba(0,0,0,0.1)',
+                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.15), 0 0 14px rgba(245, 158, 11, 0.25)',
                 backdropFilter: 'blur(10px)',
                 maxWidth: isLandscape ? '140px' : isMobile ? '160px' : '220px',
                 textAlign: 'center',

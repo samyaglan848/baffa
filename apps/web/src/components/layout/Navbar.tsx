@@ -51,8 +51,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: isMobile ? '8px 12px' : '10px 20px',
-        backgroundColor: 'var(--baffa-bg-base)',
-        borderBottom: '1px solid var(--baffa-surface-glass-border)',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderBottom: '1.5px solid rgba(245, 158, 11, 0.25)',
+        boxShadow: '0 2px 10px rgba(245, 158, 11, 0.06)',
         backdropFilter: 'blur(12px)',
         zIndex: 40,
         position: 'sticky',
@@ -117,9 +118,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 fontSize: '1.35rem',
                 fontWeight: 900,
                 letterSpacing: '2.5px',
-                background: 'linear-gradient(135deg, #ffffff 30%, #cbd5e1 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: '#111827',
                 lineHeight: 1.1,
               }}
             >
@@ -130,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               style={{
                 fontSize: '0.65rem',
                 fontWeight: 700,
-                color: 'var(--baffa-gold-primary)',
+                color: 'var(--baffa-gold-dark)',
                 letterSpacing: '0.5px',
                 lineHeight: 1,
               }}

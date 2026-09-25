@@ -106,22 +106,22 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
         style={{
           width: '100%',
           maxWidth: '520px',
-          backgroundColor: '#0c1322',
-          border: '1.5px solid var(--baffa-gold-primary)',
+          backgroundColor: '#ffffff',
+          border: '2px solid #f59e0b',
           borderRadius: '20px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 25px rgba(245, 158, 11, 0.25)',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.25), 0 0 35px rgba(245, 158, 11, 0.2)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          color: '#fff',
+          color: '#111827',
         }}
       >
         {/* Header */}
         <div
           style={{
             padding: isMobile ? '10px 14px' : '16px 20px',
-            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(12, 19, 34, 0.95) 100%)',
-            borderBottom: '1px solid rgba(245, 158, 11, 0.25)',
+            backgroundColor: '#fffdfa',
+            borderBottom: '1.5px solid rgba(245, 158, 11, 0.25)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -133,13 +133,13 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                 width: isMobile ? '32px' : '42px',
                 height: isMobile ? '32px' : '42px',
                 borderRadius: isMobile ? '8px' : '12px',
-                backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                border: '1.5px solid var(--baffa-gold-primary)',
+                backgroundColor: '#fef3c7',
+                border: '1.5px solid #f59e0b',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: isMobile ? '1.1rem' : '1.4rem',
-                boxShadow: '0 0 12px rgba(245, 158, 11, 0.3)',
+                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)',
               }}
             >
               ⚖️
@@ -151,29 +151,29 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
                   style={{
                     fontSize: isMobile ? '0.68rem' : '0.75rem',
                     fontWeight: 800,
-                    color: 'var(--baffa-gold-primary)',
-                    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    color: '#b45309',
+                    backgroundColor: '#fef3c7',
+                    border: '1px solid #f59e0b',
                     padding: '1px 6px',
                     borderRadius: '8px',
                   }}
                 >
                   لوحة قرارات الحكم
                 </span>
-                <span style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'var(--baffa-text-muted)' }}>
+                <span style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: '#6b7280' }}>
                   فريق {targetPlayer.team}
                 </span>
               </div>
-              <div style={{ fontSize: isMobile ? '0.95rem' : '1.15rem', fontWeight: 900, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ fontSize: isMobile ? '0.95rem' : '1.15rem', fontWeight: 900, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', color: '#111827' }}>
                 <span>{targetPlayer.username}</span>
                 {targetPlayer.isBot && (
                   <span
                     style={{
                       fontSize: '0.65rem',
                       fontWeight: 800,
-                      backgroundColor: 'rgba(6, 182, 212, 0.15)',
-                      border: '1px solid rgba(6, 182, 212, 0.4)',
-                      color: '#38bdf8',
+                      backgroundColor: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      color: '#4b5563',
                       padding: '1px 5px',
                       borderRadius: '4px',
                     }}
@@ -187,13 +187,14 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
 
           <button
             onClick={onClose}
+            aria-label="إغلاق"
             style={{
               width: isMobile ? '28px' : '32px',
               height: isMobile ? '28px' : '32px',
               borderRadius: '8px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              color: 'var(--baffa-text-muted)',
+              backgroundColor: '#f3f4f6',
+              border: '1px solid #e5e7eb',
+              color: '#4b5563',
               fontSize: '0.9rem',
               fontWeight: 800,
               display: 'flex',
@@ -201,6 +202,14 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               justifyContent: 'center',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+              e.currentTarget.style.color = '#dc2626';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#f3f4f6';
+              e.currentTarget.style.color = '#4b5563';
             }}
             title="إغلاق النافذة"
           >
@@ -212,8 +221,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
         <div
           style={{
             padding: isMobile ? '6px 14px' : '10px 20px',
-            backgroundColor: 'rgba(6, 10, 18, 0.6)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#f9fafb',
+            borderBottom: '1px solid #e5e7eb',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -221,17 +230,17 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: 'var(--baffa-text-muted)' }}>الإنذارات:</span>
+            <span style={{ color: '#6b7280' }}>الإنذارات:</span>
             {currentWarnings === 0 && (
-              <span style={{ color: '#4ade80', fontWeight: 800 }}>نظيف (0/2)</span>
+              <span style={{ color: '#10b981', fontWeight: 800 }}>نظيف (0/2)</span>
             )}
             {currentWarnings === 1 && (
               <span
                 style={{
-                  color: '#fbbf24',
+                  color: '#b45309',
                   fontWeight: 900,
-                  backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  backgroundColor: '#fef3c7',
+                  border: '1px solid #f59e0b',
                   padding: '1px 6px',
                   borderRadius: '4px',
                 }}
@@ -242,10 +251,10 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
             {currentWarnings >= 2 && (
               <span
                 style={{
-                  color: '#f87171',
+                  color: '#dc2626',
                   fontWeight: 900,
-                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  backgroundColor: '#fee2e2',
+                  border: '1px solid #fca5a5',
                   padding: '1px 6px',
                   borderRadius: '4px',
                 }}
@@ -257,17 +266,17 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             {targetPlayer.isVoiceMuted && (
-              <span style={{ fontSize: '0.65rem', color: '#f87171', backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: '1px 5px', borderRadius: '4px' }}>
+              <span style={{ fontSize: '0.65rem', color: '#b91c1c', backgroundColor: '#fee2e2', padding: '1px 5px', borderRadius: '4px' }}>
                 صوت 🔇
               </span>
             )}
             {targetPlayer.isChatMuted && (
-              <span style={{ fontSize: '0.65rem', color: '#fb923c', backgroundColor: 'rgba(249, 115, 22, 0.15)', padding: '1px 5px', borderRadius: '4px' }}>
+              <span style={{ fontSize: '0.65rem', color: '#c2410c', backgroundColor: '#ffedd5', padding: '1px 5px', borderRadius: '4px' }}>
                 شات 💬
               </span>
             )}
             {targetPlayer.isReactionsMuted && (
-              <span style={{ fontSize: '0.65rem', color: '#facc15', backgroundColor: 'rgba(234, 179, 8, 0.15)', padding: '1px 5px', borderRadius: '4px' }}>
+              <span style={{ fontSize: '0.65rem', color: '#a16207', backgroundColor: '#fef9c3', padding: '1px 5px', borderRadius: '4px' }}>
                 إيموجي 🙂
               </span>
             )}
@@ -280,8 +289,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
             display: 'flex',
             padding: isMobile ? '4px 8px' : '6px 12px',
             gap: isMobile ? '4px' : '8px',
-            backgroundColor: 'rgba(8, 13, 26, 0.8)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#fcfbf7',
+            borderBottom: '1px solid #e5e7eb',
           }}
         >
           <button
@@ -290,7 +299,7 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               flex: 1,
               padding: isMobile ? '6px 8px' : '8px 12px',
               borderRadius: isMobile ? '8px' : '10px',
-              border: 'none',
+              border: activeTab === 'CARDS' ? '2px solid #d97706' : '1px solid #e5e7eb',
               fontSize: isMobile ? '0.74rem' : '0.85rem',
               fontWeight: 800,
               cursor: 'pointer',
@@ -299,8 +308,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               justifyContent: 'center',
               gap: '4px',
               transition: 'all 0.2s ease',
-              backgroundColor: activeTab === 'CARDS' ? 'var(--baffa-gold-primary)' : 'transparent',
-              color: activeTab === 'CARDS' ? '#080d1a' : 'var(--baffa-text-muted)',
+              backgroundColor: activeTab === 'CARDS' ? '#f59e0b' : '#f9fafb',
+              color: activeTab === 'CARDS' ? '#111827' : '#4b5563',
               boxShadow: activeTab === 'CARDS' ? '0 4px 12px rgba(245, 158, 11, 0.3)' : 'none',
             }}
           >
@@ -314,7 +323,7 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               flex: 1,
               padding: isMobile ? '6px 8px' : '8px 12px',
               borderRadius: isMobile ? '8px' : '10px',
-              border: 'none',
+              border: activeTab === 'MUTE' ? '2px solid #d97706' : '1px solid #e5e7eb',
               fontSize: isMobile ? '0.74rem' : '0.85rem',
               fontWeight: 800,
               cursor: 'pointer',
@@ -323,8 +332,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               justifyContent: 'center',
               gap: '4px',
               transition: 'all 0.2s ease',
-              backgroundColor: activeTab === 'MUTE' ? 'var(--baffa-gold-primary)' : 'transparent',
-              color: activeTab === 'MUTE' ? '#080d1a' : 'var(--baffa-text-muted)',
+              backgroundColor: activeTab === 'MUTE' ? '#f59e0b' : '#f9fafb',
+              color: activeTab === 'MUTE' ? '#111827' : '#4b5563',
               boxShadow: activeTab === 'MUTE' ? '0 4px 12px rgba(245, 158, 11, 0.3)' : 'none',
             }}
           >
@@ -338,7 +347,7 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               flex: 1,
               padding: isMobile ? '6px 8px' : '8px 12px',
               borderRadius: isMobile ? '8px' : '10px',
-              border: 'none',
+              border: activeTab === 'SUB' ? '2px solid #d97706' : '1px solid #e5e7eb',
               fontSize: isMobile ? '0.74rem' : '0.85rem',
               fontWeight: 800,
               cursor: 'pointer',
@@ -347,8 +356,8 @@ export const RefereeDecisionModal: React.FC<RefereeDecisionModalProps> = ({
               justifyContent: 'center',
               gap: '4px',
               transition: 'all 0.2s ease',
-              backgroundColor: activeTab === 'SUB' ? 'var(--baffa-gold-primary)' : 'transparent',
-              color: activeTab === 'SUB' ? '#080d1a' : 'var(--baffa-text-muted)',
+              backgroundColor: activeTab === 'SUB' ? '#f59e0b' : '#f9fafb',
+              color: activeTab === 'SUB' ? '#111827' : '#4b5563',
               boxShadow: activeTab === 'SUB' ? '0 4px 12px rgba(245, 158, 11, 0.3)' : 'none',
             }}
           >

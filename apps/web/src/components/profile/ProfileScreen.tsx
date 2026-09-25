@@ -519,11 +519,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <div>
           <h1
             className="arabic-font"
-            style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--baffa-gold-hover)', margin: 0 }}
+            style={{ fontSize: '1.8rem', fontWeight: 900, color: '#111827', margin: 0 }}
           >
-            الملف الشخصي والحساب
+            الملف الشخصي والحساب 👤
           </h1>
-          <span style={{ fontSize: '0.85rem', color: 'var(--baffa-text-muted)' }}>
+          <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
             إحصائيات المباريات، شخصيتك على الطاولة، وإعدادات الأمان
           </span>
         </div>
@@ -554,7 +554,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         className="baffa-card"
         style={{
           padding: '24px',
-          border: '1px solid var(--baffa-surface-glass-border)',
+          border: '1.5px solid rgba(245, 158, 11, 0.25)',
           display: 'flex',
           alignItems: 'center',
           gap: '20px',
@@ -604,13 +604,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               height: '28px',
               borderRadius: '50%',
               backgroundColor: 'var(--baffa-gold-primary)',
-              color: '#000',
-              border: '2px solid #0c1322',
+              color: '#111827',
+              border: '2px solid #ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
             }}
             title="تغيير الصورة أو الأفاتار"
           >
@@ -621,15 +621,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* User Info */}
         <div style={{ flex: 1, minWidth: '240px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#111827', margin: 0 }}>
               {profile?.displayName || currentUser.username}
             </h2>
             <span
               style={{
-                fontSize: '0.8rem',
-                color: 'var(--baffa-cyan-primary)',
+                fontSize: '0.85rem',
+                color: '#b45309',
                 fontFamily: 'monospace',
-                fontWeight: 600,
+                fontWeight: 700,
               }}
             >
               @{currentUser.username}
@@ -825,15 +825,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           style={{
             padding: '10px 18px',
             borderRadius: 'var(--baffa-radius-lg)',
-            backgroundColor: 'var(--baffa-bg-elevated)',
-            border: '1px solid var(--baffa-gold-primary)',
+            backgroundColor: '#fef3c7',
+            border: '2px solid #f59e0b',
             textAlign: 'center',
           }}
         >
-          <span style={{ fontSize: '0.75rem', color: 'var(--baffa-gold-primary)', fontWeight: 800, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 800, textTransform: 'uppercase' }}>
             نسبة الفوز
           </span>
-          <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111827' }}>
             {winRate}%
           </div>
         </div>
@@ -844,7 +844,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         style={{
           display: 'flex',
           gap: '8px',
-          borderBottom: '1px solid var(--baffa-surface-glass-border)',
+          borderBottom: '1.5px solid rgba(245, 158, 11, 0.25)',
           paddingBottom: '8px',
         }}
       >
@@ -853,9 +853,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           style={{
             padding: '8px 16px',
             borderRadius: 'var(--baffa-radius-md)',
-            border: 'none',
-            backgroundColor: activeTab === 'STATS' ? 'var(--baffa-gold-primary)' : 'transparent',
-            color: activeTab === 'STATS' ? '#080d1a' : 'var(--baffa-text-secondary)',
+            border: activeTab === 'STATS' ? '2px solid #d97706' : '1px solid #e5e7eb',
+            backgroundColor: activeTab === 'STATS' ? '#f59e0b' : '#f9fafb',
+            color: activeTab === 'STATS' ? '#111827' : '#4b5563',
             fontWeight: 800,
             fontSize: '0.88rem',
             cursor: 'pointer',
@@ -869,9 +869,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           style={{
             padding: '8px 16px',
             borderRadius: 'var(--baffa-radius-md)',
-            border: 'none',
-            backgroundColor: activeTab === 'HEAD_TO_HEAD' ? 'var(--baffa-gold-primary)' : 'transparent',
-            color: activeTab === 'HEAD_TO_HEAD' ? '#080d1a' : 'var(--baffa-text-secondary)',
+            border: activeTab === 'HEAD_TO_HEAD' ? '2px solid #d97706' : '1px solid #e5e7eb',
+            backgroundColor: activeTab === 'HEAD_TO_HEAD' ? '#f59e0b' : '#f9fafb',
+            color: activeTab === 'HEAD_TO_HEAD' ? '#111827' : '#4b5563',
             fontWeight: 800,
             fontSize: '0.88rem',
             cursor: 'pointer',
@@ -888,9 +888,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           style={{
             padding: '8px 16px',
             borderRadius: 'var(--baffa-radius-md)',
-            border: 'none',
-            backgroundColor: activeTab === 'SECURITY' ? 'var(--baffa-gold-primary)' : 'transparent',
-            color: activeTab === 'SECURITY' ? '#080d1a' : 'var(--baffa-text-secondary)',
+            border: activeTab === 'SECURITY' ? '2px solid #d97706' : '1px solid #e5e7eb',
+            backgroundColor: activeTab === 'SECURITY' ? '#f59e0b' : '#f9fafb',
+            color: activeTab === 'SECURITY' ? '#111827' : '#4b5563',
             fontWeight: 800,
             fontSize: '0.88rem',
             cursor: 'pointer',
@@ -905,80 +905,80 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* 4 Stats Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-            <div className="baffa-card" style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--baffa-text-muted)' }}>
-                <Trophy size={18} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>إجمالي المباريات</span>
+            <div className="baffa-card" style={{ padding: '20px', border: '1.5px solid rgba(245, 158, 11, 0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6b7280' }}>
+                <Trophy size={18} style={{ color: '#d97706' }} />
+                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>إجمالي المباريات</span>
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', marginTop: '8px' }}>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#111827', marginTop: '8px' }}>
                 {totalMatches}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '4px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
                 فوز: {profile?.matchesWon || 0} | خسارة: {profile?.matchesLost || 0}
               </div>
             </div>
 
-            <div className="baffa-card" style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--baffa-cyan-primary)' }}>
+            <div className="baffa-card" style={{ padding: '20px', border: '1.5px solid rgba(245, 158, 11, 0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706' }}>
                 <Zap size={18} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>إجمالي الجولات</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>إجمالي الجولات</span>
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', marginTop: '8px' }}>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#111827', marginTop: '8px' }}>
                 {profile?.totalRounds || 0}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '4px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
                 جولات الفوز: {profile?.roundsWon || 0}
               </div>
             </div>
 
-            <div className="baffa-card" style={{ padding: '20px' }}>
+            <div className="baffa-card" style={{ padding: '20px', border: '1.5px solid rgba(245, 158, 11, 0.25)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f97316' }}>
                 <Flame size={18} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>سلسلة الفوز الحالية</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>سلسلة الفوز الحالية</span>
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', marginTop: '8px' }}>
-                {profile?.currentStreak || 0} <span style={{ fontSize: '0.9rem', color: 'var(--baffa-text-muted)' }}>مباريات</span>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#111827', marginTop: '8px' }}>
+                {profile?.currentStreak || 0} <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>مباريات</span>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '4px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
                 أفضل سلسلة: {profile?.bestStreak || 0}
               </div>
             </div>
 
-            <div className="baffa-card" style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--baffa-gold-primary)' }}>
+            <div className="baffa-card" style={{ padding: '20px', border: '1.5px solid rgba(245, 158, 11, 0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706' }}>
                 <Shield size={18} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>إجمالي البناط المسجلة</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>إجمالي البناط المسجلة</span>
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', marginTop: '8px' }}>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#111827', marginTop: '8px' }}>
                 {profile?.totalPipsScored || 0}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '4px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
                 في جميع المباريات
               </div>
             </div>
           </div>
 
           {/* Breakdown: Human vs Bot */}
-          <div className="baffa-card" style={{ padding: '20px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '16px' }}>
+          <div className="baffa-card" style={{ padding: '20px', border: '1.5px solid rgba(245, 158, 11, 0.25)' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#111827', marginBottom: '16px' }}>
               تفصيل المباريات (لاعبين حقيقيين ضد بوتات)
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div style={{ padding: '16px', borderRadius: 'var(--baffa-radius-md)', backgroundColor: 'var(--baffa-bg-elevated)', border: '1px solid var(--baffa-surface-glass-border)' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--baffa-gold-primary)' }}>
+              <div style={{ padding: '16px', borderRadius: 'var(--baffa-radius-md)', backgroundColor: '#fcfbf7', border: '1.5px solid rgba(245, 158, 11, 0.25)' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#b45309' }}>
                   ضد لاعبين حقيقيين (Human vs Human)
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', marginTop: '6px' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#111827', marginTop: '6px' }}>
                   فوز: {profile?.humanMatchesWon || 0} | خسارة: {profile?.humanMatchesLost || 0}
                 </div>
               </div>
 
-              <div style={{ padding: '16px', borderRadius: 'var(--baffa-radius-md)', backgroundColor: 'var(--baffa-bg-elevated)', border: '1px solid var(--baffa-surface-glass-border)' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--baffa-cyan-primary)' }}>
+              <div style={{ padding: '16px', borderRadius: 'var(--baffa-radius-md)', backgroundColor: '#fcfbf7', border: '1.5px solid rgba(245, 158, 11, 0.25)' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#d97706' }}>
                   ضد بوتات بَفّة (Bots)
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', marginTop: '6px' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#111827', marginTop: '6px' }}>
                   فوز: {profile?.botMatchesWon || 0} | خسارة: {profile?.botMatchesLost || 0}
                 </div>
               </div>

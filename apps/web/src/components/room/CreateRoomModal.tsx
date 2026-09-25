@@ -105,9 +105,9 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           display: 'flex',
           flexDirection: 'column',
           borderRadius: '20px',
-          backgroundColor: 'rgba(15, 23, 42, 0.98)',
-          border: '1.5px solid rgba(245, 158, 11, 0.35)',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(245, 158, 11, 0.15)',
+          backgroundColor: '#ffffff',
+          border: '2px solid #f59e0b',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.25), 0 0 35px rgba(245, 158, 11, 0.2)',
           overflow: 'hidden',
           position: 'relative',
         }}
@@ -119,8 +119,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: 'rgba(11, 18, 30, 0.95)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#fffdfa',
+            borderBottom: '1.5px solid rgba(245, 158, 11, 0.25)',
           }}
         >
           <div>
@@ -129,7 +129,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               style={{
                 fontSize: '1.25rem',
                 fontWeight: 900,
-                color: 'var(--baffa-gold-hover)',
+                color: '#111827',
                 margin: 0,
                 display: 'flex',
                 alignItems: 'center',
@@ -143,7 +143,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               className="arabic-font"
               style={{
                 fontSize: '0.8rem',
-                color: 'var(--baffa-text-secondary)',
+                color: '#6b7280',
                 margin: '3px 0 0 0',
               }}
             >
@@ -163,21 +163,21 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              color: 'var(--baffa-text-secondary)',
+              backgroundColor: '#f3f4f6',
+              border: '1px solid #e5e7eb',
+              color: '#4b5563',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-              e.currentTarget.style.color = '#fca5a5';
+              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+              e.currentTarget.style.color = '#dc2626';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-              e.currentTarget.style.color = 'var(--baffa-text-secondary)';
+              e.currentTarget.style.backgroundColor = '#f3f4f6';
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.color = '#4b5563';
             }}
           >
             <X size={18} />
@@ -205,7 +205,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 display: 'block',
                 fontSize: '0.85rem',
                 fontWeight: 800,
-                color: 'var(--baffa-gold-primary)',
+                color: '#111827',
                 marginBottom: '6px',
               }}
             >
@@ -219,13 +219,13 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               placeholder="مثال: قعدة بَفّة المعلمين"
               style={{
                 width: '100%',
-                padding: '10px 14px',
+                padding: '11px 14px',
                 borderRadius: 'var(--baffa-radius-md)',
-                backgroundColor: 'var(--baffa-bg-elevated)',
-                border: '1px solid var(--baffa-surface-glass-border)',
-                color: '#fff',
+                backgroundColor: '#fcfbf7',
+                border: '1.5px solid #e5e7eb',
+                color: '#111827',
                 fontSize: '0.95rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 outline: 'none',
                 transition: 'border-color 0.2s ease',
               }}
@@ -233,24 +233,25 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)';
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'var(--baffa-surface-glass-border)';
+                e.currentTarget.style.borderColor = '#e5e7eb';
               }}
             />
 
             {/* Quick Name Suggestions */}
-            <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
               {nameSuggestions.map((sug) => (
                 <button
                   key={sug}
                   type="button"
                   onClick={() => setRoomName(sug)}
                   style={{
-                    fontSize: '0.72rem',
-                    padding: '3px 8px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    padding: '4px 10px',
                     borderRadius: '12px',
-                    backgroundColor: roomName === sug ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255, 255, 255, 0.05)',
-                    color: roomName === sug ? 'var(--baffa-gold-hover)' : 'var(--baffa-text-muted)',
-                    border: roomName === sug ? '1px solid var(--baffa-gold-primary)' : '1px solid rgba(255, 255, 255, 0.08)',
+                    backgroundColor: roomName === sug ? '#fef3c7' : '#f3f4f6',
+                    color: roomName === sug ? '#b45309' : '#4b5563',
+                    border: roomName === sug ? '1.5px solid #f59e0b' : '1px solid #e5e7eb',
                     cursor: 'pointer',
                   }}
                 >
@@ -268,7 +269,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   fontSize: '0.85rem',
                   fontWeight: 800,
-                  color: 'var(--baffa-gold-primary)',
+                  color: '#111827',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
@@ -276,7 +277,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               >
                 <span>دورك في الطاولة:</span>
               </label>
-              <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                 (يمكنك تغييره لاحقاً في اللوبي)
               </span>
             </div>
@@ -289,15 +290,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '10px 8px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: initialRole === 'PLAYER' ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
-                  color: initialRole === 'PLAYER' ? '#080d1a' : '#fff',
-                  border: initialRole === 'PLAYER' ? '2px solid var(--baffa-gold-hover)' : '1px solid var(--baffa-surface-glass-border)',
+                  backgroundColor: initialRole === 'PLAYER' ? '#f59e0b' : '#f9fafb',
+                  color: initialRole === 'PLAYER' ? '#111827' : '#4b5563',
+                  border: initialRole === 'PLAYER' ? '2px solid #d97706' : '1px solid #e5e7eb',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: '4px',
-                  boxShadow: initialRole === 'PLAYER' ? '0 0 16px rgba(245, 158, 11, 0.4)' : 'none',
+                  boxShadow: initialRole === 'PLAYER' ? '0 4px 14px rgba(245, 158, 11, 0.35)' : 'none',
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -313,15 +314,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '10px 8px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: initialRole === 'JUDGE' ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
-                  color: initialRole === 'JUDGE' ? '#080d1a' : '#fff',
-                  border: initialRole === 'JUDGE' ? '2px solid var(--baffa-gold-hover)' : '1px solid var(--baffa-surface-glass-border)',
+                  backgroundColor: initialRole === 'JUDGE' ? '#f59e0b' : '#f9fafb',
+                  color: initialRole === 'JUDGE' ? '#111827' : '#4b5563',
+                  border: initialRole === 'JUDGE' ? '2px solid #d97706' : '1px solid #e5e7eb',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: '4px',
-                  boxShadow: initialRole === 'JUDGE' ? '0 0 16px rgba(245, 158, 11, 0.4)' : 'none',
+                  boxShadow: initialRole === 'JUDGE' ? '0 4px 14px rgba(245, 158, 11, 0.35)' : 'none',
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -337,15 +338,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '10px 8px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: initialRole === 'SPECTATOR' ? 'var(--baffa-cyan-primary)' : 'var(--baffa-bg-elevated)',
-                  color: initialRole === 'SPECTATOR' ? '#080d1a' : '#fff',
-                  border: initialRole === 'SPECTATOR' ? '2px solid var(--baffa-cyan-primary)' : '1px solid var(--baffa-surface-glass-border)',
+                  backgroundColor: initialRole === 'SPECTATOR' ? '#111827' : '#f9fafb',
+                  color: initialRole === 'SPECTATOR' ? '#fbbf24' : '#4b5563',
+                  border: initialRole === 'SPECTATOR' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: '4px',
-                  boxShadow: initialRole === 'SPECTATOR' ? '0 0 16px rgba(6, 182, 212, 0.4)' : 'none',
+                  boxShadow: initialRole === 'SPECTATOR' ? '0 4px 14px rgba(0, 0, 0, 0.25)' : 'none',
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -359,12 +360,12 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               <div
                 style={{
                   marginTop: '8px',
-                  padding: '7px 12px',
+                  padding: '8px 12px',
                   borderRadius: '8px',
-                  backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                  fontSize: '0.75rem',
-                  color: 'var(--baffa-gold-hover)',
+                  backgroundColor: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  fontSize: '0.78rem',
+                  color: '#92400e',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
@@ -390,7 +391,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   display: 'block',
                   fontSize: '0.85rem',
                   fontWeight: 800,
-                  color: 'var(--baffa-gold-primary)',
+                  color: '#111827',
                   marginBottom: '6px',
                 }}
               >
@@ -401,13 +402,13 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   type="button"
                   onClick={() => setTargetScore(101)}
                   style={{
-                    padding: '8px 4px',
+                    padding: '9px 4px',
                     borderRadius: 'var(--baffa-radius-md)',
-                    backgroundColor: targetScore === 101 ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
-                    color: targetScore === 101 ? '#080d1a' : '#fff',
+                    backgroundColor: targetScore === 101 ? '#f59e0b' : '#f9fafb',
+                    color: '#111827',
                     fontWeight: 800,
-                    fontSize: '0.82rem',
-                    border: targetScore === 101 ? '1px solid var(--baffa-gold-hover)' : '1px solid var(--baffa-surface-glass-border)',
+                    fontSize: '0.84rem',
+                    border: targetScore === 101 ? '2px solid #d97706' : '1px solid #e5e7eb',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                   }}
@@ -418,13 +419,13 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   type="button"
                   onClick={() => setTargetScore(151)}
                   style={{
-                    padding: '8px 4px',
+                    padding: '9px 4px',
                     borderRadius: 'var(--baffa-radius-md)',
-                    backgroundColor: targetScore === 151 ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
-                    color: targetScore === 151 ? '#080d1a' : '#fff',
+                    backgroundColor: targetScore === 151 ? '#f59e0b' : '#f9fafb',
+                    color: '#111827',
                     fontWeight: 800,
-                    fontSize: '0.82rem',
-                    border: targetScore === 151 ? '1px solid var(--baffa-gold-hover)' : '1px solid var(--baffa-surface-glass-border)',
+                    fontSize: '0.84rem',
+                    border: targetScore === 151 ? '2px solid #d97706' : '1px solid #e5e7eb',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                   }}
@@ -444,11 +445,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   gap: '4px',
                   fontSize: '0.85rem',
                   fontWeight: 800,
-                  color: 'var(--baffa-gold-primary)',
+                  color: '#111827',
                   marginBottom: '6px',
                 }}
               >
-                <Clock size={14} />
+                <Clock size={14} style={{ color: '#d97706' }} />
                 <span>وقت الدور:</span>
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
@@ -465,13 +466,13 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                       type="button"
                       onClick={() => setRoundTimerSeconds(opt.sec)}
                       style={{
-                        padding: '8px 2px',
+                        padding: '9px 2px',
                         borderRadius: 'var(--baffa-radius-md)',
-                        backgroundColor: isSelected ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
-                        color: isSelected ? '#080d1a' : '#fff',
+                        backgroundColor: isSelected ? '#f59e0b' : '#f9fafb',
+                        color: '#111827',
                         fontWeight: 800,
-                        fontSize: '0.78rem',
-                        border: isSelected ? '1px solid var(--baffa-gold-hover)' : '1px solid var(--baffa-surface-glass-border)',
+                        fontSize: '0.8rem',
+                        border: isSelected ? '2px solid #d97706' : '1px solid #e5e7eb',
                         cursor: 'pointer',
                         textAlign: 'center',
                         transition: 'all 0.15s ease',
@@ -493,7 +494,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 display: 'block',
                 fontSize: '0.85rem',
                 fontWeight: 800,
-                color: 'var(--baffa-gold-primary)',
+                color: '#111827',
                 marginBottom: '8px',
               }}
             >
@@ -506,8 +507,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '10px 8px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: teamPreset === 'SOLO_VS_BOTS' ? 'rgba(245, 158, 11, 0.15)' : 'var(--baffa-bg-elevated)',
-                  border: teamPreset === 'SOLO_VS_BOTS' ? '2px solid var(--baffa-gold-primary)' : '1px solid var(--baffa-surface-glass-border)',
+                  backgroundColor: teamPreset === 'SOLO_VS_BOTS' ? '#fef3c7' : '#f9fafb',
+                  border: teamPreset === 'SOLO_VS_BOTS' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
@@ -517,11 +518,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   transition: 'all 0.2s ease',
                 }}
               >
-                <Bot size={18} style={{ color: 'var(--baffa-gold-primary)' }} />
-                <span className="arabic-font" style={{ fontWeight: 800, fontSize: '0.82rem', color: '#fff' }}>
+                <Bot size={18} style={{ color: '#d97706' }} />
+                <span className="arabic-font" style={{ fontWeight: 800, fontSize: '0.82rem', color: '#111827' }}>
                   سولو ضد البوتات
                 </span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--baffa-text-muted)' }}>
+                <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>
                   أنت + بوت ضد 2 بوتات
                 </span>
               </div>
@@ -532,8 +533,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '10px 8px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: teamPreset === 'FOUR_HUMANS' ? 'rgba(245, 158, 11, 0.15)' : 'var(--baffa-bg-elevated)',
-                  border: teamPreset === 'FOUR_HUMANS' ? '2px solid var(--baffa-gold-primary)' : '1px solid var(--baffa-surface-glass-border)',
+                  backgroundColor: teamPreset === 'FOUR_HUMANS' ? '#fef3c7' : '#f9fafb',
+                  border: teamPreset === 'FOUR_HUMANS' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
@@ -543,11 +544,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   transition: 'all 0.2s ease',
                 }}
               >
-                <Users size={18} style={{ color: 'var(--baffa-cyan-primary)' }} />
-                <span className="arabic-font" style={{ fontWeight: 800, fontSize: '0.82rem', color: '#fff' }}>
+                <Users size={18} style={{ color: '#d97706' }} />
+                <span className="arabic-font" style={{ fontWeight: 800, fontSize: '0.82rem', color: '#111827' }}>
                   4 لاعبين بشر
                 </span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--baffa-text-muted)' }}>
+                <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>
                   أصحابك عبر الكود
                 </span>
               </div>
@@ -558,8 +559,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '10px 8px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: teamPreset === 'TWO_HUMANS_VS_BOTS' ? 'rgba(245, 158, 11, 0.15)' : 'var(--baffa-bg-elevated)',
-                  border: teamPreset === 'TWO_HUMANS_VS_BOTS' ? '2px solid var(--baffa-gold-primary)' : '1px solid var(--baffa-surface-glass-border)',
+                  backgroundColor: teamPreset === 'TWO_HUMANS_VS_BOTS' ? '#fef3c7' : '#f9fafb',
+                  border: teamPreset === 'TWO_HUMANS_VS_BOTS' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
@@ -569,11 +570,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   transition: 'all 0.2s ease',
                 }}
               >
-                <Users size={18} style={{ color: '#34d399' }} />
-                <span className="arabic-font" style={{ fontWeight: 800, fontSize: '0.82rem', color: '#fff' }}>
+                <Users size={18} style={{ color: '#10b981' }} />
+                <span className="arabic-font" style={{ fontWeight: 800, fontSize: '0.82rem', color: '#111827' }}>
                   2 بشر ضد 2 بوتات
                 </span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--baffa-text-muted)' }}>
+                <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>
                   لعب تعاوني ضد AI
                 </span>
               </div>
@@ -590,11 +591,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 gap: '6px',
                 fontSize: '0.85rem',
                 fontWeight: 800,
-                color: 'var(--baffa-gold-primary)',
+                color: '#111827',
                 marginBottom: '8px',
               }}
             >
-              <Radio size={14} />
+              <Radio size={14} style={{ color: '#d97706' }} />
               <span>قنوات التواصل والصلاحيات:</span>
             </label>
 
@@ -606,16 +607,16 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '8px 10px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: voiceEnabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-                  border: voiceEnabled ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(239, 68, 68, 0.3)',
-                  color: voiceEnabled ? '#34d399' : '#f87171',
+                  backgroundColor: voiceEnabled ? '#ecfdf5' : '#fef2f2',
+                  border: voiceEnabled ? '1.5px solid #10b981' : '1.5px solid #fca5a5',
+                  color: voiceEnabled ? '#047857' : '#b91c1c',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
                   transition: 'all 0.15s ease',
                 }}
               >
@@ -630,16 +631,16 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '8px 10px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: quickChatEnabled ? 'rgba(6, 182, 212, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-                  border: quickChatEnabled ? '1px solid rgba(6, 182, 212, 0.5)' : '1px solid rgba(239, 68, 68, 0.3)',
-                  color: quickChatEnabled ? '#22d3ee' : '#f87171',
+                  backgroundColor: quickChatEnabled ? '#fef3c7' : '#fef2f2',
+                  border: quickChatEnabled ? '1.5px solid #f59e0b' : '1.5px solid #fca5a5',
+                  color: quickChatEnabled ? '#b45309' : '#b91c1c',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
                   transition: 'all 0.15s ease',
                 }}
               >
@@ -654,16 +655,16 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '8px 10px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: reactionsEnabled ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-                  border: reactionsEnabled ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(239, 68, 68, 0.3)',
-                  color: reactionsEnabled ? '#fbbf24' : '#f87171',
+                  backgroundColor: reactionsEnabled ? '#fef3c7' : '#fef2f2',
+                  border: reactionsEnabled ? '1.5px solid #f59e0b' : '1.5px solid #fca5a5',
+                  color: reactionsEnabled ? '#b45309' : '#b91c1c',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
                   transition: 'all 0.15s ease',
                 }}
               >
@@ -678,16 +679,16 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '8px 10px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: allowJudge ? 'rgba(139, 92, 246, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-                  border: allowJudge ? '1px solid rgba(139, 92, 246, 0.5)' : '1px solid rgba(239, 68, 68, 0.3)',
-                  color: allowJudge ? '#a78bfa' : '#f87171',
+                  backgroundColor: allowJudge ? '#f5f3ff' : '#fef2f2',
+                  border: allowJudge ? '1.5px solid #8b5cf6' : '1.5px solid #fca5a5',
+                  color: allowJudge ? '#6d28d9' : '#b91c1c',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
                   transition: 'all 0.15s ease',
                 }}
               >
@@ -702,16 +703,16 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 style={{
                   padding: '8px 10px',
                   borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: allowSpectator ? 'rgba(59, 130, 246, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-                  border: allowSpectator ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(239, 68, 68, 0.3)',
-                  color: allowSpectator ? '#60a5fa' : '#f87171',
+                  backgroundColor: allowSpectator ? '#fef3c7' : '#fef2f2',
+                  border: allowSpectator ? '1.5px solid #f59e0b' : '1.5px solid #fca5a5',
+                  color: allowSpectator ? '#b45309' : '#b91c1c',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
                   transition: 'all 0.15s ease',
                 }}
               >
@@ -726,8 +727,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
         <div
           style={{
             padding: '14px 20px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-            backgroundColor: 'rgba(11, 18, 30, 0.95)',
+            borderTop: '1.5px solid rgba(245, 158, 11, 0.25)',
+            backgroundColor: '#fffdfa',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -757,7 +758,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               flex: 1,
               padding: '11px 20px',
               fontSize: '1rem',
-              fontWeight: 800,
+              fontWeight: 900,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
