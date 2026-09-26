@@ -24,10 +24,7 @@
   </defs>
 
   <!-- Base Rounded Container with Gold Gradient -->
-  <rect x="24" y="24" width="464" height="464" rx="110" fill="url(#goldGrad)" stroke="#FFFFFF" stroke-width="8" stroke-opacity="0.4" filter="url(#dropShadow)" />
-
-  <!-- Diagonal Sheen Layer -->
-  <rect x="24" y="24" width="464" height="464" rx="110" fill="url(#sheen)" />
+  <rect x="24" y="24" width="464" height="464" rx="110" fill="url(#goldGrad)" stroke="#B8860B" stroke-width="8" stroke-opacity="0.8" filter="url(#dropShadow)" />
 
   <!-- Inner Subtle Border -->
   <rect x="36" y="36" width="440" height="440" rx="98" fill="none" stroke="#FDE68A" stroke-width="4" stroke-opacity="0.6" />

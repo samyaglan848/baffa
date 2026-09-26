@@ -87,29 +87,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: isMobile ? '260px' : '380px',
-            height: isMobile ? '180px' : '240px',
-            background: 'radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, rgba(6, 9, 14, 0) 70%)',
-            filter: 'blur(30px)',
+            width: isMobile ? '240px' : '340px',
+            height: isMobile ? '160px' : '220px',
+            background: 'radial-gradient(circle, rgba(217, 164, 4, 0.1) 0%, rgba(6, 9, 14, 0) 70%)',
+            filter: 'blur(28px)',
             pointerEvents: 'none',
             zIndex: 0,
           }}
         />
 
-        {/* Master Luxury 3D Brand Badge - Crisp & Defined */}
+        {/* Master Luxury 3D Brand Badge - Crisp & Defined without white glare */}
         <div
           className="animate-float"
           style={{
             width: isMobile ? '68px' : '92px',
             height: isMobile ? '68px' : '92px',
             borderRadius: isMobile ? '18px' : '26px',
-            background: 'linear-gradient(145deg, #F5C518 0%, #D9A404 60%, #854d0e 100%)',
+            background: 'linear-gradient(145deg, #F5C518 0%, #D9A404 65%, #92400e 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 28px rgba(245, 197, 24, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3), inset 0 -3px 6px rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 10px 28px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 197, 24, 0.35), inset 0 -3px 6px rgba(0, 0, 0, 0.5)',
             marginBottom: isMobile ? '12px' : '20px',
-            border: '2px solid #B8860B',
+            border: '2.5px solid #B8860B',
             position: 'relative',
             zIndex: 1,
           }}
@@ -122,7 +122,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               color: '#080d1a',
               lineHeight: 1,
               letterSpacing: '-1px',
-              textShadow: '0 1px 2px rgba(0, 0, 0, 0.35)',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.45)',
               transform: 'translateY(-1px)',
               userSelect: 'none',
             }}

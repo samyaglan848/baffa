@@ -73,28 +73,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               width: '38px',
               height: '38px',
               borderRadius: '11px',
-              background: 'linear-gradient(145deg, var(--baffa-gold-hover) 0%, var(--baffa-gold-primary) 50%, var(--baffa-gold-dark) 100%)',
+              background: 'linear-gradient(145deg, #F5C518 0%, #D9A404 65%, #92400e 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 16px rgba(245, 197, 24, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.8), inset 0 -2px 4px rgba(26, 26, 26, 0.3)',
-              border: '1.5px solid var(--baffa-gold-frame)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5), 0 0 10px rgba(245, 197, 24, 0.35), inset 0 -2px 4px rgba(0, 0, 0, 0.4)',
+              border: '1.5px solid #B8860B',
               position: 'relative',
               overflow: 'hidden',
             }}
           >
-            {/* Subtle Metallic Diagonal Sheen */}
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: '-50%',
-                width: '200%',
-                height: '100%',
-                background: 'linear-gradient(60deg, transparent 40%, rgba(255, 255, 255, 0.4) 50%, transparent 60%)',
-                pointerEvents: 'none',
-              }}
-            />
             {/* Bold Professional 'B' */}
             <span
               style={{
@@ -104,7 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 color: '#080d1a',
                 lineHeight: 1,
                 letterSpacing: '-0.5px',
-                textShadow: '0 1px 0 rgba(255, 255, 255, 0.5)',
+                textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)',
                 transform: 'translateY(-0.5px)',
                 userSelect: 'none',
               }}
