@@ -296,8 +296,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           error_callback: (err: any) => {
             setLoading(false);
             if (err?.type === 'popup_closed') return;
+            const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
             setError(
-              'تعذر الاتصال بحساب Google (خطأ 400: origin_mismatch). يرجى التأكد من تسجيل عنوان الموقع الحالي في Google Cloud Console ضمن أصول JavaScript المعتمدة.'
+              `تعذر الاتصال بحساب Google (خطأ 400: origin_mismatch).\nالرابط الحالي لموقعك هو: ${currentOrigin}\nيرجى التأكد من إضافة هذا الرابط بالضبط (بدون أي شرطة مائلة في النهاية) في Google Cloud Console داخل Authorized JavaScript origins.`
             );
           },
         });
