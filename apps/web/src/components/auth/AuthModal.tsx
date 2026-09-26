@@ -93,7 +93,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const initGoogleGsi = () => {
       const clientId =
         process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-        '651902823236-u0p9o7grl0ik7p9l37l8jfo5pj8s7oe8.apps.googleusercontent.com';
+        '612690398078-h87q1755hjcnutp8148tmhlhav7ufaa5.apps.googleusercontent.com';
 
       if (typeof window !== 'undefined' && (window as any).google?.accounts?.id && clientId) {
         try {
@@ -278,7 +278,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     const clientId =
       process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-      '651902823236-u0p9o7grl0ik7p9l37l8jfo5pj8s7oe8.apps.googleusercontent.com';
+      '612690398078-h87q1755hjcnutp8148tmhlhav7ufaa5.apps.googleusercontent.com';
 
     // 1. Try Google Identity Services OAuth2 Token Client (Opens Google Official Popup)
     if (typeof window !== 'undefined' && (window as any).google?.accounts?.oauth2) {

@@ -557,7 +557,7 @@ export class AuthService {
 
   private getGoogleClient(): OAuth2Client {
     if (!this.googleClient) {
-      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientId = process.env.GOOGLE_CLIENT_ID || '612690398078-h87q1755hjcnutp8148tmhlhav7ufaa5.apps.googleusercontent.com';
       this.googleClient = new OAuth2Client(clientId);
     }
     return this.googleClient;
@@ -578,7 +578,7 @@ export class AuthService {
       throw new UnauthorizedException('رمز توثيق جوجل مفقود أو غير صالح');
     }
 
-    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientId = process.env.GOOGLE_CLIENT_ID || '612690398078-h87q1755hjcnutp8148tmhlhav7ufaa5.apps.googleusercontent.com';
     const client = this.getGoogleClient();
 
     // 1. If accessToken provided or rawToken is an OAuth access token (e.g. starts with ya29.)
