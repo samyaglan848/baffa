@@ -67,39 +67,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => onNavigate('HOME')}
           style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
         >
-          {/* Professional Luxury 'B' Emblem */}
-          <div
+          {/* Authentic BAFFA Tab Logo Emblem with 3D Domino Dots */}
+          <img
+            src="/icon.svg"
+            alt="BAFFA"
+            width={38}
+            height={38}
             style={{
-              width: '38px',
-              height: '38px',
               borderRadius: '11px',
-              background: 'linear-gradient(145deg, #F5C518 0%, #D9A404 65%, #92400e 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5), 0 0 10px rgba(245, 197, 24, 0.35), inset 0 -2px 4px rgba(0, 0, 0, 0.4)',
-              border: '1.5px solid #B8860B',
-              position: 'relative',
-              overflow: 'hidden',
+              filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 8px rgba(245, 158, 11, 0.35))',
+              userSelect: 'none',
+              flexShrink: 0,
             }}
-          >
-            {/* Bold Professional 'B' */}
-            <span
-              style={{
-                fontSize: '1.45rem',
-                fontWeight: 900,
-                fontFamily: 'var(--baffa-font-sans), sans-serif',
-                color: '#080d1a',
-                lineHeight: 1,
-                letterSpacing: '-0.5px',
-                textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)',
-                transform: 'translateY(-0.5px)',
-                userSelect: 'none',
-              }}
-            >
-              B
-            </span>
-          </div>
+          />
 
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span

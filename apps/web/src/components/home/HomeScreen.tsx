@@ -96,40 +96,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           }}
         />
 
-        {/* Master Luxury 3D Brand Badge - Crisp & Defined without white glare */}
-        <div
+        {/* Authentic BAFFA Tab Logo Emblem with 3D Domino Dots */}
+        <img
+          src="/icon.svg"
+          alt="BAFFA Logo"
+          width={isMobile ? 74 : 96}
+          height={isMobile ? 74 : 96}
           className="animate-float"
           style={{
-            width: isMobile ? '68px' : '92px',
-            height: isMobile ? '68px' : '92px',
-            borderRadius: isMobile ? '18px' : '26px',
-            background: 'linear-gradient(145deg, #F5C518 0%, #D9A404 65%, #92400e 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 10px 28px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 197, 24, 0.35), inset 0 -3px 6px rgba(0, 0, 0, 0.5)',
             marginBottom: isMobile ? '12px' : '20px',
-            border: '2.5px solid #B8860B',
-            position: 'relative',
+            filter: 'drop-shadow(0 12px 28px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 20px rgba(245, 158, 11, 0.35))',
             zIndex: 1,
+            userSelect: 'none',
           }}
-        >
-          <span
-            style={{
-              fontSize: isMobile ? '2.4rem' : '3.2rem',
-              fontWeight: 900,
-              fontFamily: 'var(--baffa-font-sans), sans-serif',
-              color: '#080d1a',
-              lineHeight: 1,
-              letterSpacing: '-1px',
-              textShadow: '0 1px 2px rgba(0, 0, 0, 0.45)',
-              transform: 'translateY(-1px)',
-              userSelect: 'none',
-            }}
-          >
-            B
-          </span>
-        </div>
+        />
 
         <h1
           style={{
@@ -140,7 +120,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             margin: 0,
             lineHeight: 1.1,
             zIndex: 1,
-            textShadow: '0 2px 20px rgba(245, 197, 24, 0.25)',
+            textShadow: '0 2px 20px rgba(245, 158, 11, 0.25)',
           }}
         >
           BAFFA
@@ -153,7 +133,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             color: 'var(--baffa-gold-hover)',
             marginTop: '6px',
             fontWeight: 900,
-            textShadow: '0 0 20px rgba(245, 197, 24, 0.45)',
+            textShadow: '0 0 20px rgba(245, 158, 11, 0.45)',
             zIndex: 1,
           }}
         >
@@ -196,7 +176,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* Main Action Cards Grid (3D Glassmorphism) */}
+      {/* Main Action Cards Grid (Original Distinct 3D Themes) */}
       <div
         style={{
           display: 'grid',
@@ -207,7 +187,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           zIndex: 1,
         }}
       >
-        {/* 1. Quick Play (Primary Golden CTA with Deep Emerald Badge) */}
+        {/* 1. Quick Play (Primary Golden CTA) */}
         <div
           onClick={onQuickPlay}
           className="baffa-card"
@@ -219,19 +199,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             textAlign: 'center',
             cursor: 'pointer',
             border: '2px solid var(--baffa-gold-primary)',
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.45), 0 0 25px rgba(245, 158, 11, 0.25)',
-            background: 'linear-gradient(170deg, rgba(26, 40, 62, 0.95) 0%, rgba(18, 29, 45, 0.98) 100%)',
+            boxShadow: '0 0 30px rgba(245, 158, 11, 0.25), var(--baffa-shadow-elevated)',
+            background: 'linear-gradient(170deg, rgba(245, 158, 11, 0.12) 0%, var(--baffa-bg-surface) 60%, rgba(15, 23, 42, 0.95) 100%)',
             transition: 'all 0.25s ease',
             position: 'relative',
             overflow: 'hidden',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-6px)';
-            e.currentTarget.style.boxShadow = '0 0 40px rgba(245, 158, 11, 0.55)';
+            e.currentTarget.style.boxShadow = '0 0 40px rgba(245, 158, 11, 0.45)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.45), 0 0 25px rgba(245, 158, 11, 0.25)';
+            e.currentTarget.style.boxShadow = '0 0 30px rgba(245, 158, 11, 0.25)';
           }}
         >
           {/* Top Pill Tag */}
@@ -240,13 +220,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               position: 'absolute',
               top: '10px',
               right: '10px',
-              padding: '3px 8px',
+              padding: '2px 7px',
               borderRadius: '4px',
               backgroundColor: 'var(--baffa-gold-primary)',
               color: '#080d1a',
-              fontSize: '0.65rem',
+              fontSize: '0.62rem',
               fontWeight: 900,
-              boxShadow: '0 2px 6px rgba(245, 158, 11, 0.4)',
             }}
           >
             بدون انتظار • فوري
@@ -271,11 +250,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           <h2
             className="arabic-font"
-            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-text-primary)', margin: 0 }}
+            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-gold-hover)', margin: 0 }}
           >
             لعب سريع
           </h2>
-          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-gold-hover)', marginTop: '2px' }}>
+          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
             Quick Play with Bots
           </span>
           <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
@@ -283,7 +262,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </p>
         </div>
 
-        {/* 2. Create Room */}
+        {/* 2. Create Room (Neon Cyan Card) */}
         <div
           onClick={() => setShowCreateModal(true)}
           className="baffa-card"
@@ -294,21 +273,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             alignItems: 'center',
             textAlign: 'center',
             cursor: 'pointer',
-            border: '1.5px solid rgba(245, 158, 11, 0.35)',
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.35)',
-            background: 'linear-gradient(170deg, rgba(26, 40, 62, 0.75) 0%, rgba(18, 29, 45, 0.9) 100%)',
+            border: '1px solid rgba(6, 182, 212, 0.4)',
+            background: 'linear-gradient(170deg, rgba(6, 182, 212, 0.1) 0%, var(--baffa-bg-surface) 60%, rgba(15, 23, 42, 0.95) 100%)',
             transition: 'all 0.25s ease',
             position: 'relative',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-6px)';
-            e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)';
-            e.currentTarget.style.boxShadow = '0 0 35px rgba(245, 158, 11, 0.4)';
+            e.currentTarget.style.borderColor = 'var(--baffa-cyan-primary)';
+            e.currentTarget.style.boxShadow = '0 0 35px rgba(6, 182, 212, 0.35)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.35)';
-            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.35)';
+            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.4)';
+            e.currentTarget.style.boxShadow = 'none';
           }}
         >
           <div
@@ -316,13 +294,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               position: 'absolute',
               top: '10px',
               right: '10px',
-              padding: '3px 8px',
+              padding: '2px 7px',
               borderRadius: '4px',
-              backgroundColor: 'rgba(245, 158, 11, 0.15)',
-              color: 'var(--baffa-gold-hover)',
+              backgroundColor: 'rgba(6, 182, 212, 0.2)',
+              color: '#67e8f9',
               fontSize: '0.62rem',
               fontWeight: 800,
-              border: '1px solid rgba(245, 158, 11, 0.35)',
+              border: '1px solid rgba(6, 182, 212, 0.3)',
             }}
           >
             هدف 101 أو 151
@@ -333,25 +311,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               width: isMobile ? '46px' : '60px',
               height: isMobile ? '46px' : '60px',
               borderRadius: '50%',
-              background: 'linear-gradient(145deg, var(--baffa-gold-hover) 0%, var(--baffa-gold-primary) 100%)',
-              color: '#080d1a',
+              backgroundColor: 'rgba(6, 182, 212, 0.15)',
+              color: 'var(--baffa-cyan-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: isMobile ? '10px' : '16px',
-              boxShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
+              border: '1px solid rgba(6, 182, 212, 0.3)',
             }}
           >
-            <PlusCircle size={isMobile ? 22 : 30} color="#080d1a" />
+            <PlusCircle size={isMobile ? 22 : 30} />
           </div>
 
           <h2
             className="arabic-font"
-            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-text-primary)', margin: 0 }}
+            style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 900, color: 'var(--baffa-cyan-primary)', margin: 0 }}
           >
             إنشاء غرفة
           </h2>
-          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-gold-primary)', marginTop: '2px' }}>
+          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
             Create Custom Room
           </span>
           <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
@@ -359,7 +337,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </p>
         </div>
 
-        {/* 3. Join Room */}
+        {/* 3. Join Room (Sapphire Card) */}
         <div
           onClick={() => setShowJoinModal(true)}
           className="baffa-card"
@@ -370,21 +348,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             alignItems: 'center',
             textAlign: 'center',
             cursor: 'pointer',
-            border: '1.5px solid var(--baffa-surface-glass-border)',
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.35)',
-            background: 'linear-gradient(170deg, rgba(26, 40, 62, 0.75) 0%, rgba(18, 29, 45, 0.9) 100%)',
+            border: '1px solid var(--baffa-surface-glass-border)',
+            background: 'linear-gradient(170deg, rgba(99, 102, 241, 0.08) 0%, var(--baffa-bg-surface) 60%, rgba(15, 23, 42, 0.95) 100%)',
             transition: 'all 0.25s ease',
             position: 'relative',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-6px)';
-            e.currentTarget.style.borderColor = 'var(--baffa-gold-primary)';
-            e.currentTarget.style.boxShadow = '0 0 35px rgba(245, 158, 11, 0.35)';
+            e.currentTarget.style.borderColor = '#818cf8';
+            e.currentTarget.style.boxShadow = '0 0 35px rgba(99, 102, 241, 0.3)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
             e.currentTarget.style.borderColor = 'var(--baffa-surface-glass-border)';
-            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.35)';
+            e.currentTarget.style.boxShadow = 'none';
           }}
         >
           <div
@@ -392,13 +369,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               position: 'absolute',
               top: '10px',
               right: '10px',
-              padding: '3px 8px',
+              padding: '2px 7px',
               borderRadius: '4px',
-              backgroundColor: 'rgba(245, 158, 11, 0.15)',
-              color: 'var(--baffa-gold-hover)',
+              backgroundColor: 'rgba(99, 102, 241, 0.2)',
+              color: '#a5b4fc',
               fontSize: '0.62rem',
               fontWeight: 800,
-              border: '1px solid rgba(245, 158, 11, 0.35)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
             }}
           >
             كود الغرفة
@@ -410,16 +387,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               height: isMobile ? '46px' : '60px',
               borderRadius: '50%',
               backgroundColor: 'var(--baffa-bg-elevated)',
-              color: 'var(--baffa-gold-primary)',
+              color: 'var(--baffa-text-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: isMobile ? '10px' : '16px',
-              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
-              border: '1px solid rgba(245, 158, 11, 0.35)',
             }}
           >
-            <LogIn size={isMobile ? 22 : 30} color="var(--baffa-gold-primary)" />
+            <LogIn size={isMobile ? 22 : 30} />
           </div>
 
           <h2
@@ -428,7 +403,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           >
             انضمام لغرفة
           </h2>
-          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-gold-primary)', marginTop: '2px' }}>
+          <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700, color: 'var(--baffa-text-secondary)', marginTop: '2px' }}>
             Join with Code
           </span>
           <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
