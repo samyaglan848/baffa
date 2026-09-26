@@ -67,6 +67,18 @@ export default function App() {
 
   const [currentView, setCurrentView] = useState<AppView>('HOME');
   const [showSettings, setShowSettings] = useState(false);
+  const [hasEnteredSession, setHasEnteredSession] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const token = localStorage.getItem('baffa_token');
+    const user = localStorage.getItem('baffa_user');
+    // If returning user has real registered account with token:
+    if (token && user) return true;
+    // If active guest session in current tab:
+    const sessionUser = sessionStorage.getItem('baffa_user');
+    const guestActive = sessionStorage.getItem('baffa_guest_active') === 'true';
+    if (sessionUser && guestActive) return true;
+    return false; // New visitor or logged out -> Show Welcome / Auth!
+  });
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedPublicUser, setSelectedPublicUser] = useState<string | null>(null);
 
@@ -301,26 +313,59 @@ export default function App() {
     setCurrentView('HOME');
   };
 
+  const handleAuthSuccess = (user: CurrentUser, token: string) => {
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem('baffa_user', JSON.stringify(user));
+        localStorage.setItem('baffa_token', token);
+      }
+      sessionStorage.setItem('baffa_user', JSON.stringify(user));
+      if (token) {
+        sessionStorage.setItem('baffa_token', token);
+      } else {
+        sessionStorage.setItem('baffa_guest_active', 'true');
+      }
+    }
+    setAuthSession(user, token);
+    setHasEnteredSession(true);
+    setShowAuthModal(false);
+  };
+
+  const handleGuestLogin = (customNickname?: string) => {
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const guestUser: CurrentUser = {
+      id: `user_guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      username: customNickname?.trim() || `لاعب_بَفّة_${randomNum}`,
+      avatar: `avatar-${(randomNum % 4) + 1}`,
+      token: undefined,
+    };
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('baffa_user', JSON.stringify(guestUser));
+      sessionStorage.setItem('baffa_guest_active', 'true');
+    }
+    setAuthSession(guestUser, '');
+    setHasEnteredSession(true);
+    setShowAuthModal(false);
+  };
+
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('baffa_user');
       localStorage.removeItem('baffa_token');
       sessionStorage.removeItem('baffa_user');
       sessionStorage.removeItem('baffa_token');
+      sessionStorage.removeItem('baffa_guest_active');
       sessionStorage.removeItem('baffa_active_room_code');
     }
     const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const guestUser: CurrentUser = {
-      id: `user_guest_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      username: `لاعب_${randomNum}`,
+    const guestPlaceholder: CurrentUser = {
+      id: `guest_visitor_${randomNum}`,
+      username: `ضيف_${randomNum}`,
       avatar: 'avatar-1',
       token: undefined,
     };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('baffa_user', JSON.stringify(guestUser));
-      sessionStorage.setItem('baffa_user', JSON.stringify(guestUser));
-    }
-    setAuthSession(guestUser, '');
+    setAuthSession(guestPlaceholder, '');
+    setHasEnteredSession(false);
     setCurrentView('HOME');
     setShowAuthModal(true);
   };
@@ -420,6 +465,7 @@ export default function App() {
           currentView={currentView}
           onNavigate={(view) => setCurrentView(view)}
           onOpenSettings={() => setShowSettings(true)}
+          onOpenAuth={() => setShowAuthModal(true)}
           onLeaveRoom={handleLeaveRoom}
           inRoom={!!room}
         />
@@ -631,14 +677,15 @@ export default function App() {
         )}
       </main>
 
-      {/* Auth Modal (Login / Register) */}
+      {/* Auth Modal (Login / Register / Guest) */}
       <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={(user, token) => {
-          setAuthSession(user, token);
-          setShowAuthModal(false);
+        isOpen={showAuthModal || !hasEnteredSession}
+        isMandatory={!hasEnteredSession}
+        onClose={() => {
+          if (hasEnteredSession) setShowAuthModal(false);
         }}
+        onGuestPlay={handleGuestLogin}
+        onSuccess={handleAuthSuccess}
       />
 
       {/* Public Profile Modal */}

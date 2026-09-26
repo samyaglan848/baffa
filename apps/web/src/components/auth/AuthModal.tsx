@@ -29,16 +29,21 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (user: CurrentUser, token: string) => void;
+  isMandatory?: boolean;
+  onGuestPlay?: (nickname?: string) => void;
 }
 
-type AuthView = 'LOGIN' | 'REGISTER' | 'FORGOT_PASSWORD' | 'VERIFY_EMAIL' | 'ACCOUNT_LINK_REQUIRED';
+type AuthView = 'LOGIN' | 'REGISTER' | 'GUEST' | 'FORGOT_PASSWORD' | 'VERIFY_EMAIL' | 'ACCOUNT_LINK_REQUIRED';
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  isMandatory = false,
+  onGuestPlay,
 }) => {
   const [view, setView] = useState<AuthView>('LOGIN');
+  const [guestNickname, setGuestNickname] = useState('');
 
   // Form Fields
   const [username, setUsername] = useState('');
@@ -288,8 +293,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setLoading(false);
             }
           },
-          error_callback: () => {
+          error_callback: (err: any) => {
             setLoading(false);
+            if (err?.type === 'popup_closed') return;
+            setError(
+              'تعذر الاتصال بحساب Google (خطأ 400: origin_mismatch). يرجى التأكد من تسجيل عنوان الموقع الحالي في Google Cloud Console ضمن أصول JavaScript المعتمدة.'
+            );
           },
         });
 
@@ -357,15 +366,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   // Guest Mode
-  const handleGuestPlay = () => {
+  const handleGuestPlay = (customName?: string) => {
+    const finalName = (customName || guestNickname).trim();
+    if (onGuestPlay) {
+      onGuestPlay(finalName || undefined);
+      return;
+    }
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     const guestUser: CurrentUser = {
       id: `user_guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      username: `لاعب_بَفّة_${randomNum}`,
-      avatar: 'avatar-1',
+      username: finalName || `لاعب_بَفّة_${randomNum}`,
+      avatar: `avatar-${(randomNum % 4) + 1}`,
     };
     if (typeof window !== 'undefined') {
-      localStorage.setItem('baffa_user', JSON.stringify(guestUser));
+      sessionStorage.setItem('baffa_user', JSON.stringify(guestUser));
+      sessionStorage.setItem('baffa_guest_active', 'true');
     }
     onSuccess(guestUser, '');
     onClose();
@@ -532,7 +547,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         animation: 'fadeIn 0.25s ease-out',
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (!isMandatory && e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -552,65 +567,54 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           direction: 'rtl',
         }}
       >
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '16px',
-            left: '16px',
-            width: '34px',
-            height: '34px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            color: 'var(--baffa-text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-            e.currentTarget.style.color = '#ef4444';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
-            e.currentTarget.style.color = 'var(--baffa-text-secondary)';
-          }}
-        >
-          <X size={18} />
-        </button>
-
-        {/* Modal Header */}
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <div
+        {/* Close Button (Hidden if login is mandatory on arrival) */}
+        {!isMandatory && (
+          <button
+            type="button"
+            onClick={onClose}
             style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '16px',
-              background:
-                'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
+              position: 'absolute',
+              top: '16px',
+              left: '16px',
+              width: '34px',
+              height: '34px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              color: 'var(--baffa-text-secondary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 12px',
-              boxShadow: '0 8px 20px rgba(245, 158, 11, 0.35)',
-              border: '1px solid rgba(251, 191, 36, 0.6)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+              e.currentTarget.style.color = '#ef4444';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
+              e.currentTarget.style.color = 'var(--baffa-text-secondary)';
             }}
           >
-            {view === 'FORGOT_PASSWORD' ? (
-              <KeyRound size={26} color="#080d1a" strokeWidth={2.5} />
-            ) : view === 'VERIFY_EMAIL' ? (
-              <ShieldCheck size={26} color="#080d1a" strokeWidth={2.5} />
-            ) : view === 'ACCOUNT_LINK_REQUIRED' ? (
-              <Link2 size={26} color="#080d1a" strokeWidth={2.5} />
-            ) : (
-              <Sparkles size={26} color="#080d1a" strokeWidth={2.5} />
-            )}
-          </div>
+            <X size={18} />
+          </button>
+        )}
+
+        {/* Modal Header */}
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <img
+            src="/icon.svg"
+            alt="BAFFA Logo"
+            width={60}
+            height={60}
+            style={{
+              margin: '0 auto 12px',
+              display: 'block',
+              filter: 'drop-shadow(0 6px 16px rgba(245, 158, 11, 0.4))',
+              userSelect: 'none',
+            }}
+          />
 
           <h2
             className="arabic-font"
@@ -621,23 +625,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               letterSpacing: '-0.02em',
             }}
           >
-            {view === 'LOGIN' && 'تسجيل الدخول'}
+            {view === 'LOGIN' && (isMandatory ? 'مرحباً بك في بَفّة 🎴' : 'تسجيل الدخول')}
             {view === 'REGISTER' && 'إنشاء حساب جديد'}
+            {view === 'GUEST' && 'دخول كضيف سريع ⚡'}
             {view === 'FORGOT_PASSWORD' && 'استرجاع كلمة المرور'}
             {view === 'VERIFY_EMAIL' && 'تأكيد البريد الإلكتروني'}
             {view === 'ACCOUNT_LINK_REQUIRED' && 'ربط الحساب بحساب Google'}
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--baffa-text-secondary)', marginTop: '4px' }}>
-            {view === 'LOGIN' && 'ادخل لحسابك لمتابعة المباريات وسجل مواجهاتك'}
+            {view === 'LOGIN' && (isMandatory ? 'سجل دخولك أو ادخل كضيف فوراً للبدء في اللعب' : 'ادخل لحسابك لمتابعة المباريات وسجل مواجهاتك')}
             {view === 'REGISTER' && 'سجل حسابك واحفظ إحصائياتك ونسبة فوزك في بَفّة'}
+            {view === 'GUEST' && 'العب فوراً بدون تسجيل أو كلمة مرور، وتقدر توثق حسابك بعدين'}
             {view === 'FORGOT_PASSWORD' && 'أدخل بيانات حسابك وسنرسل لك كود الاسترجاع'}
             {view === 'VERIFY_EMAIL' && `أدخل كود التحقق المرسل إلى: ${verifyEmailAddress}`}
             {view === 'ACCOUNT_LINK_REQUIRED' && `أدخل كلمة مرور حسابك لتأكيد الربط مع: ${linkAccountEmail}`}
           </p>
         </div>
 
-        {/* Segmented Mode Tabs (دخول / تسجيل) */}
-        {(view === 'LOGIN' || view === 'REGISTER') && (
+        {/* Segmented Mode Tabs (دخول / تسجيل / ضيف) */}
+        {(view === 'LOGIN' || view === 'REGISTER' || view === 'GUEST') && (
           <div
             style={{
               display: 'flex',
@@ -646,6 +652,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               padding: '4px',
               border: '1px solid var(--baffa-surface-glass-border)',
               marginBottom: '20px',
+              gap: '4px',
             }}
           >
             <button
@@ -656,23 +663,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }}
               style={{
                 flex: 1,
-                padding: '8px 12px',
+                padding: '8px 8px',
                 borderRadius: 'var(--baffa-radius-full)',
                 border: 'none',
                 backgroundColor: view === 'LOGIN' ? 'var(--baffa-gold-primary)' : 'transparent',
                 color: view === 'LOGIN' ? '#080d1a' : 'var(--baffa-text-secondary)',
-                fontSize: '0.85rem',
+                fontSize: '0.82rem',
                 fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '6px',
+                gap: '5px',
                 transition: 'all 0.2s ease',
               }}
             >
-              <LogIn size={15} />
-              <span className="arabic-font">تسجيل الدخول</span>
+              <LogIn size={14} />
+              <span className="arabic-font">دخول</span>
             </button>
 
             <button
@@ -683,23 +690,50 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }}
               style={{
                 flex: 1,
-                padding: '8px 12px',
+                padding: '8px 8px',
                 borderRadius: 'var(--baffa-radius-full)',
                 border: 'none',
                 backgroundColor: view === 'REGISTER' ? 'var(--baffa-gold-primary)' : 'transparent',
                 color: view === 'REGISTER' ? '#080d1a' : 'var(--baffa-text-secondary)',
-                fontSize: '0.85rem',
+                fontSize: '0.82rem',
                 fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '6px',
+                gap: '5px',
                 transition: 'all 0.2s ease',
               }}
             >
-              <UserPlus size={15} />
+              <UserPlus size={14} />
               <span className="arabic-font">حساب جديد</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setView('GUEST');
+                resetMessages();
+              }}
+              style={{
+                flex: 1,
+                padding: '8px 8px',
+                borderRadius: 'var(--baffa-radius-full)',
+                border: 'none',
+                backgroundColor: view === 'GUEST' ? 'var(--baffa-gold-primary)' : 'transparent',
+                color: view === 'GUEST' ? '#080d1a' : 'var(--baffa-text-secondary)',
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '5px',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Zap size={14} />
+              <span className="arabic-font">دخول كضيف ⚡</span>
             </button>
           </div>
         )}
@@ -1033,6 +1067,96 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               )}
             </button>
           </form>
+        )}
+
+        {/* -------------------- VIEW 3: GUEST MODE -------------------- */}
+        {view === 'GUEST' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div
+              style={{
+                backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                borderRadius: 'var(--baffa-radius-lg)',
+                padding: '14px',
+                fontSize: '0.85rem',
+                color: 'var(--baffa-text-secondary)',
+                lineHeight: '1.6',
+                textAlign: 'center',
+              }}
+            >
+              🎯 <strong>دخول فوري بدون أي انتظار:</strong> العب جولات 2 ضد 2 مع أصحابك أو ضد البوتات بضغطة زر واحدة. إحصائياتك ستكون مؤقتة لهذه الجلسة ويمكنك تسجيل حساب دائم في أي وقت.
+            </div>
+
+            <div>
+              <label
+                className="arabic-font"
+                style={{
+                  display: 'block',
+                  fontSize: '0.85rem',
+                  color: 'var(--baffa-text-primary)',
+                  fontWeight: 700,
+                  marginBottom: '6px',
+                }}
+              >
+                الاسم المستعار (اختياري)
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  maxLength={20}
+                  value={guestNickname}
+                  onChange={(e) => setGuestNickname(e.target.value)}
+                  placeholder="مثال: حريف القفلات (أو اتركه فارغاً لاسم تلقائي)"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px 12px 38px',
+                    borderRadius: 'var(--baffa-radius-md)',
+                    backgroundColor: 'var(--baffa-bg-elevated)',
+                    border: '1px solid var(--baffa-surface-glass-border)',
+                    color: '#fff',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    transition: 'border 0.2s ease',
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--baffa-gold-primary)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--baffa-surface-glass-border)')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleGuestPlay(guestNickname);
+                    }
+                  }}
+                />
+                <User size={18} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--baffa-text-muted)' }} />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleGuestPlay(guestNickname)}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: 'var(--baffa-radius-md)',
+                border: 'none',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                color: '#080d1a',
+                fontSize: '1rem',
+                fontWeight: 900,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(245, 158, 11, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                marginTop: '4px',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Zap size={20} fill="#080d1a" />
+              <span className="arabic-font">ابدأ اللعب كضيف الآن ⚡</span>
+            </button>
+          </div>
         )}
 
         {/* -------------------- VIEW 5: ACCOUNT LINK REQUIRED (CASE C) -------------------- */}
@@ -1447,7 +1571,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Social / Guest Action Area */}
-        {(view === 'LOGIN' || view === 'REGISTER') && (
+        {(view === 'LOGIN' || view === 'REGISTER' || view === 'GUEST') && (
           <div style={{ marginTop: '20px' }}>
             <div
               style={{
@@ -1514,30 +1638,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span className="arabic-font">المتابعة بحساب Google</span>
               </button>
 
-              {/* Guest Button */}
-              <button
-                type="button"
-                onClick={handleGuestPlay}
-                style={{
-                  width: '100%',
-                  padding: '11px',
-                  borderRadius: 'var(--baffa-radius-md)',
-                  backgroundColor: 'rgba(6, 182, 212, 0.08)',
-                  border: '1px solid rgba(6, 182, 212, 0.3)',
-                  color: '#06b6d4',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <Zap size={16} />
-                <span className="arabic-font">متابعة كضيف سريع (بدون تسجيل)</span>
-              </button>
+              {/* Guest Button (Only in LOGIN & REGISTER views) */}
+              {view !== 'GUEST' && (
+                <button
+                  type="button"
+                  onClick={() => handleGuestPlay()}
+                  style={{
+                    width: '100%',
+                    padding: '11px',
+                    borderRadius: 'var(--baffa-radius-md)',
+                    backgroundColor: 'rgba(6, 182, 212, 0.08)',
+                    border: '1px solid rgba(6, 182, 212, 0.3)',
+                    color: '#06b6d4',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Zap size={16} />
+                  <span className="arabic-font">متابعة كضيف سريع (بدون تسجيل)</span>
+                </button>
+              )}
             </div>
           </div>
         )}

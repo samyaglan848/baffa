@@ -31,23 +31,24 @@ export interface CurrentUser {
 
 function getStoredUser(): CurrentUser {
   if (typeof window !== 'undefined') {
-    // 1. Check if a real authenticated account or valid guest exists in localStorage first
+    // 1. Check if a real registered user account with token exists in localStorage
     const saved = localStorage.getItem('baffa_user');
     const token = localStorage.getItem('baffa_token') || undefined;
-    if (saved) {
+    if (saved && token) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.id && parsed.id !== 'default_user') {
-          if (token) parsed.token = token;
+          parsed.token = token;
           sessionStorage.setItem('baffa_user', JSON.stringify(parsed));
           return parsed;
         }
       } catch {}
     }
 
-    // 2. Check tab-isolated session storage
+    // 2. Check tab-isolated active guest session (only if user explicitly chose to enter as guest)
     const sessionSaved = sessionStorage.getItem('baffa_user');
-    if (sessionSaved) {
+    const guestActive = sessionStorage.getItem('baffa_guest_active') === 'true';
+    if (sessionSaved && guestActive) {
       try {
         const parsed = JSON.parse(sessionSaved);
         if (parsed && parsed.id && parsed.id !== 'default_user') {
@@ -56,18 +57,13 @@ function getStoredUser(): CurrentUser {
       } catch {}
     }
 
-    // 3. Generate a clean, unique guest user and store in both localStorage & sessionStorage
+    // 3. New visitor placeholder without writing to localStorage or sessionStorage
     const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const newUser: CurrentUser = {
-      id: `user_guest_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      username: `لاعب_${randomNum}`,
-      avatar: `avatar-${(randomNum % 4) + 1}`,
+    return {
+      id: `guest_${randomNum}`,
+      username: `ضيف_${randomNum}`,
+      avatar: 'avatar-1',
     };
-    try {
-      localStorage.setItem('baffa_user', JSON.stringify(newUser));
-      sessionStorage.setItem('baffa_user', JSON.stringify(newUser));
-    } catch {}
-    return newUser;
   }
   return {
     id: 'guest_user',

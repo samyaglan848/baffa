@@ -11,6 +11,7 @@ import {
   History,
   BarChart3,
   Settings,
+  LogIn,
 } from 'lucide-react';
 
 export type AppView = 'HOME' | 'HISTORY' | 'STATS' | 'PROFILE';
@@ -21,6 +22,7 @@ interface NavbarProps {
   currentView: AppView;
   onNavigate: (view: AppView) => void;
   onOpenSettings: () => void;
+  onOpenAuth?: () => void;
   onLeaveRoom?: () => void;
   inRoom?: boolean;
 }
@@ -31,6 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentView,
   onNavigate,
   onOpenSettings,
+  onOpenAuth,
   onLeaveRoom,
   inRoom = false,
 }) => {
@@ -251,6 +254,31 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <Settings size={isMobile ? 16 : 18} />
         </button>
+
+        {/* Guest Sign-In / Upgrade Prompt */}
+        {!currentUser.token && onOpenAuth && (
+          <button
+            onClick={onOpenAuth}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: isMobile ? '3px 8px' : '5px 12px',
+              borderRadius: 'var(--baffa-radius-full)',
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              border: '1px solid var(--baffa-gold-primary)',
+              color: 'var(--baffa-gold-hover)',
+              fontSize: isMobile ? '0.7rem' : '0.8rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <LogIn size={isMobile ? 12 : 14} />
+            <span>تسجيل دخول</span>
+          </button>
+        )}
 
         {/* User Badge */}
         <div
