@@ -136,6 +136,7 @@ export interface RegisterDto {
 
 export interface LoginDto {
   usernameOrEmailOrPhone: string;
+  password: string;
 }
 
 export interface CheckAvailabilityDto {

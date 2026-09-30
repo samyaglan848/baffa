@@ -188,6 +188,12 @@ export class PersistenceService implements OnModuleInit {
     return this.usersMap.get(id);
   }
 
+  public getUserByUsername(username: string): PersistedUser | undefined {
+    if (!username) return undefined;
+    const clean = username.trim().toLowerCase();
+    return this.findUser((u) => u.normalizedUsername === clean || Boolean(u.username && u.username.toLowerCase() === clean));
+  }
+
   public findUser(predicate: (u: PersistedUser) => boolean): PersistedUser | undefined {
     for (const u of this.usersMap.values()) {
       if (predicate(u)) return u;

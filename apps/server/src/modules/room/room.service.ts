@@ -453,6 +453,8 @@ export class RoomService {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('Room not found');
 
+    const meta = this.resolveUserMeta(user);
+
     const isAdmin =
       room.currentAdminId === user.id ||
       room.originalAdminId === user.id ||

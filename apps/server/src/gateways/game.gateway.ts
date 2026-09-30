@@ -2779,7 +2779,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             updated = true;
           }
           if (updated && this.server) {
-            this.server.to(roomId).emit(ServerEvents.ROOM_DETAILS_UPDATED, { room });
+            this.server.to(roomId).emit(ServerEvents.ROOM_SYNC, { room });
           }
         }
       }

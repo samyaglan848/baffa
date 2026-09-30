@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { json, urlencoded } from 'express';
 import * as path from 'path';
+import * as fs from 'fs';
 import * as express from 'express';
 
 async function bootstrap() {
