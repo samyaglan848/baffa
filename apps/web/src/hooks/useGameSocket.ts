@@ -25,6 +25,7 @@ import { API_URL, SOCKET_URL } from '@/config/api';
 export interface CurrentUser {
   id: string;
   username: string;
+  displayName?: string;
   avatar: string;
   token?: string;
 }
@@ -124,6 +125,7 @@ export function useGameSocket() {
               const updated: CurrentUser = {
                 ...prev,
                 username: freshDisplayName || prev.username,
+                displayName: freshDisplayName || prev.displayName,
                 avatar: freshAvatar,
                 token: effectiveToken,
               };
@@ -572,13 +574,25 @@ export function useGameSocket() {
     });
 
     socket.on('server:profile_updated', (data: any) => {
+      if (!data || !data.userId) return;
+      const newAvatar = data.customAvatarUrl || data.avatarUrl || data.avatarId || 'avatar-1';
+      const newName = data.displayName || data.username;
+
       if (data.userId === currentUser.id) {
-        const newAvatar = data.customAvatarUrl || data.avatarUrl || 'avatar-1';
-        setCurrentUser((prev) => ({
-          ...prev,
-          username: data.displayName || data.username || prev.username,
-          avatar: newAvatar,
-        }));
+        setCurrentUser((prev) => {
+          const updated = {
+            ...prev,
+            username: newName || prev.username,
+            avatar: newAvatar,
+          };
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('baffa_user', JSON.stringify(updated));
+              sessionStorage.setItem('baffa_user', JSON.stringify(updated));
+            } catch {}
+          }
+          return updated;
+        });
       }
 
       // Update room player seat avatar in real-time
@@ -588,13 +602,29 @@ export function useGameSocket() {
           if (s.playerId === data.userId) {
             return {
               ...s,
-              username: data.displayName || data.username || s.username,
-              avatar: data.customAvatarUrl || data.avatarUrl || s.avatar,
+              username: newName || s.username,
+              avatar: newAvatar || s.avatar,
             };
           }
           return s;
         });
         return { ...prevRoom, seats: updatedSeats };
+      });
+
+      // Update active game table player state in real-time
+      setGameState((prevGame) => {
+        if (!prevGame) return null;
+        const updatedPlayers = prevGame.players.map((p) => {
+          if (p.playerId === data.userId) {
+            return {
+              ...p,
+              username: newName || p.username,
+              avatar: newAvatar || p.avatar,
+            };
+          }
+          return p;
+        });
+        return { ...prevGame, players: updatedPlayers };
       });
     });
 
@@ -752,41 +782,6 @@ export function useGameSocket() {
     [currentUser]
   );
 
-  const joinAsJudge = useCallback(
-    (roomIdOrCode: string) => {
-      if (!socketRef.current) return;
-      leftRoomIdRef.current = null;
-      activeRoomIdRef.current = roomIdOrCode;
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('baffa_active_room_code', roomIdOrCode);
-      }
-      socketRef.current.emit(ClientEvents.JOIN_AS_JUDGE, {
-        roomId: roomIdOrCode,
-        user: currentUser,
-      });
-      myRoleRef.current = 'JUDGE';
-      setMyRole('JUDGE');
-    },
-    [currentUser]
-  );
-
-  const joinAsSpectator = useCallback(
-    (roomIdOrCode: string) => {
-      if (!socketRef.current) return;
-      leftRoomIdRef.current = null;
-      activeRoomIdRef.current = roomIdOrCode;
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('baffa_active_room_code', roomIdOrCode);
-      }
-      socketRef.current.emit(ClientEvents.JOIN_AS_SPECTATOR, {
-        roomId: roomIdOrCode,
-        user: currentUser,
-      });
-      setMyRole('SPECTATOR');
-    },
-    [currentUser]
-  );
-
   const selectSeat = useCallback(
     (seat: PlayerSeat) => {
       const activeRoom = roomRef.current || room;
@@ -863,6 +858,50 @@ export function useGameSocket() {
       });
     },
     [room]
+  );
+
+  const joinAsJudge = useCallback(
+    (roomIdOrCode: string) => {
+      if (!socketRef.current) return;
+
+      if (myRoleRef.current === 'JUDGE') {
+        const fallbackSeat = roomRef.current?.seats.findIndex((s) => !s.occupied || s.isBot) ?? -1;
+        if (fallbackSeat >= 0) {
+          selectSeat(fallbackSeat as PlayerSeat);
+          return;
+        }
+      }
+
+      leftRoomIdRef.current = null;
+      activeRoomIdRef.current = roomIdOrCode;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('baffa_active_room_code', roomIdOrCode);
+      }
+      socketRef.current.emit(ClientEvents.JOIN_AS_JUDGE, {
+        roomId: roomIdOrCode,
+        user: currentUser,
+      });
+      myRoleRef.current = 'JUDGE';
+      setMyRole('JUDGE');
+    },
+    [currentUser, selectSeat]
+  );
+
+  const joinAsSpectator = useCallback(
+    (roomIdOrCode: string) => {
+      if (!socketRef.current) return;
+      leftRoomIdRef.current = null;
+      activeRoomIdRef.current = roomIdOrCode;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('baffa_active_room_code', roomIdOrCode);
+      }
+      socketRef.current.emit(ClientEvents.JOIN_AS_SPECTATOR, {
+        roomId: roomIdOrCode,
+        user: currentUser,
+      });
+      setMyRole('SPECTATOR');
+    },
+    [currentUser]
   );
 
   const adminMoveSeat = useCallback(

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { UserProfile, Gender } from '@baffa/shared';
 import { BAFFA_AVATARS, getAvatarById } from '../../constants/avatars';
+import { UserAvatar } from '../common/UserAvatar';
 import {
   BAFFA_CHALLENGE_SLOGANS,
   BAFFA_PLAY_STYLES,
@@ -229,32 +230,27 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               borderBottom: '1px solid var(--baffa-surface-glass-border)',
             }}
           >
-            <div
-              style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '50%',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                border: '2px solid var(--baffa-gold-primary)',
-                boxShadow: 'var(--baffa-shadow-glow-gold)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                flexShrink: 0,
-                fontSize: '1.9rem',
-              }}
-            >
-              {profile.customAvatarUrl ? (
-                <img
-                  src={profile.customAvatarUrl}
-                  alt="Avatar"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              <div
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '2px solid var(--baffa-gold-primary)',
+                  boxShadow: 'var(--baffa-shadow-glow-gold)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                }}
+              >
+                <UserAvatar
+                  avatar={profile.customAvatarUrl || profile.avatarUrl || profile.avatarId}
+                  username={profile.displayName || profile.username}
+                  size={64}
                 />
-              ) : (
-                currentAvatar.emoji
-              )}
-            </div>
+              </div>
 
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>

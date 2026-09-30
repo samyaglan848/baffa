@@ -11,6 +11,7 @@ import { VoiceService } from './modules/voice/voice.service';
 import { AnticheatService } from './modules/anticheat/anticheat.service';
 import { VerificationService } from './modules/auth/verification.service';
 import { GameGateway } from './gateways/game.gateway';
+import { AutoJudgeService } from './modules/game/auto-judge.service';
 import { ProfileService } from './modules/profile/profile.service';
 import { ProfileController } from './modules/profile/profile.controller';
 import { LocalProfileStorage } from './modules/profile/storage/local-profile-storage';
@@ -31,6 +32,7 @@ import { PersistenceService } from './modules/persistence/persistence.service';
     AnticheatService,
     RoomService,
     BotService,
+    AutoJudgeService,
     GameSessionService,
     MatchService,
     GameGateway,

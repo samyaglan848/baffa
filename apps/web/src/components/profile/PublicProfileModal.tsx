@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { PublicUserProfile, HeadToHeadStats } from '@baffa/shared';
 import { BAFFA_AVATARS, getAvatarById } from '../../constants/avatars';
+import { UserAvatar } from '../common/UserAvatar';
 import {
   X,
   User,
@@ -190,26 +191,20 @@ export const PublicProfileModal: React.FC<PublicProfileModalProps> = ({
                   width: '80px',
                   height: '80px',
                   borderRadius: '50%',
-                  backgroundColor: `${currentAvatar.color}22`,
-                  border: `3px solid ${currentAvatar.color}`,
-                  boxShadow: `0 0 20px ${currentAvatar.color}44`,
+                  border: `3px solid var(--baffa-gold-primary)`,
+                  boxShadow: `0 0 20px rgba(245, 158, 11, 0.35)`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '2.5rem',
                   overflow: 'hidden',
                   flexShrink: 0,
                 }}
               >
-                {profile.customAvatarUrl ? (
-                  <img
-                    src={profile.customAvatarUrl}
-                    alt={profile.displayName}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  currentAvatar.emoji
-                )}
+                <UserAvatar
+                  avatar={profile.customAvatarUrl || profile.avatarUrl || profile.avatarId}
+                  username={profile.displayName || profile.username}
+                  size={80}
+                />
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>

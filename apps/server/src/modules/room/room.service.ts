@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   BotId,
   DisconnectGraceInfo,
@@ -14,6 +14,7 @@ import {
   UserRole,
 } from '@baffa/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PersistenceService } from '../persistence/persistence.service';
 
 export interface ConnectedPlayer {
   socketId: string;
@@ -33,7 +34,17 @@ export class RoomService {
   private graceTimers: Map<string, NodeJS.Timeout> = new Map(); // `${roomId}_${seat}` -> Timeout
   private lobbyDisconnectTimers: Map<string, NodeJS.Timeout> = new Map(); // `${roomId}_${userId}` -> Timeout
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Optional() private persistence?: PersistenceService
+  ) {}
+
+  private resolveUserMeta(user: { id: string; username: string; avatar?: string }): { username: string; avatar: string } {
+    const persisted = this.persistence?.getUserById(user.id);
+    const resolvedAvatar = persisted?.customAvatarUrl || persisted?.avatarUrl || user.avatar || 'avatar-1';
+    const resolvedName = persisted?.displayName || user.username;
+    return { username: resolvedName, avatar: resolvedAvatar };
+  }
 
   private generateCode(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -58,11 +69,12 @@ export class RoomService {
     user: { id: string; username: string; avatar: string },
     role: UserRole = 'PLAYER'
   ) {
+    const meta = this.resolveUserMeta(user);
     this.socketPlayers.set(socketId, {
       socketId,
       userId: user.id,
-      username: user.username,
-      avatar: user.avatar,
+      username: meta.username,
+      avatar: meta.avatar,
       role,
       seat: null,
       roomId: null,
@@ -149,6 +161,8 @@ export class RoomService {
     const isJudge = initialRole === 'JUDGE';
     const isSpectator = initialRole === 'SPECTATOR';
 
+    const meta = this.resolveUserMeta(ownerUser);
+
     if (!isJudge && !isSpectator) {
       // Assign owner to Seat 0 (Team 1)
       seats[0] = {
@@ -156,8 +170,8 @@ export class RoomService {
         team: 1,
         occupied: true,
         playerId: ownerUser.id,
-        username: ownerUser.username,
-        avatar: ownerUser.avatar,
+        username: meta.username,
+        avatar: meta.avatar,
         isBot: false,
         isReady: true,
         isConnected: true,
@@ -219,8 +233,8 @@ export class RoomService {
       judge: isJudge
         ? {
             userId: ownerUser.id,
-            username: ownerUser.username,
-            avatar: ownerUser.avatar,
+            username: meta.username,
+            avatar: meta.avatar,
             isConnected: true,
             isMuted: false,
           }
@@ -228,8 +242,8 @@ export class RoomService {
       spectator: isSpectator
         ? {
             userId: ownerUser.id,
-            username: ownerUser.username,
-            avatar: ownerUser.avatar,
+            username: meta.username,
+            avatar: meta.avatar,
             isConnected: true,
             isMuted: false,
           }
@@ -238,8 +252,8 @@ export class RoomService {
         ? [
             {
               userId: ownerUser.id,
-              username: ownerUser.username,
-              avatar: ownerUser.avatar,
+              username: meta.username,
+              avatar: meta.avatar,
               isConnected: true,
               isMuted: false,
             },
@@ -295,12 +309,14 @@ export class RoomService {
 
     const connected = this.socketPlayers.get(socketId);
 
+    const meta = this.resolveUserMeta(user);
+
     if (playerSeat) {
       playerSeat.isConnected = true;
       playerSeat.presence = 'IN_ROOM';
       playerSeat.isTemporarilyBotControlled = false;
-      if (user.avatar) playerSeat.avatar = user.avatar;
-      if (user.username) playerSeat.username = user.username;
+      playerSeat.avatar = meta.avatar;
+      playerSeat.username = meta.username;
 
       // Clear disconnect grace and lobby disconnect timer if active
       this.cancelDisconnectGrace(roomId, playerSeat.seat);
@@ -357,8 +373,8 @@ export class RoomService {
       if (availableBotSeat) {
         availableBotSeat.occupied = true;
         availableBotSeat.playerId = user.id;
-        availableBotSeat.username = user.username;
-        availableBotSeat.avatar = user.avatar;
+        availableBotSeat.username = meta.username;
+        availableBotSeat.avatar = meta.avatar;
         availableBotSeat.isBot = false;
         delete availableBotSeat.botId;
         availableBotSeat.isReady = true;
@@ -408,8 +424,8 @@ export class RoomService {
 
     availableSeat.occupied = true;
     availableSeat.playerId = user.id;
-    availableSeat.username = user.username;
-    availableSeat.avatar = user.avatar;
+    availableSeat.username = meta.username;
+    availableSeat.avatar = meta.avatar;
     availableSeat.isBot = false;
     delete availableSeat.botId;
     availableSeat.isReady = true;
@@ -450,7 +466,37 @@ export class RoomService {
       room.judge &&
       (room.judge.userId === user.id || (room.judge.username && room.judge.username === user.username));
 
-    if (room.judge && !isCurrentJudge && !isAdmin && room.judge.isConnected) {
+    if (isCurrentJudge) {
+      const fallbackSeatIndex = room.seats.findIndex((seat) => !seat.occupied || seat.isBot);
+      const targetSeat = fallbackSeatIndex >= 0 ? (fallbackSeatIndex as PlayerSeat) : 0;
+      const targetSeatObj = room.seats[targetSeat];
+
+      if (targetSeatObj) {
+        targetSeatObj.occupied = true;
+        targetSeatObj.playerId = user.id;
+        targetSeatObj.username = meta.username;
+        targetSeatObj.avatar = meta.avatar;
+        targetSeatObj.isBot = false;
+        delete targetSeatObj.botId;
+        targetSeatObj.isReady = true;
+        targetSeatObj.isConnected = true;
+        targetSeatObj.presence = 'IN_ROOM';
+        targetSeatObj.isTemporarilyBotControlled = false;
+      }
+
+      room.judge = null;
+
+      const connected = this.socketPlayers.get(socketId);
+      if (connected) {
+        connected.roomId = roomId;
+        connected.seat = targetSeat;
+        connected.role = room.currentAdminId === user.id || room.originalAdminId === user.id || room.ownerId === user.id ? 'ADMIN' : 'PLAYER';
+      }
+
+      return room;
+    }
+
+    if (room.judge && !isAdmin && room.judge.isConnected) {
       throw new Error('A Judge is already presiding over this room (Max 1)');
     }
 

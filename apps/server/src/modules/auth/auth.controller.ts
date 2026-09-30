@@ -4,11 +4,13 @@ import {
   Get,
   Headers,
   Post,
+  Query,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
+  CheckAvailabilityDto,
   GoogleAuthDto,
   LinkGoogleAccountDto,
   LoginDto,
@@ -25,6 +27,16 @@ import {
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Get('check-availability')
+  async checkAvailabilityGet(@Query('username') username?: string, @Query('email') email?: string) {
+    return this.authService.checkAvailability({ username, email });
+  }
+
+  @Post('check-availability')
+  async checkAvailabilityPost(@Body() dto: CheckAvailabilityDto) {
+    return this.authService.checkAvailability(dto);
+  }
 
   @Post('register')
   async register(@Body() dto: RegisterDto, @Req() req: any) {

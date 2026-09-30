@@ -33,11 +33,18 @@ async function bootstrap() {
     });
   });
 
-  // Serve static uploaded avatars safely
-  const path = require('path');
-  const express = require('express');
-  const uploadsDir = path.resolve(process.cwd(), 'uploads');
-  expressApp.use('/uploads', express.static(uploadsDir));
+  // Serve static uploaded avatars safely across monorepo layouts
+  const uploadsCandidateDirs = [
+    path.resolve(process.cwd(), 'uploads'),
+    path.resolve(process.cwd(), 'apps', 'server', 'uploads'),
+    path.resolve(__dirname, '..', 'uploads'),
+    path.resolve(__dirname, '..', '..', 'uploads'),
+  ];
+  uploadsCandidateDirs.forEach((uDir) => {
+    if (fs.existsSync(uDir)) {
+      expressApp.use('/uploads', express.static(uDir, { maxAge: '7d' }));
+    }
+  });
 
   // Graceful Shutdown
   app.enableShutdownHooks();

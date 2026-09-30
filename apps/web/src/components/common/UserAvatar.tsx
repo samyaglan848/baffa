@@ -35,6 +35,10 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const [imgError, setImgError] = useState(false);
   const resolvedUrl = resolveAvatarUrl(avatar);
 
+  React.useEffect(() => {
+    setImgError(false);
+  }, [avatar, resolvedUrl]);
+
   // If bot entity
   const isBotEntity = isBot || Boolean(avatar && avatar.startsWith('bot-'));
   const botConfig = botId ? OFFICIAL_BAFFA_BOTS[botId] : undefined;

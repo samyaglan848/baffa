@@ -135,6 +135,26 @@ describe('BAFFA Server Services Test Suite (Auth, Anti-Cheat, Multi-Role Room, V
         roomService.joinAsSpectator(room.id, 'socket_spec_2', { id: 'spec_2', username: 'Fan 2', avatar: '5' });
       }, /A Spectator is already watching/);
     });
+
+    it('Allows a judge to toggle back to a player seat when judge mode is pressed again', () => {
+      const room = roomService.createRoom(
+        'socket_toggle_owner',
+        { id: 'toggle_owner', username: 'ToggleOwner', avatar: '1' },
+        'Toggle Room'
+      );
+
+      roomService.registerSocket('toggle_socket', { id: 'toggle_player', username: 'TogglePlayer', avatar: '2' }, 'PLAYER');
+      roomService.joinAsJudge(room.id, 'toggle_socket', { id: 'toggle_player', username: 'TogglePlayer', avatar: '2' });
+      assert.ok(room.judge);
+      assert.strictEqual(room.judge?.userId, 'toggle_player');
+
+      const restored = roomService.joinAsJudge(room.id, 'toggle_socket', { id: 'toggle_player', username: 'TogglePlayer', avatar: '2' });
+
+      assert.strictEqual(restored.judge, null);
+      const seated = restored.seats.find((s) => s.playerId === 'toggle_player' && !s.isBot);
+      assert.ok(seated, 'Expected the user to return to a human player seat');
+      assert.strictEqual(roomService.getPlayerBySocket('toggle_socket')?.role, 'PLAYER');
+    });
   });
 
   describe('4. WebRTC Modular Voice Signaling Service', () => {

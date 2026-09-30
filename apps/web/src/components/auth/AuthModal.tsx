@@ -78,6 +78,69 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Real-time Availability status for registration
+  const [usernameAvailability, setUsernameAvailability] = useState<{
+    checking: boolean;
+    available?: boolean;
+    message?: string;
+  }>({ checking: false });
+
+  const [emailAvailability, setEmailAvailability] = useState<{
+    checking: boolean;
+    available?: boolean;
+    message?: string;
+  }>({ checking: false });
+
+  // Debounced check for username uniqueness
+  useEffect(() => {
+    if (view !== 'REGISTER' || !username.trim() || username.trim().length < 3) {
+      setUsernameAvailability({ checking: false });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setUsernameAvailability({ checking: true });
+      try {
+        const res = await fetch(`${API_URL}/api/auth/check-availability?username=${encodeURIComponent(username.trim())}`);
+        const data = await res.json();
+        setUsernameAvailability({
+          checking: false,
+          available: data.usernameAvailable,
+          message: data.usernameMessage,
+        });
+      } catch {
+        setUsernameAvailability({ checking: false });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [username, view]);
+
+  // Debounced check for email uniqueness
+  useEffect(() => {
+    if (view !== 'REGISTER' || !email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setEmailAvailability({ checking: false });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setEmailAvailability({ checking: true });
+      try {
+        const res = await fetch(`${API_URL}/api/auth/check-availability?email=${encodeURIComponent(email.trim())}`);
+        const data = await res.json();
+        setEmailAvailability({
+          checking: false,
+          available: data.emailAvailable,
+          message: data.emailMessage,
+        });
+      } catch {
+        setEmailAvailability({ checking: false });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [email, view]);
+
   useEffect(() => {
     let timer: any;
     if (countdown > 0) {
@@ -155,10 +218,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const isRegister = view === 'REGISTER';
     const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
 
-    if (isRegister && password !== confirmPassword) {
-      setError('كلمة المرور وتأكيد كلمة المرور غير متطابقين');
-      setLoading(false);
-      return;
+    if (isRegister) {
+      if (password !== confirmPassword) {
+        setError('كلمة المرور وتأكيد كلمة المرور غير متطابقين');
+        setLoading(false);
+        return;
+      }
+      if (usernameAvailability.available === false) {
+        setError(usernameAvailability.message || 'اسم المستخدم مستخدم بالفعل، يرجى اختيار اسم آخر');
+        setLoading(false);
+        return;
+      }
+      if (email.trim() && emailAvailability.available === false) {
+        setError(emailAvailability.message || 'البريد الإلكتروني مسجل بحساب آخر بالفعل');
+        setLoading(false);
+        return;
+      }
     }
 
     const payload = isRegister
@@ -823,6 +898,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
                 <User size={18} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--baffa-text-muted)' }} />
               </div>
+              {view === 'REGISTER' && username.trim().length >= 3 && (
+                <div style={{ marginTop: '5px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {usernameAvailability.checking ? (
+                    <span style={{ color: 'var(--baffa-text-muted)' }}>⏳ جاري التحقق من الاسم...</span>
+                  ) : usernameAvailability.available === false ? (
+                    <span style={{ color: '#ef4444', fontWeight: 600 }}>⚠️ {usernameAvailability.message || 'اسم المستخدم مستخدم بالفعل، يرجى اختيار اسم آخر'}</span>
+                  ) : usernameAvailability.available === true ? (
+                    <span style={{ color: '#10b981', fontWeight: 600 }}>✓ {usernameAvailability.message || 'اسم المستخدم متاح'}</span>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             {/* Optional Email & Phone for Register */}
@@ -861,6 +947,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     />
                     <Mail size={18} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--baffa-text-muted)' }} />
                   </div>
+                  {view === 'REGISTER' && email.trim() && (
+                    <div style={{ marginTop: '5px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {emailAvailability.checking ? (
+                        <span style={{ color: 'var(--baffa-text-muted)' }}>⏳ جاري التحقق من البريد...</span>
+                      ) : emailAvailability.available === false ? (
+                        <span style={{ color: '#ef4444', fontWeight: 600 }}>⚠️ {emailAvailability.message || 'البريد الإلكتروني مسجل بحساب آخر بالفعل'}</span>
+                      ) : emailAvailability.available === true ? (
+                        <span style={{ color: '#10b981', fontWeight: 600 }}>✓ {emailAvailability.message || 'البريد الإلكتروني متاح'}</span>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
 
                 <div>

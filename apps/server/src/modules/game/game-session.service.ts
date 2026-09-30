@@ -18,6 +18,7 @@ import { BotService, BotDecision } from './bot.service';
 import { RoomService } from '../room/room.service';
 import { AnticheatService } from '../anticheat/anticheat.service';
 import { MatchService } from '../match/match.service';
+import { AutoJudgeService } from './auto-judge.service';
 
 export interface GameSessionCallbacks {
   broadcastStateToRoom: (roomId: string) => void;
@@ -39,7 +40,8 @@ export class GameSessionService {
     private readonly botService: BotService,
     private readonly roomService: RoomService,
     private readonly anticheatService: AnticheatService,
-    private readonly matchService: MatchService
+    private readonly matchService: MatchService,
+    private readonly autoJudgeService: AutoJudgeService
   ) {}
 
   public setCallbacks(callbacks: GameSessionCallbacks) {
@@ -316,6 +318,72 @@ export class GameSessionService {
     return this.startMatch(roomId, effectiveAdminId);
   }
 
+  private applyAutoJudgeDecision(
+    roomId: string,
+    seat: PlayerSeat,
+    decision: ReturnType<AutoJudgeService['evaluateAction']>
+  ) {
+    const engine = this.sessions.get(roomId);
+    if (!engine || !decision.shouldAutoAct) {
+      return false;
+    }
+
+    const reason = `${decision.reason} (auto judge)`;
+    const judgeId = 'SERVER_AUTO_JUDGE';
+
+    if (decision.action === 'WARN_PLAYER') {
+      const result = engine.warnPlayer(judgeId, seat, reason);
+      if (result.success) {
+        this.callbacks?.broadcastNotification?.(roomId, {
+          type: 'WARNING',
+          message: decision.reason,
+          arabicMessage: decision.arabicMessage,
+          timestamp: Date.now(),
+          userId: `seat_${seat}`,
+          username: `Seat ${seat + 1}`,
+          persistent: true,
+        });
+        this.callbacks?.broadcastStateToRoom(roomId);
+        return true;
+      }
+    }
+
+    if (decision.action === 'CHEATING_PENALTY') {
+      const result = engine.penalizeCheating(judgeId, seat, reason);
+      if (result.success) {
+        this.callbacks?.broadcastNotification?.(roomId, {
+          type: 'ALERT',
+          message: decision.reason,
+          arabicMessage: decision.arabicMessage,
+          timestamp: Date.now(),
+          userId: `seat_${seat}`,
+          username: `Seat ${seat + 1}`,
+          persistent: true,
+        });
+        this.callbacks?.broadcastStateToRoom(roomId);
+        return true;
+      }
+    }
+
+    if (decision.action === 'VOID_ROUND') {
+      const result = engine.voidCurrentRound();
+      if (result.success) {
+        this.callbacks?.broadcastStateToRoom(roomId);
+        return true;
+      }
+    }
+
+    if (decision.action === 'TERMINATE_MATCH') {
+      const result = engine.terminateMatch(1, reason);
+      if (result.success) {
+        this.callbacks?.broadcastStateToRoom(roomId);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   /**
    * Handles a player's tile placement.
    */
@@ -329,6 +397,24 @@ export class GameSessionService {
     const engine = this.sessions.get(roomId);
     if (!engine) {
       return { success: false, error: 'No active match found for this room' };
+    }
+
+    const room = this.roomService.getRoom(roomId);
+    const legalMoves = engine.getLegalMovesForSeat(seat);
+    const isIllegalTile = !!tile && Array.isArray(tile) && tile.length === 2 && legalMoves.length > 0 && !legalMoves.some((move) => move.tile[0] === tile[0] && move.tile[1] === tile[1]);
+    if (!room?.judge && isIllegalTile) {
+      const autoDecision = this.autoJudgeService.evaluateAction({
+        roomId,
+        seat,
+        engine,
+        actionType: 'PLAY_TILE',
+        payload: { tile },
+        hasHumanJudge: false,
+      });
+      if (autoDecision.shouldAutoAct) {
+        this.applyAutoJudgeDecision(roomId, seat, autoDecision);
+        return { success: false, error: autoDecision.arabicMessage || autoDecision.reason };
+      }
     }
 
     const telemetry = this.anticheatService.evaluateAction({
@@ -380,6 +466,22 @@ export class GameSessionService {
     const engine = this.sessions.get(roomId);
     if (!engine) {
       return { success: false, error: 'No active match found for this room' };
+    }
+
+    const room = this.roomService.getRoom(roomId);
+    const legalMoves = engine.getLegalMovesForSeat(seat);
+    if (!room?.judge && legalMoves.length > 0) {
+      const autoDecision = this.autoJudgeService.evaluateAction({
+        roomId,
+        seat,
+        engine,
+        actionType: 'PASS_TURN',
+        hasHumanJudge: false,
+      });
+      if (autoDecision.shouldAutoAct) {
+        this.applyAutoJudgeDecision(roomId, seat, autoDecision);
+        return { success: false, error: autoDecision.arabicMessage || autoDecision.reason };
+      }
     }
 
     const telemetry = this.anticheatService.evaluateAction({
@@ -1049,14 +1151,30 @@ export class GameSessionService {
     const engine = this.sessions.get(roomId);
     if (!engine || engine.getStatus() !== 'PLAYING') return;
 
+    const room = this.roomService.getRoom(roomId);
+    const currentSeat = engine.getCurrentTurnSeat();
+    const legalMoves = engine.getLegalMovesForSeat(currentSeat);
+
+    const hasHumanJudge = Boolean(room?.judge);
+    if (!hasHumanJudge && legalMoves.length > 0) {
+      const autoDecision = this.autoJudgeService.evaluateAction({
+        roomId,
+        seat: currentSeat,
+        engine,
+        actionType: 'TIMEOUT',
+        hasHumanJudge: false,
+      });
+      if (autoDecision.shouldAutoAct) {
+        this.applyAutoJudgeDecision(roomId, currentSeat, autoDecision);
+        return;
+      }
+    }
+
     const existingBot = this.botTimeouts.get(roomId);
     if (existingBot) {
       clearTimeout(existingBot);
       this.botTimeouts.delete(roomId);
     }
-
-    const currentSeat = engine.getCurrentTurnSeat();
-    const legalMoves = engine.getLegalMovesForSeat(currentSeat);
 
     if (legalMoves.length > 0) {
       // Pick random legal move and auto-play

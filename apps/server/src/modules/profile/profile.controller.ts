@@ -9,9 +9,11 @@ import {
   Headers,
   UnauthorizedException,
   BadRequestException,
+  NotFoundException,
   UseInterceptors,
   UploadedFile,
   Req,
+  Res,
 } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { AuthService } from '../auth/auth.service';
@@ -108,6 +110,20 @@ export class ProfileController {
   @Get('public/:identifier')
   async getPublicProfile(@Param('identifier') identifier: string) {
     return this.profileService.getPublicProfile(identifier);
+  }
+
+  /**
+   * Public avatar image serving endpoint (Disk first, Database Base64 fallback)
+   */
+  @Get('avatar/:identifier')
+  async getAvatarImage(@Param('identifier') identifier: string, @Res() res: any) {
+    const avatar = await this.profileService.getAvatarBuffer(identifier);
+    if (!avatar) {
+      throw new NotFoundException('الصورة غير موجودة');
+    }
+    res.setHeader('Content-Type', avatar.mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    return res.send(avatar.buffer);
   }
 
   /**

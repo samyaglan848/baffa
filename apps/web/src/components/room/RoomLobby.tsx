@@ -776,7 +776,14 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
 
           {/* 2. Judge Button */}
           <button
-            onClick={onJoinAsJudge}
+            onClick={
+              isJudge
+                ? () => {
+                    const fallbackSeat = room.seats.findIndex((s) => !s.occupied || s.isBot);
+                    onSelectSeat(fallbackSeat >= 0 ? (fallbackSeat as PlayerSeat) : 0);
+                  }
+                : onJoinAsJudge
+            }
             style={{
               padding: isMobile ? '8px 4px' : '12px 14px',
               borderRadius: 'var(--baffa-radius-md)',

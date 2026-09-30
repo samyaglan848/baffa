@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { UserProfile } from '@baffa/shared';
 import { BAFFA_AVATARS, getAvatarById, resolveAvatarUrl } from '../../constants/avatars';
+import { UserAvatar } from '../common/UserAvatar';
 import { HeadToHeadView } from './HeadToHeadView';
 import { AvatarSelectorModal } from './AvatarSelectorModal';
 import { EditProfileModal } from './EditProfileModal';
@@ -583,15 +584,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             }}
             title="انقر لتغيير الصورة أو الأفاتار"
           >
-            {profile?.customAvatarUrl ? (
-              <img
-                src={resolveAvatarUrl(profile.customAvatarUrl) || profile.customAvatarUrl}
-                alt="Profile"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              currentAvatar.emoji
-            )}
+            <UserAvatar
+              avatar={profile?.customAvatarUrl || profile?.avatarUrl || profile?.avatarId}
+              username={profile?.displayName || profile?.username}
+              size={84}
+            />
           </div>
 
           <button

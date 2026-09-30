@@ -2700,5 +2700,83 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       // Ignore unauthorized attempts
     }
   }
+
+  /**
+   * Handle real-time profile update: updates rooms, active game sessions, and broadcasts to all clients
+   */
+  public handleProfileUpdated(profile: any): void {
+    if (!profile || !profile.id) return;
+    const freshAvatar = profile.customAvatarUrl || profile.avatarUrl || profile.avatarId || 'avatar-1';
+    const freshName = profile.displayName || profile.username;
+
+    // 1. Update rooms in RoomService
+    if (this.roomService) {
+      const allRooms = (this.roomService as any).rooms as Map<string, any>;
+      if (allRooms) {
+        for (const [roomId, room] of allRooms.entries()) {
+          let updated = false;
+          if (room.seats && Array.isArray(room.seats)) {
+            for (const seat of room.seats) {
+              if (seat.playerId === profile.id) {
+                seat.avatar = freshAvatar;
+                if (freshName) seat.username = freshName;
+                updated = true;
+              }
+            }
+          }
+          if (room.judge?.userId === profile.id) {
+            room.judge.avatar = freshAvatar;
+            if (freshName) room.judge.username = freshName;
+            updated = true;
+          }
+          if (room.spectator?.userId === profile.id) {
+            room.spectator.avatar = freshAvatar;
+            if (freshName) room.spectator.username = freshName;
+            updated = true;
+          }
+          if (updated && this.server) {
+            this.server.to(roomId).emit(ServerEvents.ROOM_DETAILS_UPDATED, { room });
+          }
+        }
+      }
+    }
+
+    // 2. Update active game session in GameSessionService
+    if (this.gameSessionService) {
+      const allSessions = (this.gameSessionService as any).sessions as Map<string, any>;
+      if (allSessions) {
+        for (const [roomId, engine] of allSessions.entries()) {
+          const players = (engine as any).players;
+          if (Array.isArray(players)) {
+            let sessionUpdated = false;
+            for (const p of players) {
+              if (p.playerId === profile.id) {
+                p.avatar = freshAvatar;
+                if (freshName) p.username = freshName;
+                sessionUpdated = true;
+              }
+            }
+            if (sessionUpdated) {
+              this.broadcastGameState(roomId);
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Global socket event
+    if (this.server) {
+      this.server.emit('server:profile_updated', {
+        userId: profile.id,
+        username: profile.username,
+        displayName: profile.displayName,
+        avatarUrl: profile.avatarUrl,
+        avatarId: profile.avatarId,
+        customAvatarUrl: profile.customAvatarUrl,
+        bio: profile.bio,
+        gender: profile.gender,
+      });
+    }
+  }
 }
 

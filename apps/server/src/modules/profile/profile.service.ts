@@ -17,8 +17,9 @@ import {
 } from '@baffa/shared';
 import { LocalProfileStorage } from './storage/local-profile-storage';
 import { ImageProcessor } from './storage/image-processor';
+import * as fs from 'fs';
+import * as path from 'path';
 import { GameGateway } from '../../gateways/game.gateway';
-
 import { PersistenceService, PersistedUser } from '../persistence/persistence.service';
 
 @Injectable()
@@ -153,7 +154,42 @@ export class ProfileService {
       if (sanitizedName.length < 2 || sanitizedName.length > 30) {
         throw new BadRequestException('الاسم الظاهر يجب أن يكون بين 2 و 30 حرفاً');
       }
+      const normalizedName = sanitizedName.toLowerCase().trim();
+
+      // Check uniqueness against persistence
+      const conflictPersisted = this.persistence.findUser(
+        (u) =>
+          u.id !== userId &&
+          (u.normalizedUsername === normalizedName ||
+           u.username?.trim().toLowerCase() === normalizedName ||
+           u.displayName?.trim().toLowerCase() === normalizedName)
+      );
+      if (conflictPersisted) {
+        throw new BadRequestException('اسم المستخدم أو الاسم الظاهر مستخدم بالفعل، يرجى اختيار اسم آخر');
+      }
+
+      // Check uniqueness against Prisma
+      try {
+        const conflictPrisma = await this.prisma.user.findFirst({
+          where: {
+            id: { not: userId },
+            OR: [
+              { username: sanitizedName },
+              { normalizedUsername: normalizedName },
+              { displayName: sanitizedName },
+            ],
+          },
+        });
+        if (conflictPrisma) {
+          throw new BadRequestException('اسم المستخدم أو الاسم الظاهر مستخدم بالفعل، يرجى اختيار اسم آخر');
+        }
+      } catch (err: any) {
+        if (err instanceof BadRequestException) throw err;
+      }
+
       updates.displayName = sanitizedName;
+      updates.username = sanitizedName;
+      updates.normalizedUsername = normalizedName;
       profileUpdates.displayName = sanitizedName;
     }
 
@@ -359,28 +395,31 @@ export class ProfileService {
     // 1. Process & Validate Image
     const validated = ImageProcessor.validateAndProcess(buffer, declaredMimeType);
 
-    // 2. Save image safely
-    const stored = await this.storage.saveImage(
+    // 2. Save physical image file safely to disk
+    await this.storage.saveImage(
       userId,
       validated.buffer,
       validated.mimeType,
       validated.extension
     );
 
+    // 3. Generate portable Data URL for complete persistence resilience across cloud restarts
+    const dataUrl = `data:${validated.mimeType};base64,${validated.buffer.toString('base64')}`;
+
     try {
       const updatedUser = await this.prisma.user.update({
         where: { id: userId },
         data: {
-          avatarUrl: stored.url,
-          customAvatarUrl: stored.url,
+          avatarUrl: dataUrl,
+          customAvatarUrl: dataUrl,
           profile: {
             upsert: {
               create: {
                 displayName: 'لاعب',
-                customAvatarUrl: stored.url,
+                customAvatarUrl: dataUrl,
               },
               update: {
-                customAvatarUrl: stored.url,
+                customAvatarUrl: dataUrl,
               },
             },
           },
@@ -391,8 +430,8 @@ export class ProfileService {
       const profile = this.mapUserToProfile(updatedUser);
       this.persistence.saveUser({
         id: userId,
-        avatarUrl: stored.url,
-        customAvatarUrl: stored.url,
+        avatarUrl: dataUrl,
+        customAvatarUrl: dataUrl,
       });
       this.broadcastProfileUpdate(profile);
       return profile;
@@ -400,8 +439,8 @@ export class ProfileService {
       // Permanent Disk Persistence Fallback
       const persisted = this.persistence.saveUser({
         id: userId,
-        avatarUrl: stored.url,
-        customAvatarUrl: stored.url,
+        avatarUrl: dataUrl,
+        customAvatarUrl: dataUrl,
       });
       const profile = this.mapPersistedToProfile(persisted);
       this.broadcastProfileUpdate(profile);
@@ -747,10 +786,12 @@ export class ProfileService {
   }
 
   /**
-   * Broadcast real-time profile update to connected socket clients
+   * Broadcast real-time profile update to connected socket clients, rooms, and game tables
    */
   private broadcastProfileUpdate(profile: UserProfile): void {
-    if (this.gameGateway && typeof this.gameGateway.server?.emit === 'function') {
+    if (this.gameGateway && typeof (this.gameGateway as any).handleProfileUpdated === 'function') {
+      (this.gameGateway as any).handleProfileUpdated(profile);
+    } else if (this.gameGateway && typeof this.gameGateway.server?.emit === 'function') {
       this.gameGateway.server.emit('server:profile_updated', {
         userId: profile.id,
         username: profile.username,
@@ -762,6 +803,54 @@ export class ProfileService {
         gender: profile.gender,
       });
     }
+  }
+
+  /**
+   * Resolve avatar image buffer by filename or userId, checking disk first then permanent database persistence
+   */
+  public async getAvatarBuffer(identifier: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    if (!identifier) return null;
+    const cleanId = path.basename(identifier);
+
+    // 1. Check disk candidates
+    const diskDirs = [
+      path.resolve(process.cwd(), 'uploads', 'avatars'),
+      path.resolve(process.cwd(), 'apps', 'server', 'uploads', 'avatars'),
+      path.resolve(__dirname, '..', '..', '..', '..', 'uploads', 'avatars'),
+    ];
+    for (const dir of diskDirs) {
+      const filePath = path.join(dir, cleanId);
+      if (fs.existsSync(filePath)) {
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+        return { buffer: await fs.promises.readFile(filePath), mimeType };
+      }
+    }
+
+    // 2. Lookup user in persistence by ID, username, or matching avatar string
+    const user =
+      this.persistence.getUserById(cleanId) ||
+      this.persistence.getUserByUsername(cleanId) ||
+      this.persistence.getAllUsers().find((u: any) =>
+        (u.customAvatarUrl && u.customAvatarUrl.includes(cleanId)) ||
+        (u.avatarUrl && u.avatarUrl.includes(cleanId))
+      );
+
+    if (user && user.customAvatarUrl) {
+      let b64 = user.customAvatarUrl;
+      let mimeType = 'image/jpeg';
+      if (b64.startsWith('data:')) {
+        const commaIdx = b64.indexOf(',');
+        if (commaIdx !== -1) {
+          const match = b64.substring(0, commaIdx).match(/^data:([^;]+);base64/);
+          if (match) mimeType = match[1];
+          b64 = b64.substring(commaIdx + 1);
+        }
+        return { buffer: Buffer.from(b64, 'base64'), mimeType };
+      }
+    }
+
+    return null;
   }
 
   /**

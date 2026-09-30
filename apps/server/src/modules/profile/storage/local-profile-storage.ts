@@ -6,19 +6,27 @@ import { Injectable, Logger } from '@nestjs/common';
 @Injectable()
 export class LocalProfileStorage implements IProfileImageStorage {
   private readonly logger = new Logger(LocalProfileStorage.name);
-  private readonly uploadDir: string;
+  private readonly uploadDirs: string[];
   private readonly baseUrl: string;
 
   constructor() {
-    this.uploadDir = path.resolve(process.cwd(), 'uploads', 'avatars');
-    this.baseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
+    this.uploadDirs = [
+      path.resolve(process.cwd(), 'uploads', 'avatars'),
+      path.resolve(process.cwd(), 'apps', 'server', 'uploads', 'avatars'),
+      path.resolve(__dirname, '..', '..', '..', '..', 'uploads', 'avatars'),
+      path.resolve(__dirname, '..', '..', '..', '..', '..', 'uploads', 'avatars'),
+    ];
+    this.baseUrl = (process.env.API_BASE_URL || '').replace(/\/$/, '');
     this.ensureDirectoryExists();
   }
 
   private ensureDirectoryExists(): void {
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
-      this.logger.log(`Created uploads directory: ${this.uploadDir}`);
+    for (const dir of this.uploadDirs) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+      } catch {}
     }
   }
 
@@ -35,14 +43,18 @@ export class LocalProfileStorage implements IProfileImageStorage {
     const randomSuffix = Math.random().toString(36).substring(2, 10);
     const storageKey = `${sanitizedUserId}_${Date.now()}_${randomSuffix}.${extension}`;
 
-    const filePath = path.join(this.uploadDir, storageKey);
-
-    // Prevent directory traversal
-    if (!filePath.startsWith(this.uploadDir)) {
-      throw new Error('مسار تخزين غير صالح');
+    // Write to all target upload directories safely
+    for (const dir of this.uploadDirs) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        const filePath = path.join(dir, storageKey);
+        await fs.promises.writeFile(filePath, buffer);
+      } catch (err: any) {
+        this.logger.warn(`Failed writing to ${dir}: ${err.message}`);
+      }
     }
-
-    await fs.promises.writeFile(filePath, buffer);
 
     const url = this.getImageUrl(storageKey);
     return {
@@ -58,25 +70,26 @@ export class LocalProfileStorage implements IProfileImageStorage {
 
     // Sanitize key
     const cleanKey = path.basename(storageKey);
-    const filePath = path.join(this.uploadDir, cleanKey);
+    let deleted = false;
 
-    if (!filePath.startsWith(this.uploadDir)) {
-      return false;
+    for (const dir of this.uploadDirs) {
+      try {
+        const filePath = path.join(dir, cleanKey);
+        if (filePath.startsWith(dir) && fs.existsSync(filePath)) {
+          await fs.promises.unlink(filePath);
+          deleted = true;
+        }
+      } catch {}
     }
 
-    try {
-      if (fs.existsSync(filePath)) {
-        await fs.promises.unlink(filePath);
-        return true;
-      }
-    } catch (err: any) {
-      this.logger.warn(`Failed to delete profile image ${storageKey}: ${err.message}`);
-    }
-    return false;
+    return deleted;
   }
 
   getImageUrl(storageKey: string): string {
     const cleanKey = path.basename(storageKey);
-    return `${this.baseUrl}/uploads/avatars/${cleanKey}`;
+    if (this.baseUrl) {
+      return `${this.baseUrl}/uploads/avatars/${cleanKey}`;
+    }
+    return `/uploads/avatars/${cleanKey}`;
   }
 }

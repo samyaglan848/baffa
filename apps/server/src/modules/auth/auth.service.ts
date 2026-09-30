@@ -184,6 +184,98 @@ export class AuthService {
   }
 
   /**
+   * Check Availability of Username and Email
+   */
+  async checkAvailability(dto: { username?: string; email?: string }): Promise<{
+    usernameAvailable?: boolean;
+    emailAvailable?: boolean;
+    usernameMessage?: string;
+    emailMessage?: string;
+  }> {
+    const result: {
+      usernameAvailable?: boolean;
+      emailAvailable?: boolean;
+      usernameMessage?: string;
+      emailMessage?: string;
+    } = {};
+
+    if (dto.username !== undefined) {
+      const cleanUsername = dto.username.trim();
+      const normalizedUsername = this.normalizeIdentifier(cleanUsername);
+
+      if (cleanUsername.length < 3 || cleanUsername.length > 25) {
+        result.usernameAvailable = false;
+        result.usernameMessage = 'اسم المستخدم يجب أن يكون بين 3 و 25 حرفاً';
+      } else {
+        const foundInPersist = this.persistence.findUser(
+          (u) =>
+            u.normalizedUsername === normalizedUsername ||
+            u.username?.trim().toLowerCase() === normalizedUsername ||
+            u.displayName?.trim().toLowerCase() === normalizedUsername
+        );
+
+        let foundInPrisma = false;
+        try {
+          const prismaUser = await this.prisma.user.findFirst({
+            where: {
+              OR: [
+                { username: cleanUsername },
+                { normalizedUsername },
+                { displayName: cleanUsername },
+              ],
+            },
+          });
+          if (prismaUser) foundInPrisma = true;
+        } catch {}
+
+        if (foundInPersist || foundInPrisma) {
+          result.usernameAvailable = false;
+          result.usernameMessage = 'اسم المستخدم مستخدم بالفعل، يرجى اختيار اسم آخر';
+        } else {
+          result.usernameAvailable = true;
+          result.usernameMessage = 'اسم المستخدم متاح';
+        }
+      }
+    }
+
+    if (dto.email !== undefined) {
+      const email = dto.email.trim();
+      const normalizedEmail = this.normalizeIdentifier(email);
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        result.emailAvailable = false;
+        result.emailMessage = 'صيغة البريد الإلكتروني غير صحيحة';
+      } else if (email) {
+        const foundInPersist = this.persistence.findUser(
+          (u) =>
+            u.normalizedEmail === normalizedEmail ||
+            u.email?.trim().toLowerCase() === normalizedEmail
+        );
+
+        let foundInPrisma = false;
+        try {
+          const prismaUser = await this.prisma.user.findFirst({
+            where: {
+              OR: [{ normalizedEmail }, { email }],
+            },
+          });
+          if (prismaUser) foundInPrisma = true;
+        } catch {}
+
+        if (foundInPersist || foundInPrisma) {
+          result.emailAvailable = false;
+          result.emailMessage = 'البريد الإلكتروني مسجل بحساب آخر بالفعل';
+        } else {
+          result.emailAvailable = true;
+          result.emailMessage = 'البريد الإلكتروني متاح';
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * User Registration
    */
   async register(
@@ -216,17 +308,51 @@ export class AuthService {
       throw new BadRequestException('صيغة البريد الإلكتروني غير صحيحة');
     }
 
+    // 1. Strict Uniqueness Check in Permanent Persistence
+    const existingPersistedUsername = this.persistence.findUser(
+      (u) =>
+        u.normalizedUsername === normalizedUsername ||
+        u.username?.trim().toLowerCase() === normalizedUsername ||
+        u.displayName?.trim().toLowerCase() === normalizedUsername
+    );
+    if (existingPersistedUsername) {
+      throw new BadRequestException('اسم المستخدم مستخدم بالفعل، يرجى اختيار اسم آخر');
+    }
+
+    if (normalizedEmail) {
+      const existingPersistedEmail = this.persistence.findUser(
+        (u) =>
+          u.normalizedEmail === normalizedEmail ||
+          u.email?.trim().toLowerCase() === normalizedEmail
+      );
+      if (existingPersistedEmail) {
+        throw new BadRequestException('البريد الإلكتروني مسجل بحساب آخر بالفعل');
+      }
+    }
+
+    if (normalizedPhone) {
+      const existingPersistedPhone = this.persistence.findUser(
+        (u) =>
+          u.normalizedPhone === normalizedPhone ||
+          u.phone?.replace(/\s+/g, '') === normalizedPhone
+      );
+      if (existingPersistedPhone) {
+        throw new BadRequestException('رقم الهاتف مسجل بحساب آخر بالفعل');
+      }
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const displayName = dto.displayName?.trim() || cleanUsername;
     const avatarUrl = dto.avatarUrl || 'avatar-1';
 
     try {
-      // Check Uniqueness Server-side
+      // 2. Strict Uniqueness Check in PostgreSQL Prisma
       const existingUser = await this.prisma.user.findFirst({
         where: {
           OR: [
             { username: cleanUsername },
             { normalizedUsername },
+            { displayName: cleanUsername },
             ...(normalizedEmail ? [{ normalizedEmail }, { email }] : []),
             ...(normalizedPhone ? [{ normalizedPhone }, { phone }] : []),
           ],
@@ -236,14 +362,15 @@ export class AuthService {
       if (existingUser) {
         if (
           existingUser.username.toLowerCase() === normalizedUsername ||
-          existingUser.normalizedUsername === normalizedUsername
+          existingUser.normalizedUsername === normalizedUsername ||
+          existingUser.displayName?.toLowerCase() === normalizedUsername
         ) {
-          throw new BadRequestException('اسم المستخدم مستخدم بالفعل، اختر اسماً آخر');
+          throw new BadRequestException('اسم المستخدم مستخدم بالفعل، يرجى اختيار اسم آخر');
         }
-        if (normalizedEmail && existingUser.normalizedEmail === normalizedEmail) {
+        if (normalizedEmail && (existingUser.normalizedEmail === normalizedEmail || existingUser.email === email)) {
           throw new BadRequestException('البريد الإلكتروني مسجل بحساب آخر بالفعل');
         }
-        if (normalizedPhone && existingUser.normalizedPhone === normalizedPhone) {
+        if (normalizedPhone && (existingUser.normalizedPhone === normalizedPhone || existingUser.phone === phone)) {
           throw new BadRequestException('رقم الهاتف مسجل بحساب آخر بالفعل');
         }
       }
@@ -758,23 +885,48 @@ export class AuthService {
       }
 
       // 3. Case B: Create new user with real Google profile
-      const cleanBaseName = name.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, '').substring(0, 16) || 'player';
-      const generatedUsername = `${cleanBaseName}_${Math.floor(100 + Math.random() * 900)}`;
+      const exactName = name.trim().replace(/\s+/g, ' ').substring(0, 25) || 'player';
+      const normalizedExactName = exactName.toLowerCase();
+
+      // Check if username/name already exists in Persistence
+      const conflictPersisted = this.persistence.findUser(
+        (u) =>
+          u.normalizedUsername === normalizedExactName ||
+          u.username?.trim().toLowerCase() === normalizedExactName ||
+          u.displayName?.trim().toLowerCase() === normalizedExactName
+      );
+      if (conflictPersisted) {
+        throw new BadRequestException('اسم المستخدم مستخدم بالفعل بحساب آخر، يرجى تسجيل الدخول بحسابك أو اختيار اسم آخر');
+      }
+
+      // Check if username/name already exists in Prisma
+      const conflictPrisma = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: exactName },
+            { normalizedUsername: normalizedExactName },
+            { displayName: exactName },
+          ],
+        },
+      });
+      if (conflictPrisma) {
+        throw new BadRequestException('اسم المستخدم مستخدم بالفعل بحساب آخر، يرجى تسجيل الدخول بحسابك أو اختيار اسم آخر');
+      }
 
       user = await this.prisma.user.create({
         data: {
-          username: generatedUsername,
-          normalizedUsername: generatedUsername.toLowerCase(),
+          username: exactName,
+          normalizedUsername: normalizedExactName,
           email,
           normalizedEmail,
           googleId,
-          displayName: name,
+          displayName: exactName,
           avatarUrl: picture,
           emailVerified: true,
           accountStatus: 'ACTIVE',
           profile: {
             create: {
-              displayName: name,
+              displayName: exactName,
             },
           },
         },
@@ -866,18 +1018,29 @@ export class AuthService {
       }
 
       // 3. New Google User
-      const cleanBaseName = name.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, '').substring(0, 16) || 'player';
-      const generatedUsername = `${cleanBaseName}_${Math.floor(100 + Math.random() * 900)}`;
+      const exactName = name.trim().replace(/\s+/g, ' ').substring(0, 25) || 'player';
+      const normalizedExactName = exactName.toLowerCase();
+
+      const conflictPersistedFallback = this.persistence.findUser(
+        (u) =>
+          u.normalizedUsername === normalizedExactName ||
+          u.username?.trim().toLowerCase() === normalizedExactName ||
+          u.displayName?.trim().toLowerCase() === normalizedExactName
+      );
+      if (conflictPersistedFallback) {
+        throw new BadRequestException('اسم المستخدم أو الاسم مستخدم بالفعل بحساب آخر، يرجى تسجيل الدخول بحسابك أو اختيار اسم آخر');
+      }
+
       const newUserId = `user_google_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
       const newPersisted = this.persistence.saveUser({
         id: newUserId,
         googleId,
-        username: generatedUsername,
-        normalizedUsername: generatedUsername.toLowerCase(),
+        username: exactName,
+        normalizedUsername: normalizedExactName,
         email,
         normalizedEmail,
-        displayName: name,
+        displayName: exactName,
         avatarUrl: picture,
         avatarId: 'avatar-1',
         customAvatarUrl: picture && (picture.startsWith('http') || picture.startsWith('/uploads')) ? picture : null,

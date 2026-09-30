@@ -7,6 +7,7 @@ import { MatchService } from '../modules/match/match.service';
 import { AuthService } from '../modules/auth/auth.service';
 import { VerificationService } from '../modules/auth/verification.service';
 import { BotService } from '../modules/game/bot.service';
+import { AutoJudgeService } from '../modules/game/auto-judge.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OFFICIAL_BAFFA_BOTS, PlayerSeat } from '@baffa/shared';
 
@@ -372,6 +373,49 @@ describe('BAFFA Prompt 5: End-to-End User Journeys, Gameplay QA & Product Valida
 
     assert.ok(room);
     assert.strictEqual(room.matchStatus, 'LOBBY');
+  });
+
+  it('Scenario O: Auto judge issues warning before escalating to cheating penalty when no human judge exists', () => {
+    const engine = new DominoGameEngine({
+      matchId: 'match_auto_judge',
+      roomId: 'room_auto_judge',
+      targetScore: 101,
+      players: [
+        { seat: 0, playerId: 'p0', username: 'P0', avatar: '1', isBot: false, isConnected: true, isReady: true },
+        { seat: 1, playerId: 'p1', username: 'P1', avatar: '2', isBot: false, isConnected: true, isReady: true },
+        { seat: 2, playerId: 'p2', username: 'P2', avatar: '3', isBot: false, isConnected: true, isReady: true },
+        { seat: 3, playerId: 'p3', username: 'P3', avatar: '4', isBot: false, isConnected: true, isReady: true },
+      ],
+    });
+
+    engine.startMatch();
+    const autoJudge = new AutoJudgeService();
+    const seat = engine.getCurrentTurnSeat();
+    const illegalMove: [0, 0] = [0, 0];
+
+    const firstDecision = autoJudge.evaluateAction({
+      roomId: 'room_auto_judge',
+      seat,
+      engine,
+      actionType: 'PLAY_TILE',
+      payload: { tile: illegalMove },
+      hasHumanJudge: false,
+    });
+
+    assert.strictEqual(firstDecision.shouldAutoAct, true);
+    assert.strictEqual(firstDecision.severity, 'WARNING');
+
+    const repeatedDecision = autoJudge.evaluateAction({
+      roomId: 'room_auto_judge',
+      seat,
+      engine,
+      actionType: 'PLAY_TILE',
+      payload: { tile: illegalMove },
+      hasHumanJudge: false,
+    });
+
+    assert.strictEqual(repeatedDecision.shouldAutoAct, true);
+    assert.strictEqual(repeatedDecision.severity, 'CHEATING');
   });
 
   // =========================================================================

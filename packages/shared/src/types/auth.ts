@@ -136,7 +136,18 @@ export interface RegisterDto {
 
 export interface LoginDto {
   usernameOrEmailOrPhone: string;
-  password: string;
+}
+
+export interface CheckAvailabilityDto {
+  username?: string;
+  email?: string;
+}
+
+export interface CheckAvailabilityResponse {
+  usernameAvailable?: boolean;
+  emailAvailable?: boolean;
+  usernameMessage?: string;
+  emailMessage?: string;
 }
 
 export interface GoogleAuthDto {

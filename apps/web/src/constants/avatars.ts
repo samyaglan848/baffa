@@ -28,12 +28,46 @@ export function getAvatarById(avatarId?: string | null): AvatarCatalogItem {
 export function resolveAvatarUrl(avatar?: string | null): string | null {
   if (!avatar || typeof avatar !== 'string') return null;
   const trimmed = avatar.trim();
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+  if (!trimmed) return null;
+
+  // 1. Data URLs (e.g. data:image/jpeg;base64,...)
+  if (trimmed.startsWith('data:image/')) {
     return trimmed;
   }
-  if (trimmed.startsWith('/uploads')) {
-    const apiBase = API_URL;
-    return `${apiBase.replace(/\/$/, '')}${trimmed}`;
+
+  // 2. Relative or local uploads path: rewrite to current active backend API_URL
+  if (trimmed.includes('/uploads/')) {
+    const uploadPath = trimmed.substring(trimmed.indexOf('/uploads/'));
+    const apiBase = API_URL.replace(/\/$/, '');
+    return `${apiBase}${uploadPath}`;
   }
+
+  // 3. Avatar endpoint (/api/profile/avatar/...)
+  if (trimmed.includes('/api/profile/avatar/')) {
+    const apiPath = trimmed.substring(trimmed.indexOf('/api/profile/avatar/'));
+    const apiBase = API_URL.replace(/\/$/, '');
+    return `${apiBase}${apiPath}`;
+  }
+
+  // 4. If someone stored localhost/127.0.0.1 (e.g. uploaded locally and viewed on production), rewrite to API_URL
+  if (trimmed.startsWith('http://localhost') || trimmed.startsWith('http://127.0.0.1')) {
+    try {
+      const urlObj = new URL(trimmed);
+      const apiBase = API_URL.replace(/\/$/, '');
+      return `${apiBase}${urlObj.pathname}${urlObj.search}`;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  // 5. External URLs (Google photo, CDN, https)
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    // If current page is served over HTTPS, upgrade insecure http URL to prevent mixed content blocking
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && trimmed.startsWith('http://')) {
+      return trimmed.replace(/^http:\/\//, 'https://');
+    }
+    return trimmed;
+  }
+
   return null;
 }
