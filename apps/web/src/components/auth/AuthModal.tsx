@@ -443,16 +443,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   // Guest Mode
   const handleGuestPlay = (customName?: string) => {
-    const finalName = (customName || guestNickname).trim();
+    const finalName = (customName || guestNickname).trim().replace(/_\d{3,4}$/, '');
     if (onGuestPlay) {
       onGuestPlay(finalName || undefined);
       return;
     }
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
     const guestUser: CurrentUser = {
       id: `user_guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      username: finalName || `لاعب_بَفّة_${randomNum}`,
-      avatar: `avatar-${(randomNum % 4) + 1}`,
+      username: finalName || 'ضيف',
+      avatar: 'avatar-1',
     };
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('baffa_user', JSON.stringify(guestUser));

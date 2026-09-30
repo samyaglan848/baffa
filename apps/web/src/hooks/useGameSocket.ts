@@ -39,7 +39,13 @@ function getStoredUser(): CurrentUser {
       try {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.id && parsed.id !== 'default_user') {
+          let cleanUsername = (parsed.displayName || parsed.username || '').trim().replace(/_\d{3,4}$/, '');
+          if (cleanUsername) {
+            parsed.username = cleanUsername;
+            parsed.displayName = cleanUsername;
+          }
           parsed.token = token;
+          localStorage.setItem('baffa_user', JSON.stringify(parsed));
           sessionStorage.setItem('baffa_user', JSON.stringify(parsed));
           return parsed;
         }
@@ -53,16 +59,19 @@ function getStoredUser(): CurrentUser {
       try {
         const parsed = JSON.parse(sessionSaved);
         if (parsed && parsed.id && parsed.id !== 'default_user') {
+          let cleanUsername = (parsed.displayName || parsed.username || '').trim().replace(/_\d{3,4}$/, '');
+          if (cleanUsername) {
+            parsed.username = cleanUsername;
+          }
           return parsed;
         }
       } catch {}
     }
 
     // 3. New visitor placeholder without writing to localStorage or sessionStorage
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
     return {
-      id: `guest_${randomNum}`,
-      username: `ضيف_${randomNum}`,
+      id: `guest_${Date.now().toString(36)}`,
+      username: 'ضيف',
       avatar: 'avatar-1',
     };
   }
@@ -120,12 +129,13 @@ export function useGameSocket() {
         .then((profile) => {
           if (profile) {
             const freshAvatar = profile.customAvatarUrl || profile.avatarUrl || 'avatar-1';
-            const freshDisplayName = profile.displayName || profile.username;
+            let freshDisplayName = (profile.displayName || profile.username || '').trim().replace(/_\d{3,4}$/, '');
+            if (!freshDisplayName) freshDisplayName = 'لاعب';
             setCurrentUser((prev) => {
               const updated: CurrentUser = {
                 ...prev,
-                username: freshDisplayName || prev.username,
-                displayName: freshDisplayName || prev.displayName,
+                username: freshDisplayName,
+                displayName: freshDisplayName,
                 avatar: freshAvatar,
                 token: effectiveToken,
               };

@@ -332,11 +332,11 @@ export default function App() {
   };
 
   const handleGuestLogin = (customNickname?: string) => {
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const cleanNick = (customNickname || '').trim().replace(/_\d{3,4}$/, '');
     const guestUser: CurrentUser = {
       id: `user_guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      username: customNickname?.trim() || `لاعب_بَفّة_${randomNum}`,
-      avatar: `avatar-${(randomNum % 4) + 1}`,
+      username: cleanNick || 'ضيف',
+      avatar: 'avatar-1',
       token: undefined,
     };
     if (typeof window !== 'undefined') {
@@ -357,10 +357,9 @@ export default function App() {
       sessionStorage.removeItem('baffa_guest_active');
       sessionStorage.removeItem('baffa_active_room_code');
     }
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
     const guestPlaceholder: CurrentUser = {
-      id: `guest_visitor_${randomNum}`,
-      username: `ضيف_${randomNum}`,
+      id: `guest_visitor_${Date.now().toString(36)}`,
+      username: 'ضيف',
       avatar: 'avatar-1',
       token: undefined,
     };

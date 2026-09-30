@@ -341,6 +341,8 @@ export class ProfileService {
       const profile = this.mapUserToProfile(updatedUser);
       this.persistence.saveUser({
         id: userId,
+        username: profile.displayName || profile.username,
+        normalizedUsername: (profile.displayName || profile.username).toLowerCase(),
         displayName: profile.displayName,
         avatarUrl: profile.avatarUrl,
         avatarId: profile.avatarId,
@@ -361,6 +363,8 @@ export class ProfileService {
       // Permanent Disk Persistence Fallback
       const persisted = this.persistence.saveUser({
         id: userId,
+        username: updates.displayName || updates.username,
+        normalizedUsername: updates.displayName ? updates.displayName.toLowerCase() : undefined,
         displayName: updates.displayName,
         bio: updates.bio,
         gender: updates.gender,

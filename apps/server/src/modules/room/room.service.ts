@@ -42,7 +42,9 @@ export class RoomService {
   private resolveUserMeta(user: { id: string; username: string; avatar?: string }): { username: string; avatar: string } {
     const persisted = this.persistence?.getUserById(user.id);
     const resolvedAvatar = persisted?.customAvatarUrl || persisted?.avatarUrl || user.avatar || 'avatar-1';
-    const resolvedName = persisted?.displayName || user.username;
+    let resolvedName = (persisted?.displayName || persisted?.username || user.username || '').trim();
+    resolvedName = resolvedName.replace(/_\d{3,4}$/, '');
+    if (!resolvedName) resolvedName = 'لاعب';
     return { username: resolvedName, avatar: resolvedAvatar };
   }
 

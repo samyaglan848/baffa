@@ -592,9 +592,10 @@ export class AuthService {
         },
       });
 
+      const cleanTokenUsername = (user.displayName || user.username || '').trim().replace(/_\d{3,4}$/, '');
       const tokens = this.generateTokens({
         sub: user.id,
-        username: user.username,
+        username: cleanTokenUsername,
         email: user.email,
         role: 'PLAYER',
       });
@@ -666,9 +667,10 @@ export class AuthService {
         lastActiveAt: new Date().toISOString(),
       });
 
+      const cleanTokenUsername = (updated.displayName || updated.username || '').trim().replace(/_\d{3,4}$/, '');
       const tokens = this.generateTokens({
         sub: updated.id,
-        username: updated.username,
+        username: cleanTokenUsername,
         email: updated.email,
         role: 'PLAYER',
       });
@@ -997,8 +999,11 @@ export class AuthService {
 
       // If user is found, update login time and return full persisted profile!
       if (persistedUser) {
+        const cleanName = (persistedUser.displayName || persistedUser.username || '').trim().replace(/_\d{3,4}$/, '');
         const updated = this.persistence.saveUser({
           id: persistedUser.id,
+          username: cleanName,
+          displayName: cleanName,
           googleId,
           lastLoginAt: new Date().toISOString(),
           lastActiveAt: new Date().toISOString(),
@@ -1006,7 +1011,7 @@ export class AuthService {
 
         const tokens = this.generateTokens({
           sub: updated.id,
-          username: updated.username,
+          username: cleanName,
           email: updated.email,
           role: 'PLAYER',
         });

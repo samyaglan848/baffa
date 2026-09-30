@@ -50,6 +50,7 @@ import { GameSessionService } from '../modules/game/game-session.service';
 import { AuthService } from '../modules/auth/auth.service';
 import { VoiceService } from '../modules/voice/voice.service';
 import { AnticheatService } from '../modules/anticheat/anticheat.service';
+import { PersistenceService } from '../modules/persistence/persistence.service';
 
 @WebSocketGateway({
   cors: {
@@ -69,7 +70,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     private readonly gameSessionService: GameSessionService,
     private readonly authService: AuthService,
     private readonly voiceService: VoiceService,
-    private readonly anticheatService: AnticheatService
+    private readonly anticheatService: AnticheatService,
+    private readonly persistence: PersistenceService
   ) {}
 
   afterInit() {
@@ -223,13 +225,29 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     if (token) {
       const userPayload = this.authService.validateToken(token);
       if (userPayload) {
+        const persisted = this.persistence.getUserById(userPayload.sub);
+        let cleanName = (persisted?.displayName || persisted?.username || userPayload.username || '').trim();
+        cleanName = cleanName.replace(/_\d{3,4}$/, '');
+        if (!cleanName) cleanName = 'لاعب';
+
+        const cleanAvatar = persisted?.customAvatarUrl || persisted?.avatarUrl || 'avatar-1';
+
         resolvedUser = {
           id: userPayload.sub,
-          username: userPayload.username,
-          avatar: 'avatar-1',
+          username: cleanName,
+          avatar: cleanAvatar,
           isAuthenticated: true,
         };
-        this.logger.log(`Authenticated client connected: ${userPayload.username} (${client.id})`);
+
+        if (persisted && (persisted.username !== cleanName || (persisted.displayName && persisted.displayName !== cleanName))) {
+          this.persistence.saveUser({
+            id: persisted.id,
+            username: cleanName,
+            displayName: cleanName,
+          });
+        }
+
+        this.logger.log(`Authenticated client connected: ${cleanName} (${client.id})`);
       }
     }
 
@@ -239,18 +257,21 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const authUsername = client.handshake.auth?.username;
       const authAvatar = client.handshake.auth?.avatar;
 
-      const shortId = client.id.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6) || 'guest';
+      let guestUsername = typeof authUsername === 'string' && authUsername.trim().length > 0
+        ? authUsername.trim().replace(/_\d{3,4}$/, '')
+        : 'ضيف';
+      if (guestUsername.startsWith('Guest_') || guestUsername.startsWith('guest_') || guestUsername.startsWith('ضيف_')) {
+        guestUsername = 'ضيف';
+      }
+
       const guestId = (typeof authUserId === 'string' && authUserId.length > 0)
         ? authUserId
         : `guest_${client.id}`;
-      const guestUsername = (typeof authUsername === 'string' && authUsername.trim().length > 0)
-        ? authUsername.trim()
-        : `Guest_${shortId}`;
       const guestAvatar = typeof authAvatar === 'string' ? authAvatar : 'avatar-1';
 
       resolvedUser = {
         id: guestId,
-        username: guestUsername,
+        username: guestUsername || 'ضيف',
         avatar: guestAvatar,
         isAuthenticated: false,
       };
@@ -490,11 +511,30 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
    */
   private resolveUser(client: Socket, payloadUser?: any): { id: string; username: string; avatar: string } {
     if (client.data.user?.isAuthenticated) {
+      const persisted = this.persistence.getUserById(client.data.user.id);
+      let name = (persisted?.displayName || persisted?.username || client.data.user.username || '').trim();
+      name = name.replace(/_\d{3,4}$/, '');
+      const avatar = persisted?.customAvatarUrl || persisted?.avatarUrl || client.data.user.avatar || 'avatar-1';
       return {
         id: client.data.user.id,
-        username: client.data.user.username,
-        avatar: client.data.user.avatar || 'avatar-1',
+        username: name || 'لاعب',
+        avatar,
       };
+    }
+
+    const possibleId = payloadUser?.id || client.data.user?.id;
+    if (possibleId && possibleId !== 'default_user' && !possibleId.startsWith('guest_')) {
+      const persisted = this.persistence.getUserById(possibleId);
+      if (persisted) {
+        let name = (persisted.displayName || persisted.username || '').trim();
+        name = name.replace(/_\d{3,4}$/, '');
+        const avatar = persisted.customAvatarUrl || persisted.avatarUrl || 'avatar-1';
+        return {
+          id: persisted.id,
+          username: name || 'لاعب',
+          avatar,
+        };
+      }
     }
 
     // Guest user: Respect consistent ID provided by client
@@ -507,15 +547,19 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         : client.data.user?.id || `guest_${client.id}`;
 
     let customName = payloadUser?.username;
-    if (typeof customName === 'string' && customName.trim().length >= 2 && customName.trim().length <= 24) {
-      customName = customName.trim();
+    if (typeof customName === 'string' && customName.trim().length >= 2 && customName.trim().length <= 25) {
+      customName = customName.trim().replace(/_\d{3,4}$/, '');
     } else {
-      customName = client.data.user?.username || `Guest_${client.id.substring(0, 4)}`;
+      customName = client.data.user?.username || 'ضيف';
+      customName = customName.replace(/_\d{3,4}$/, '');
+      if (customName.startsWith('Guest_') || customName.startsWith('guest_') || customName.startsWith('ضيف_')) {
+        customName = 'ضيف';
+      }
     }
 
     const resolved = {
       id: guestId,
-      username: customName,
+      username: customName || 'ضيف',
       avatar: payloadUser?.avatar || 'avatar-1',
     };
 
