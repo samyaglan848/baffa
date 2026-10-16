@@ -86,6 +86,175 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private readonly playerAwaySince = new Map<string, number>();
   private readonly recentlyLeftUsers = new Map<string, { timestamp: number; username: string }>();
 
+  /**
+   * Automatic referee for leaving the game screen during a match (only when the room has no human
+   * referee, who decides for themself). Away for more than AWAY_GRACE_MS counts as one violation:
+   * 1st = warning, 2nd = cheating (round lost to the other team), 3rd in the same match = removed
+   * from the table and replaced by a bot.
+   */
+  private static readonly AWAY_GRACE_MS = 5000;
+  private readonly awayViolationTimers = new Map<string, NodeJS.Timeout>(); // `${roomId}_${userId}`
+  private readonly awayStrikes = new Map<string, number>(); // `${roomId}_${matchId}_${userId}`
+
+  private scheduleAwayViolation(roomId: string, userId: string) {
+    const room = this.findRoom(roomId);
+    if (!room || room.matchStatus !== 'PLAYING' || room.judge) return;
+    if (!this.getMembership(room, userId).seated) return;
+    const key = `${room.id}_${userId}`;
+    if (this.awayViolationTimers.has(key)) return;
+    const timer = setTimeout(() => {
+      this.awayViolationTimers.delete(key);
+      try {
+        this.applyAwayViolation(room.id, userId);
+      } catch (err: any) {
+        this.logger.warn(`Away violation failed for ${userId} in ${room.id}: ${err.message}`);
+      }
+    }, GameGateway.AWAY_GRACE_MS);
+    timer.unref?.();
+    this.awayViolationTimers.set(key, timer);
+  }
+
+  private cancelAwayViolation(roomId: string, userId: string) {
+    const room = this.findRoom(roomId);
+    const key = `${room?.id || roomId}_${userId}`;
+    const timer = this.awayViolationTimers.get(key);
+    if (timer) clearTimeout(timer);
+    this.awayViolationTimers.delete(key);
+  }
+
+  private applyAwayViolation(roomId: string, userId: string) {
+    const room = this.findRoom(roomId);
+    if (!room || room.matchStatus !== 'PLAYING' || room.judge) return;
+    const seated = this.getMembership(room, userId).seated;
+    const engine = this.gameSessionService.getSession(room.id);
+    // Between rounds (score screen) leaving is not counted.
+    if (!seated || !engine || engine.getStatus() !== 'PLAYING') return;
+
+    const seat = seated.seat as PlayerSeat;
+    const name = seated.username || `لاعب ${seat + 1}`;
+    const strikeKey = `${room.id}_${engine.getMatchId()}_${userId}`;
+    const strike = (this.awayStrikes.get(strikeKey) || 0) + 1;
+    this.awayStrikes.set(strikeKey, strike);
+    const targetTeam = (seat % 2 === 0 ? 1 : 2) as TeamId;
+    const beneficiaryTeam = (seat % 2 === 0 ? 2 : 1) as TeamId;
+    const decision = (actionType: RefereeActionType, title: string, arabicMessage: string, reason: string) =>
+      this.emitToRoom(room.id, ServerEvents.REFEREE_DECISION_BROADCAST, {
+        actionType,
+        judgeName: 'الحكم الآلي',
+        targetSeat: seat,
+        targetPlayerName: name,
+        targetTeam,
+        beneficiaryTeam,
+        title,
+        arabicMessage,
+        reason,
+        timestamp: Date.now(),
+      } as RefereeDecisionBroadcastPayload);
+
+    if (strike === 1) {
+      const reason = 'الخروج من شاشة اللعبة أثناء الماتش';
+      const res = this.gameSessionService.warnPlayer(room.id, 'SERVER_AUTO_JUDGE', seat, reason);
+      if (!res.success) return;
+      const cheating = Boolean(res.isCheatingTriggered);
+      decision(
+        cheating ? 'YELLOW_CARD_2_CHEATING' : 'YELLOW_CARD_1',
+        cheating ? 'إنذار ثانٍ - احتساب غش' : 'كارت أصفر - خروج من اللعبة',
+        cheating
+          ? `الإنذار الثاني للاعب ${name}: تم احتساب غش وإنهاء الجولة.`
+          : `إنذار للاعب ${name} بسبب الخروج من شاشة اللعبة. المرة الجاية تتحسب غش، والتالتة طرد.`,
+        reason
+      );
+      this.notifySeatPlayer(room.id, seat, {
+        type: cheating ? 'ALERT' : 'WARNING',
+        message: 'Warning: you left the game screen during the match.',
+        arabicMessage: cheating
+          ? '🟥 خرجت من شاشة اللعبة وده إنذارك التاني: اتحسبت عليك حالة غش واتنهت الجولة.'
+          : '🟨 خدت إنذار لأنك خرجت من شاشة اللعبة أكتر من 5 ثواني. المرة الجاية تتحسب غش، والتالتة طرد من الطاولة.',
+        timestamp: Date.now(),
+        persistent: true,
+      });
+      return;
+    }
+
+    if (strike === 2) {
+      const reason = 'خروج متكرر من شاشة اللعبة أثناء الماتش';
+      const res = this.gameSessionService.penalizeCheating(room.id, 'SERVER_AUTO_JUDGE', seat, reason);
+      if (!res.success) return;
+      decision(
+        'YELLOW_CARD_2_CHEATING',
+        'احتساب غش - خروج متكرر',
+        `اللاعب ${name} خرج من اللعبة للمرة التانية: تم احتساب غش وإنهاء الجولة لصالح الفريق المنافس. المرة الجاية طرد.`,
+        reason
+      );
+      this.notifySeatPlayer(room.id, seat, {
+        type: 'ALERT',
+        message: 'Second time away: cheating penalty applied.',
+        arabicMessage: '🟥 خرجت من شاشة اللعبة للمرة التانية: اتحسبت عليك حالة غش واتنهت الجولة. لو اتكررت هتتطرد من الطاولة.',
+        timestamp: Date.now(),
+        persistent: true,
+      });
+      this.broadcastGameState(room.id);
+      return;
+    }
+
+    // Third time: removed from the table for the rest of the match.
+    this.kickFromTable(room, userId, seat, name);
+    decision(
+      'DIRECT_RED_CARD',
+      'طرد من الطاولة',
+      `تم طرد اللاعب ${name} من الطاولة بعد الخروج من اللعبة 3 مرات، وتولى مكانه بوت.`,
+      'الخروج من شاشة اللعبة 3 مرات في نفس الماتش'
+    );
+  }
+
+  /** Replaces a seated player with a bot for the rest of the match and tells them. */
+  private kickFromTable(room: any, userId: string, seat: PlayerSeat, name: string) {
+    const kickedNotice: NotificationPayload = {
+      type: 'ALERT',
+      message: 'You were removed from the table for leaving the game 3 times.',
+      arabicMessage: '⛔ اتطردت من الطاولة لأنك خرجت من شاشة اللعبة 3 مرات في نفس الماتش، وبوت كمّل مكانك.',
+      timestamp: Date.now(),
+      userId,
+      persistent: true,
+    };
+    for (const s of this.server.sockets.sockets.values()) {
+      if (s.data?.user?.id !== userId) continue;
+      s.emit(ServerEvents.NOTIFICATION, kickedNotice);
+      s.emit('server:kicked', { roomId: room.id });
+      s.leave(room.id);
+      if (room.code) s.leave(room.code);
+      const p = this.roomService.getPlayerBySocket(s.id);
+      if (p) {
+        p.roomId = null;
+        p.seat = null;
+      }
+    }
+
+    this.roomService.markKicked(room.id, userId);
+    const tempId = `kick_${userId}`;
+    this.roomService.registerSocket(tempId, { id: userId, username: name, avatar: 'avatar-1' }, 'PLAYER');
+    this.roomService.leaveRoom(room.id, tempId); // seat becomes a bot
+    this.roomService.unregisterSocket(tempId);
+    this.roomService.markKicked(room.id, userId); // leaveRoom remembered the seat; forget it again
+    this.roomService.cancelDisconnectGrace(room.id, seat);
+
+    const botSeat = room.seats[seat];
+    if (botSeat?.isBot) {
+      this.gameSessionService.updateSeatMetadata(room.id, seat, {
+        isBot: true,
+        botId: botSeat.botId || 'EL_RAYEQ',
+        username: botSeat.username || 'الرايق',
+        avatar: botSeat.avatar || 'bot-rayeq',
+        playerId: botSeat.playerId || `bot_${seat}`,
+        isTemporarilyBotControlled: false,
+      });
+    }
+    this.syncRoomToAll(room.id, room);
+    this.broadcastGameState(room.id);
+    this.gameSessionService.checkAndTriggerBotTurn(room.id, true);
+    this.logger.log(`[AUTO_JUDGE] ${name} (${userId}) removed from table in room ${room.id} after 3 away violations`);
+  }
+
   @WebSocketServer()
   server!: Server;
 
@@ -467,6 +636,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
           if (grace) {
             this.gameSessionService.setBotTakeover(roomId, player.seat, true);
+            // Closing the game (or the phone killing it in the background) counts like leaving the screen.
+            this.scheduleAwayViolation(roomId, player.userId);
             this.server.to(roomId).emit(ServerEvents.DISCONNECT_GRACE_UPDATE, { grace });
             const notif: NotificationPayload = {
               type: 'WARNING',
@@ -574,6 +745,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             seated.presence = 'ONLINE';
             seated.isTemporarilyBotControlled = false;
             this.roomService.cancelDisconnectGrace(room.id, seated.seat);
+            this.cancelAwayViolation(room.id, user.id);
             // Also re-arms the turn flow; the room's bot timer is no longer cleared here (that froze
             // the table whenever a player reconnected during a bot's turn).
             this.gameSessionService.setBotTakeover(room.id, seated.seat, false);
@@ -915,7 +1087,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (room.code && room.code !== room.id) {
         client.join(room.code);
       }
-      client.emit(ServerEvents.ROOM_SYNC, { room });
+      // Quick play goes straight to the table: the lobby is not sent first (it only flashed by).
+      const startsNow = payload?.autoStart === true && initialRole !== 'JUDGE';
+      if (!startsNow) client.emit(ServerEvents.ROOM_SYNC, { room });
 
       if (room.settings.voiceEnabled) {
         this.voiceService.joinVoice(room.id, user.id, client.id, initialRole);
@@ -923,8 +1097,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       this.logger.log(`Room created: ${room.id} (${room.code}) by ${user.username} with role ${initialRole}`);
 
+      // Quick play: start at once instead of showing the lobby and waiting for another press.
       // If room is created as a Judge with 4 Egyptian bots, auto-start match immediately so the referee presides directly over the game
-      if (initialRole === 'JUDGE' && room.seats.every((s) => s.isBot)) {
+      if ((initialRole === 'JUDGE' && room.seats.every((s) => s.isBot)) || (payload?.autoStart === true && initialRole !== 'JUDGE')) {
         this.logger.log(`Auto-starting 4-bot match for presiding referee in room ${room.id}`);
         this.gameSessionService.startMatch(room.id, user.id);
         const updatedRoom = this.roomService.getRoom(room.id);
@@ -962,6 +1137,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const hadActiveGrace = Boolean(seatBefore && room.disconnectGraces?.some((g) => g.seat === seatBefore.seat));
 
       const updatedRoom = this.roomService.joinRoom(room.id, client.id, user);
+      this.cancelAwayViolation(room.id, user.id);
       client.join(room.id);
       if (room.code && room.code !== room.id) {
         client.join(room.code);
@@ -1125,6 +1301,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const leftPlayerUsername = player?.username || client.data?.user?.username || 'أحد اللاعبين';
       const leftPlayerSeat = player?.seat ?? room.seats.find((s) => s.playerId === userId)?.seat ?? null;
 
+      // Leaving on purpose is not "away" any more.
+      if (userId) this.cancelAwayViolation(actualRoomId, userId);
+
       // Track in recentlyLeftUsers to deduplicate with handleLeaveRoomDirect
       if (userId) {
         this.recentlyLeftUsers.set(`${actualRoomId}_${userId}`, {
@@ -1234,6 +1413,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (isAway) {
         if (this.playerAwaySince.has(awayKey)) return;
         this.playerAwaySince.set(awayKey, Date.now());
+        this.scheduleAwayViolation(roomId, userId);
 
         const notif: NotificationPayload = {
           type: 'WARNING',
@@ -1266,6 +1446,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           this.broadcastGameState(roomId);
         }
       } else {
+        this.cancelAwayViolation(roomId, userId);
         // The client reports a return both over the socket and over HTTP; only the first one counts.
         // (Each duplicate re-sent the whole room and board to every player.)
         if (!this.playerAwaySince.has(awayKey)) return;
@@ -1339,6 +1520,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (isAway) {
         if (this.playerAwaySince.has(awayKey)) return { success: true, isAway: true };
         this.playerAwaySince.set(awayKey, Date.now());
+        this.scheduleAwayViolation(roomId, userId);
 
         const notif: NotificationPayload = {
           type: 'WARNING',
@@ -1371,6 +1553,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           this.broadcastGameState(roomId);
         }
       } else {
+        this.cancelAwayViolation(roomId, userId);
         if (!this.playerAwaySince.has(awayKey)) return { success: true, isAway: false };
         const awayStart = this.playerAwaySince.get(awayKey);
         this.playerAwaySince.delete(awayKey);

@@ -773,6 +773,24 @@ export function useGameSocket() {
       }
     });
 
+    // Removed from the table by the referee: leave the table view (the server already sent the
+    // reason as a notification, which stays on screen).
+    socket.on('server:kicked', (data: { roomId?: string }) => {
+      if (!data?.roomId || (activeRoomIdRef.current && activeRoomIdRef.current !== data.roomId)) return;
+      leftRoomIdRef.current = data.roomId;
+      activeRoomIdRef.current = null;
+      try {
+        sessionStorage.removeItem('baffa_active_room_code');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('room');
+        window.history.replaceState({}, '', url.pathname + (url.search || ''));
+      } catch {}
+      setRoom(null);
+      roomRef.current = null;
+      setGameState(null);
+      setMyRole('PLAYER');
+    });
+
     socket.on(ServerEvents.REFEREE_DECISION_BROADCAST, (data: RefereeDecisionBroadcastPayload) => {
       if (!activeRoomIdRef.current) return;
       if (refereeDecisionTimerRef.current) {
@@ -947,9 +965,11 @@ export function useGameSocket() {
   }, [room?.id, room?.matchStatus, gameState?.status, gameState?.roomId]);
 
   const createRoom = useCallback(
-    (name: string, settings?: Partial<RoomSettings>, initialRole?: UserRole) => {
+    (name: string, settings?: Partial<RoomSettings>, initialRole?: UserRole, options?: { autoStart?: boolean }) => {
       leftRoomIdRef.current = null;
-      const payload = { name, settings, user: currentUser, initialRole };
+      // A notice kept from the previous room (e.g. "you were removed") does not belong to the new one.
+      setLatestNotification(null);
+      const payload = { name, settings, user: currentUser, initialRole, autoStart: options?.autoStart === true };
       // Right after the page loads the connection is set up (and sometimes replaced once), and a
       // press in that moment was lost: nothing happened. The request is kept until the room
       // arrives and is re-sent on the next connection or after 3s without an answer.
@@ -2085,6 +2105,7 @@ export function useGameSocket() {
     const targetRoomId = room?.id || gameState?.roomId || activeRoomIdRef.current;
     if (!targetRoomId) return;
 
+    const socketOk = Boolean(socketRef.current?.connected && socketVerifiedRef.current);
     if (socketRef.current) {
       if (!socketRef.current.connected) {
         socketRef.current.connect();
@@ -2095,18 +2116,20 @@ export function useGameSocket() {
       });
     }
 
-    // Proactive HTTP fallback so next round ALWAYS triggers smoothly
-    fetch(`${apiUrl}/api/matches/next-round`, {
-      method: 'POST',
-      headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
-        roomId: targetRoomId,
-        userId: currentUserRef.current.id,
-        user: currentUserRef.current,
-      }),
-    }).catch(() => {});
-
-    setTimeout(() => syncBoardState(targetRoomId), 300);
+    // HTTP only when the live connection can't be trusted. It used to be sent every time, plus an
+    // extra board fetch, so each press cost the server (and the player's network) three requests.
+    if (!socketOk) {
+      fetch(`${apiUrl}/api/matches/next-round`, {
+        method: 'POST',
+        headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          roomId: targetRoomId,
+          userId: currentUserRef.current.id,
+          user: currentUserRef.current,
+        }),
+      }).catch(() => {});
+      setTimeout(() => syncBoardState(targetRoomId), 300);
+    }
   }, [room?.id, gameState?.roomId, apiUrl, syncBoardState]);
 
   const requestRematch = useCallback(

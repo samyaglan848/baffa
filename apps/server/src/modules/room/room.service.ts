@@ -36,6 +36,24 @@ export class RoomService {
   private lobbyDisconnectTimers: Map<string, NodeJS.Timeout> = new Map(); // `${roomId}_${userId}` -> Timeout
   /** Seat a player held when they left a running match (`${roomId}_${userId}` -> seat), so they get it back. */
   private departedSeats: Map<string, PlayerSeat> = new Map();
+  /** Players the referee removed from the current match (`roomId` -> user ids); they may only watch. */
+  private kickedFromMatch: Map<string, Set<string>> = new Map();
+
+  public markKicked(roomId: string, userId: string) {
+    const set = this.kickedFromMatch.get(roomId) || new Set<string>();
+    set.add(userId);
+    this.kickedFromMatch.set(roomId, set);
+    this.departedSeats.delete(`${roomId}_${userId}`); // no taking the seat back
+  }
+
+  public isKicked(roomId: string, userId: string): boolean {
+    return Boolean(this.kickedFromMatch.get(roomId)?.has(userId));
+  }
+
+  /** A new match starts with a clean slate. */
+  public clearKicked(roomId: string) {
+    this.kickedFromMatch.delete(roomId);
+  }
 
   constructor(
     private prisma: PrismaService,
@@ -398,6 +416,19 @@ export class RoomService {
     }
 
     // New unseated user
+    if (room.matchStatus !== 'LOBBY' && this.isKicked(roomId, user.id)) {
+      // Removed by the referee during this match: may watch, but not take a seat again.
+      try {
+        return this.joinAsSpectator(roomId, socketId, user);
+      } catch {
+        if (connected) {
+          connected.roomId = roomId;
+          connected.seat = null;
+          connected.role = 'SPECTATOR';
+        }
+        return room;
+      }
+    }
     if (room.matchStatus !== 'LOBBY') {
       // A player returning to a match they left gets their own seat back (their team and hand), not
       // simply the first bot seat — that used to drop them onto the other team's bot.
@@ -1450,6 +1481,7 @@ export class RoomService {
     for (const key of this.departedSeats.keys()) {
       if (key.startsWith(prefix)) this.departedSeats.delete(key);
     }
+    this.kickedFromMatch.delete(roomId);
     for (const [key, timer] of this.graceTimers.entries()) {
       if (key.startsWith(prefix)) {
         clearTimeout(timer);

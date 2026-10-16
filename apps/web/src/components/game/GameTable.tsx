@@ -740,6 +740,22 @@ export const GameTable: React.FC<GameTableProps> = ({
   }, [roundEndStage, gameState.status, onRequestNextRound, gameState.players]);
   const isRoundOver = gameState.status === 'ROUND_FINISHED' || gameState.status === 'MATCH_FINISHED';
 
+  // "Next round" reacts at once (the new deal takes a network round trip) and can't be sent twice.
+  const [nextRoundPending, setNextRoundPending] = useState(false);
+  useEffect(() => {
+    setNextRoundPending(false);
+  }, [gameState.status, gameState.roundNumber]);
+  useEffect(() => {
+    if (!nextRoundPending) return;
+    const t = setTimeout(() => setNextRoundPending(false), 5000);
+    return () => clearTimeout(t);
+  }, [nextRoundPending]);
+  const handleNextRound = useCallback(() => {
+    if (nextRoundPending) return;
+    setNextRoundPending(true);
+    onRequestNextRound();
+  }, [nextRoundPending, onRequestNextRound]);
+
   const triggerInvalid = useCallback(() => {
     if (!isMyTurn || isRoundOver) return;
     playSound('invalid');
@@ -1883,13 +1899,14 @@ export const GameTable: React.FC<GameTableProps> = ({
                 </div>
 
                 {/* Action button if round is finished */}
-                {gameState.status === 'ROUND_FINISHED' && onRequestNextRound && (
+                {gameState.status === 'ROUND_FINISHED' && (
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: isMobile ? '4px' : '8px' }}>
                     <button
                       onClick={() => {
                         onDismissRefereeDecision?.();
-                        onRequestNextRound();
+                        handleNextRound();
                       }}
+                      disabled={nextRoundPending}
                       className="baffa-btn-primary"
                       style={{
                         padding: isMobile ? '4px 12px' : '6px 16px',
@@ -2719,7 +2736,8 @@ export const GameTable: React.FC<GameTableProps> = ({
 
                 {gameState.status === 'ROUND_FINISHED' ? (
                   <button
-                    onClick={onRequestNextRound}
+                    onClick={handleNextRound}
+                    disabled={nextRoundPending}
                     className="baffa-btn-primary"
                     style={{
                       padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 16px',
@@ -2727,10 +2745,13 @@ export const GameTable: React.FC<GameTableProps> = ({
                       borderRadius: '16px',
                       gap: '4px',
                       whiteSpace: 'nowrap',
+                      opacity: nextRoundPending ? 0.75 : 1,
                     }}
                   >
                     <Zap size={isMobile ? 13 : 15} />
-                    <span className="arabic-font">الجولة التالية {nextRoundCountdown > 0 ? `(${nextRoundCountdown})` : ''}</span>
+                    <span className="arabic-font">
+                      {nextRoundPending ? 'جاري التوزيع...' : `الجولة التالية ${nextRoundCountdown > 0 ? `(${nextRoundCountdown})` : ''}`}
+                    </span>
                   </button>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '8px' }}>

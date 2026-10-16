@@ -224,6 +224,7 @@ export class GameSessionService {
 
     this.sessions.set(roomId, engine);
     this.roomService.updateMatchStatus(roomId, 'PLAYING');
+    this.roomService.clearKicked(roomId);
 
     this.anticheatService.logAudit('MATCH_START', {
       userId: adminId,

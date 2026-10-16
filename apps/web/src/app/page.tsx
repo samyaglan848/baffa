@@ -85,6 +85,19 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedPublicUser, setSelectedPublicUser] = useState<string | null>(null);
 
+  // Immediate feedback after "Create room" / "Quick play": the server answer takes a network round
+  // trip, and until it arrived the button showed no reaction at all, so it felt slow or broken.
+  const [preparingTable, setPreparingTable] = useState(false);
+  useEffect(() => {
+    if (!preparingTable) return;
+    if (room || errorMessage) {
+      setPreparingTable(false);
+      return;
+    }
+    const t = setTimeout(() => setPreparingTable(false), 12000);
+    return () => clearTimeout(t);
+  }, [preparingTable, room, errorMessage]);
+
   // Expired / refused login: open the sign-in window instead of leaving the player as a silent guest.
   useEffect(() => {
     if (!sessionExpired) return;
@@ -295,8 +308,10 @@ export default function App() {
         reactionsEnabled: true,
         selectedBotId: 'EL_SAMY',
       },
-      'ADMIN'
+      'ADMIN',
+      { autoStart: true }
     );
+    setPreparingTable(true);
     setCurrentView('HOME');
   };
 
@@ -589,6 +604,38 @@ export default function App() {
           maxWidth: '100vw',
         }}
       >
+        {preparingTable && !room && (
+          <div
+            className="arabic-font"
+            role="status"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(4, 8, 16, 0.55)',
+              backdropFilter: 'blur(3px)',
+            }}
+          >
+            <div
+              style={{
+                padding: '14px 26px',
+                borderRadius: '18px',
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                border: '1.5px solid var(--baffa-gold-primary)',
+                color: 'var(--baffa-gold-hover)',
+                fontWeight: 800,
+                fontSize: '1rem',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+              }}
+            >
+              جاري تجهيز الطاولة...
+            </div>
+          </div>
+        )}
+
         {/* If in Room Lobby */}
         {room && !isPlayingGame && (
           <RoomLobby
@@ -647,7 +694,10 @@ export default function App() {
             {currentView === 'HOME' && (
               <HomeScreen
                 currentUser={currentUser}
-                onCreateRoom={(name, settings, initialRole) => createRoom(name, settings, initialRole)}
+                onCreateRoom={(name, settings, initialRole) => {
+                  setPreparingTable(true);
+                  createRoom(name, settings, initialRole);
+                }}
                 onJoinRoom={(code) => joinRoom(code)}
                 onJoinAsJudge={(code) => joinAsJudge(code)}
                 onJoinAsSpectator={(code) => joinAsSpectator(code)}

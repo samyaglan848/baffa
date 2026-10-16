@@ -82,6 +82,8 @@ export interface CreateRoomPayload {
     avatar: string;
   };
   initialRole?: UserRole;
+  /** Start the match right away (quick play): skips the lobby and one round trip. */
+  autoStart?: boolean;
 }
 
 export interface JoinRoomPayload {
