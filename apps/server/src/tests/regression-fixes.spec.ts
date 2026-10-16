@@ -262,6 +262,20 @@ describe('Regression: leaving a room really leaves it', () => {
   });
 });
 
+describe('Regression: a player who was away is told what happened', () => {
+  it('warnings given while away are kept for the summary shown on return', () => {
+    const { session, room } = makeHarness();
+    const engine = session.startMatch(room.id, 'user_host_1');
+    const seat = engine.getCurrentTurnSeat();
+    const awaySince = Date.now() - 1;
+    session.warnPlayer(room.id, 'judge_x', seat, 'تعطيل اللعب');
+    const events = session.getSeatEventsSince(room.id, seat, awaySince);
+    assert.deepStrictEqual(events.map((e) => [e.kind, e.text]), [['WARNING', 'تعطيل اللعب']]);
+    assert.strictEqual(session.getSeatEventsSince(room.id, ((seat + 1) % 4) as PlayerSeat, awaySince).length, 0);
+    session.endSession(room.id);
+  });
+});
+
 describe('Regression: automatic referee is announced and consistent', () => {
   it('play violation then pass violation = warning, then announced cheating penalty', () => {
     const { session, room } = makeHarness();

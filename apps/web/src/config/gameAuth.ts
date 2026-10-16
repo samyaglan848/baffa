@@ -29,6 +29,24 @@ export function gameAuthHeaders(extra: Record<string, string> = {}): Record<stri
  */
 export function normalizeServerClock<T extends { serverTime?: number; turnStartTime?: number } | null | undefined>(state: T): T {
   if (!state || typeof state.serverTime !== 'number' || typeof state.turnStartTime !== 'number') return state;
-  const offset = Date.now() - state.serverTime;
-  return { ...state, turnStartTime: state.turnStartTime + offset, serverTime: Date.now() } as T;
+  const offset = estimateClockOffset(Date.now() - state.serverTime);
+  return { ...state, turnStartTime: state.turnStartTime + offset, serverTime: state.serverTime + offset } as T;
+}
+
+/**
+ * Each message gives "local clock − server clock + how long the message took to arrive". Using one
+ * message as is (as before) was wrong whenever it arrived late, which is exactly what happens on
+ * returning to the tab: messages held back in the background arrive all at once, and every timer
+ * then showed seconds that had already passed. The smallest value seen recently is the message that
+ * travelled fastest, i.e. the closest to the real clock difference, so that one is used.
+ */
+const offsetSamples: { value: number; at: number }[] = [];
+const OFFSET_WINDOW_MS = 10 * 60 * 1000;
+
+function estimateClockOffset(sample: number): number {
+  const now = Date.now();
+  offsetSamples.push({ value: sample, at: now });
+  while (offsetSamples.length > 0 && now - offsetSamples[0].at > OFFSET_WINDOW_MS) offsetSamples.shift();
+  if (offsetSamples.length > 200) offsetSamples.splice(0, offsetSamples.length - 200);
+  return Math.min(...offsetSamples.map((s) => s.value));
 }

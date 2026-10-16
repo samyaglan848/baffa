@@ -195,13 +195,57 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     });
   }
 
+  /**
+   * Tells a player who just came back (to the tab, or after a dropped connection) what happened to
+   * them meanwhile: warnings, penalties and cards played for them when their time ran out. Messages
+   * sent while they were away were usually replaced by later ones before they could see them.
+   */
+  private sendAwaySummary(roomId: string, userId: string, since: number) {
+    const room = this.findRoom(roomId);
+    if (!room) return;
+    const seated = this.getMembership(room, userId).seated;
+    if (!seated) return;
+    const events = this.gameSessionService.getSeatEventsSince(room.id, seated.seat, since);
+    if (events.length === 0) return;
+
+    const lines: string[] = [];
+    for (const e of events) {
+      if (e.kind === 'CHEATING') lines.push(`🟥 اتحسبت عليك حالة غش واتنهت الجولة: ${e.text}`);
+      else if (e.kind === 'WARNING') lines.push(`🟨 خدت إنذار: ${e.text}`);
+    }
+    const autoPlays = events.filter((e) => e.kind === 'AUTO_PLAY');
+    if (autoPlays.length > 0) {
+      const played = autoPlays.filter((e) => e.text !== 'PASS').map((e) => e.text);
+      lines.push(
+        `⏱️ وقتك خلص ${autoPlays.length === 1 ? 'مرة' : `${autoPlays.length} مرات`} واتلعب مكانك تلقائي` +
+          (played.length > 0 ? ` (${played.join('، ')})` : '')
+      );
+    }
+    const hasCheating = events.some((e) => e.kind === 'CHEATING');
+    const hasWarning = events.some((e) => e.kind === 'WARNING');
+
+    const notification: NotificationPayload = {
+      type: hasCheating ? 'ALERT' : hasWarning ? 'WARNING' : 'INFO',
+      message: 'While you were away: ' + events.map((e) => e.kind).join(', '),
+      arabicMessage: `وانت برة اللعبة: ${lines.join(' • ')}`,
+      timestamp: Date.now(),
+      userId,
+      persistent: hasCheating || hasWarning,
+    };
+    for (const s of this.server.sockets.sockets.values()) {
+      if (s.connected && s.data?.user?.id === userId) s.emit(ServerEvents.NOTIFICATION, notification);
+    }
+  }
+
   /** Delivers a notification only to the human player sitting in a seat (all of their connections). */
   private notifySeatPlayer(roomId: string, seat: PlayerSeat, notification: NotificationPayload) {
     const room = this.findRoom(roomId);
     const playerId = room?.seats[seat]?.playerId;
     if (!room || !playerId || room.seats[seat].isBot) return;
+    // Tagged with the player's id so their page knows the message is about them (it is kept on screen).
+    const tagged = { ...notification, userId: notification.userId ?? playerId };
     for (const s of this.server.sockets.sockets.values()) {
-      if (s.connected && s.data?.user?.id === playerId) s.emit(ServerEvents.NOTIFICATION, notification);
+      if (s.connected && s.data?.user?.id === playerId) s.emit(ServerEvents.NOTIFICATION, tagged);
     }
   }
 
@@ -429,6 +473,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
               message: `${username} disconnected. Waiting for turn timer before auto-play (2-min grace).`,
               arabicMessage: `انقطع اتصال اللاعب ${username} (خرج من الموقع). سيتم انتظار انتهاء وقت تفكيره بالكامل قبل لعب كارت عشوائي لحين عودته.`,
               timestamp: Date.now(),
+              userId: player.userId,
             };
             this.broadcastNotificationToRoom(roomId, notif, client.id);
             this.broadcastGameState(roomId);
@@ -440,6 +485,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             message: `Judge ${username} disconnected.`,
             arabicMessage: `انقطع اتصال الحكم ${username} (خرج من الموقع).`,
             timestamp: Date.now(),
+              userId: player.userId,
           };
           this.broadcastNotificationToRoom(roomId, notif, client.id);
           this.syncRoomToAll(roomId, room);
@@ -461,6 +507,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             message: `${username} went offline (reconnecting...).`,
             arabicMessage: `انقطع اتصال اللاعب ${username} (خرج من الموقع).`,
             timestamp: Date.now(),
+              userId: player.userId,
           };
           this.broadcastNotificationToRoom(roomId, notif, client.id);
           this.syncRoomToAll(roomId, updatedRoom);
@@ -520,7 +567,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             room.spectator.isConnected = true;
           }
 
-          const hadGrace = seated && room.disconnectGraces?.some((g) => g.seat === seated.seat);
+          const grace = seated ? room.disconnectGraces?.find((g) => g.seat === seated.seat) : undefined;
+          const hadGrace = Boolean(grace);
           if (seated) {
             seated.isConnected = true;
             seated.presence = 'ONLINE';
@@ -539,6 +587,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
               message: `Player ${user.username} has returned to the game!`,
               arabicMessage: `عَادَ اللاعب ${user.username} إلى اللعبة واستلم دوره!`,
               timestamp: Date.now(),
+              userId: user.id,
             };
             this.broadcastNotificationToRoom(room.id, returnNotif);
           }
@@ -546,6 +595,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           this.syncRoomToAll(room.id, room);
           client.emit(ServerEvents.ROOM_SYNC, { room });
           this.broadcastGameState(room.id, client.id);
+          // Came back after the connection dropped (phone put the page to sleep): say what happened.
+          if (grace) this.sendAwaySummary(room.id, user.id, grace.disconnectedAt);
           this.logger.log(`Auto-rebound client ${user.username} (${client.id}) to PLAYING room ${room.id} as ${role}`);
           break;
         }
@@ -577,6 +628,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             message: `Player ${user.username} is back in the room!`,
             arabicMessage: `عَادَ اللاعب ${user.username} إلى الغرفة!`,
             timestamp: Date.now(),
+              userId: user.id,
           };
           this.broadcastNotificationToRoom(room.id, returnNotif);
           this.syncRoomToAll(room.id, room);
@@ -952,6 +1004,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           message: `Player ${user.username} has returned to the game!`,
           arabicMessage: `عَادَ اللاعب ${user.username} إلى اللعبة واستلم دوره!`,
           timestamp: Date.now(),
+          userId: user.id,
         };
         this.broadcastNotificationToRoom(room.id, returnNotif);
       }
@@ -1232,6 +1285,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           persistent: false,
         };
         this.broadcastNotificationToRoom(roomId, notif);
+        if (awayStart) this.sendAwaySummary(roomId, userId, awayStart);
 
         const seatObj = room.seats.find((s) => s.playerId === userId && !s.isBot);
         if (seatObj) {
@@ -1334,6 +1388,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           persistent: false,
         };
         this.broadcastNotificationToRoom(roomId, notif);
+        if (awayStart) this.sendAwaySummary(roomId, userId, awayStart);
 
         const seatObj = room.seats.find((s) => s.playerId === userId && !s.isBot);
         if (seatObj) {

@@ -40,6 +40,24 @@ export class GameSessionService {
   private botTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private turnTimers: Map<string, NodeJS.Timeout> = new Map();
   private callbacks?: GameSessionCallbacks;
+  /**
+   * What happened to each seat (warnings, penalties, cards played for them on timeout), so a player
+   * who was away can be told about it when they come back. Notifications sent while the tab was in
+   * the background were replaced by later ones (or never arrived over a dead connection).
+   */
+  private seatEvents: Map<string, { seat: PlayerSeat; at: number; kind: 'WARNING' | 'CHEATING' | 'AUTO_PLAY'; text: string }[]> = new Map();
+
+  private recordSeatEvent(roomId: string, seat: PlayerSeat, kind: 'WARNING' | 'CHEATING' | 'AUTO_PLAY', text: string) {
+    const list = this.seatEvents.get(roomId) || [];
+    list.push({ seat, at: Date.now(), kind, text });
+    if (list.length > 60) list.splice(0, list.length - 60);
+    this.seatEvents.set(roomId, list);
+  }
+
+  /** Events for a seat since a moment (e.g. when the player left the tab). */
+  public getSeatEventsSince(roomId: string, seat: PlayerSeat, since: number) {
+    return (this.seatEvents.get(roomId) || []).filter((e) => e.seat === seat && e.at >= since);
+  }
 
   constructor(
     private readonly botService: BotService,
@@ -575,6 +593,7 @@ export class GameSessionService {
 
     const result = engine.penalizeCheating(judgeId, offendingSeat, reason);
     if (result.success) {
+      this.recordSeatEvent(roomId, offendingSeat, 'CHEATING', reason);
       this.anticheatService.logAudit('JUDGE_PENALIZE_CHEATING', {
         userId: judgeId,
         roomId,
@@ -629,6 +648,7 @@ export class GameSessionService {
 
     const result = engine.warnPlayer(judgeId, seat, reason);
     if (result.success) {
+      this.recordSeatEvent(roomId, seat, result.isCheatingTriggered ? 'CHEATING' : 'WARNING', reason);
       this.anticheatService.logAudit('JUDGE_WARN_PLAYER', {
         userId: judgeId,
         roomId,
@@ -682,6 +702,7 @@ export class GameSessionService {
 
     const result = engine.directRedCard(judgeId, seat, reason);
     if (result.success) {
+      this.recordSeatEvent(roomId, seat, 'CHEATING', reason);
       this.anticheatService.logAudit('JUDGE_DIRECT_RED_CARD', {
         userId: judgeId,
         roomId,
@@ -1232,8 +1253,10 @@ export class GameSessionService {
       const chosen = legalMoves[Math.floor(Math.random() * legalMoves.length)];
       const end = chosen.validEnds[0];
       engine.playTile(currentSeat, chosen.tile, end);
+      this.recordSeatEvent(roomId, currentSeat, 'AUTO_PLAY', `${chosen.tile[0]}|${chosen.tile[1]}`);
     } else {
       engine.passTurn(currentSeat);
+      this.recordSeatEvent(roomId, currentSeat, 'AUTO_PLAY', 'PASS');
     }
 
     this.callbacks?.broadcastNotification?.(roomId, {
@@ -1394,6 +1417,7 @@ export class GameSessionService {
       this.botTimeouts.delete(roomId);
     }
     this.sessions.delete(roomId);
+    this.seatEvents.delete(roomId);
     this.anticheatService.clearRoom(roomId);
     this.logger.log(`Game session for room ${roomId} has been terminated.`);
   }

@@ -28,6 +28,8 @@ export default function App() {
     socket,
     isConnected,
     isResyncing,
+    sessionExpired,
+    clearSessionExpired,
     currentUser,
     myRole,
     room,
@@ -82,6 +84,13 @@ export default function App() {
   });
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedPublicUser, setSelectedPublicUser] = useState<string | null>(null);
+
+  // Expired / refused login: open the sign-in window instead of leaving the player as a silent guest.
+  useEffect(() => {
+    if (!sessionExpired) return;
+    setShowAuthModal(true);
+    clearSessionExpired();
+  }, [sessionExpired, clearSessionExpired]);
 
   // Auto-join if URL contains ?room=CODE or ?join=CODE or sessionStorage has active room
   const autoJoinAttemptedRef = useRef(false);

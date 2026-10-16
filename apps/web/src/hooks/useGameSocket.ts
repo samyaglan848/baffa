@@ -233,6 +233,8 @@ export function useGameSocket() {
   const pendingCreateRef = useRef<{ payload: any; at: number; retried: boolean; sentVia: Socket | null } | null>(null);
   const resyncTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isResyncing, setIsResyncing] = useState(false);
+  /** The saved login was refused by the server; the page asks the player to sign in again. */
+  const [sessionExpired, setSessionExpired] = useState(false);
   const finishResync = useCallback(() => {
     if (resyncTimerRef.current) {
       clearTimeout(resyncTimerRef.current);
@@ -532,9 +534,11 @@ export function useGameSocket() {
         setLatestNotification({
           type: 'WARNING',
           message: 'Your login session has expired. Please sign in again.',
-          arabicMessage: 'انتهت جلسة تسجيل الدخول، سجّل دخولك مرة أخرى للعب بحسابك.',
+          arabicMessage: 'انتهت جلسة تسجيل الدخول، سجّل دخولك مرة أخرى للعب بحسابك. بياناتك محفوظة وهترجع بمجرد ما تسجّل.',
           timestamp: Date.now(),
         } as NotificationPayload);
+        // Ask for the login straight away (the page opens the sign-in window).
+        setSessionExpired(true);
       }
 
       if (data.isGuest) {
@@ -551,6 +555,14 @@ export function useGameSocket() {
             guestToken: data.guestToken || prev.guestToken,
             token: undefined,
           };
+          if (data.tokenRejected) {
+            // Previously the account's name and photo stayed on screen while the player was really a
+            // guest: the page looked logged in, the profile looked empty and "Login" still showed.
+            updated.username = 'ضيف';
+            updated.avatar = 'avatar-1';
+            delete (updated as any).displayName;
+            delete (updated as any).email;
+          }
           try {
             const { guestToken: _omit, ...persistable } = updated;
             sessionStorage.setItem('baffa_user', JSON.stringify(persistable));
@@ -699,6 +711,13 @@ export function useGameSocket() {
     socket.on(ServerEvents.NOTIFICATION, (data: NotificationPayload) => {
       // After leaving a room its notifications (and their sounds) must stop.
       if (!activeRoomIdRef.current) return;
+      // "X left the game screen" / "X is back" are for the other players. Shown to X themselves they
+      // only covered the useful message (what happened while they were away, sent separately).
+      const aboutMyPresence =
+        data.userId &&
+        data.userId === currentUserRef.current?.id &&
+        /switched away|returned to the game screen|went offline|disconnected|has returned|is back/i.test(data.message || '');
+      if (aboutMyPresence) return;
       console.log('[NOTIFICATION_RECEIVED_CLIENT]', data);
 
       const isPersistent =
@@ -717,6 +736,13 @@ export function useGameSocket() {
 
       // If this is a SUCCESS return message, check if current notification is a persistent WARNING about someone else
       setLatestNotification((prev) => {
+        // A warning addressed to me stays until I close it; routine notices (a card auto-played,
+        // someone came back) used to replace it before I had a chance to read it.
+        const prevIsMyWarning =
+          prev && prev.userId === currentUserRef.current?.id && (prev.type === 'WARNING' || prev.type === 'ALERT');
+        if (prevIsMyWarning && (data.type === 'INFO' || data.type === 'SUCCESS')) {
+          return prev;
+        }
         if (!isPersistent && data.type === 'SUCCESS') {
           const prevIsAwayWarning =
             prev &&
@@ -740,7 +766,8 @@ export function useGameSocket() {
       // They stay until manually dismissed via the (X) button by the user/judge.
       if (!isPersistent) {
         notificationTimerRef.current = setTimeout(() => {
-          setLatestNotification(null);
+          // Only clear this notice; if it was not shown (a warning for me stayed instead), keep that.
+          setLatestNotification((cur) => (cur === data ? null : cur));
           notificationTimerRef.current = null;
         }, 8000);
       }
@@ -2214,6 +2241,8 @@ export function useGameSocket() {
     socket: socketInstance || socketRef.current,
     isConnected,
     isResyncing,
+    sessionExpired,
+    clearSessionExpired: () => setSessionExpired(false),
     currentUser,
     myRole,
     room,
