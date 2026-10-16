@@ -220,6 +220,22 @@ export function useGameSocket() {
   const leftRoomIdRef = useRef<string | null>(null);
   const isLastActiveRef = useRef<boolean | null>(null);
   const optimisticMoveRef = useRef<OptimisticMove | null>(null);
+  // After coming back to the tab, moves are held until the current board has arrived, so a tile is
+  // never played on an outdated board (that is what made cards bounce back after switching tabs).
+  const hiddenAtRef = useRef<number | null>(null);
+  const resyncingRef = useRef(false);
+  const freshConnectionRef = useRef(false);
+  const resyncTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isResyncing, setIsResyncing] = useState(false);
+  const finishResync = useCallback(() => {
+    if (resyncTimerRef.current) {
+      clearTimeout(resyncTimerRef.current);
+      resyncTimerRef.current = null;
+    }
+    if (!resyncingRef.current) return;
+    resyncingRef.current = false;
+    setIsResyncing(false);
+  }, []);
   const gameStateRef = useRef<SanitizedGameState | null>(gameState);
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -258,6 +274,7 @@ export function useGameSocket() {
       if (!currentTargetRoomId) return;
       if (isLastActiveRef.current === false) return; // already marked away
       isLastActiveRef.current = false;
+      hiddenAtRef.current = Date.now();
 
       const user = currentUserRef.current;
       const payload = {
@@ -317,6 +334,42 @@ export function useGameSocket() {
         });
       }
 
+      // Bring the board up to date before the player can move again.
+      const awayMs = hiddenAtRef.current ? Date.now() - hiddenAtRef.current : 0;
+      hiddenAtRef.current = null;
+      const inMatch = Boolean(gameStateRef.current && gameStateRef.current.status !== 'MATCH_FINISHED');
+      if (inMatch && awayMs > 1000) {
+        resyncingRef.current = true;
+        setIsResyncing(true);
+        if (resyncTimerRef.current) clearTimeout(resyncTimerRef.current);
+        // Never block the player for long, even if every request fails.
+        resyncTimerRef.current = setTimeout(finishResync, 4000);
+      }
+
+      const socket = socketRef.current;
+      if (socket) {
+        if (!socket.connected) {
+          socket.connect();
+        } else {
+          // A connection that died while the tab was in the background still reports "connected"
+          // until its heartbeat times out (up to ~45s): nothing arrives and moves are lost. Ask the
+          // server for the current board; no answer within 2.5s means the link is dead -> reconnect.
+          socket.timeout(2500).emit('client:resync', { roomId: currentTargetRoomId }, (err: unknown, res: any) => {
+            if (err) {
+              socket.disconnect();
+              socket.connect();
+              return;
+            }
+            if (res?.gameState) {
+              const fresh = normalizeServerClock(res.gameState);
+              setGameState((prev) => mergeServerGameState(prev, fresh, optimisticMoveRef.current));
+            }
+            if (res?.room) setRoom(res.room);
+            finishResync();
+          });
+        }
+      }
+
       // Infallible keepalive HTTP beacon fallback + instant zero-lag authoritative match state fetch
       if (typeof window !== 'undefined') {
         const apiUrl = API_URL;
@@ -343,6 +396,7 @@ export function useGameSocket() {
               if (data.room) {
                 setRoom(data.room);
               }
+              finishResync();
             }
           })
           .catch(() => {});
@@ -419,6 +473,7 @@ export function useGameSocket() {
     socket.on('connect', () => {
       setIsConnected(true);
       setSocketInstance(socket);
+      freshConnectionRef.current = true;
       if (activeRoomIdRef.current) {
         if (myRoleRef.current === 'JUDGE') {
           socket.emit(ClientEvents.JOIN_AS_JUDGE, {
@@ -567,6 +622,11 @@ export function useGameSocket() {
         return;
       }
       setGameState((prev) => mergeServerGameState(prev, data.gameState, optimisticMoveRef.current));
+      // The first board sent on a new connection is current: the player may move again.
+      if (freshConnectionRef.current) {
+        freshConnectionRef.current = false;
+        finishResync();
+      }
       if (data.gameState.myRole) {
         setMyRole(data.gameState.myRole);
       }
@@ -1246,6 +1306,7 @@ export function useGameSocket() {
     (tile: DominoTile, end?: ChainEnd) => {
       const targetRoomId = room?.id || gameState?.roomId || activeRoomIdRef.current;
       if (!targetRoomId) return;
+      if (resyncingRef.current) return; // board is being refreshed after a tab switch
 
       optimisticMoveRef.current = { baseSeq: gameState?.sequenceNumber ?? 0, at: Date.now() };
       // Optimistic instant feedback: remove tile from hand and place on table chain immediately (0ms latency)
@@ -1361,6 +1422,7 @@ export function useGameSocket() {
     const targetRoomId = room?.id || gameState?.roomId || activeRoomIdRef.current;
     if (!targetRoomId) return;
 
+    if (resyncingRef.current) return; // board is being refreshed after a tab switch
     optimisticMoveRef.current = { baseSeq: gameState?.sequenceNumber ?? 0, at: Date.now() };
     // Optimistic turn advance
     setGameState((prev) => {
@@ -2115,6 +2177,7 @@ export function useGameSocket() {
   return {
     socket: socketInstance || socketRef.current,
     isConnected,
+    isResyncing,
     currentUser,
     myRole,
     room,

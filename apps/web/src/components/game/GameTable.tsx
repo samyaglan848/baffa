@@ -86,6 +86,8 @@ interface GameTableProps {
   onLeaveMatch: () => void;
   onTriggerBot?: (roomId?: string) => void;
   onOpenSettings?: () => void;
+  /** True for a moment after returning to the tab, until the current board has arrived. */
+  isResyncing?: boolean;
 }
 
 export const GameTable: React.FC<GameTableProps> = ({
@@ -115,6 +117,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   onLeaveMatch,
   onTriggerBot,
   onOpenSettings,
+  isResyncing = false,
 }) => {
   const { playSound } = useGameAudio(true);
   
@@ -263,7 +266,9 @@ export const GameTable: React.FC<GameTableProps> = ({
   const isObserver = (isJudge || isSpectator || isAllBots) && gameState.mySeat === null;
   const effectiveRole = isJudge ? 'JUDGE' : isSpectator ? 'SPECTATOR' : myRole;
   const mySeat = isObserver ? null : gameState.mySeat;
-  const isMyTurn = !isObserver && mySeat !== null && Number(gameState.currentTurnSeat) === Number(mySeat) && gameState.status === 'PLAYING';
+  // While the board is being refreshed after a tab switch, it is not treated as our turn yet, so no
+  // tile (or automatic pass) is sent based on an outdated board.
+  const isMyTurn = !isObserver && !isResyncing && mySeat !== null && Number(gameState.currentTurnSeat) === Number(mySeat) && gameState.status === 'PLAYING';
   const myLegalMoves = !isObserver ? (gameState.myLegalMoves || []) : [];
 
   // Recently passed players tracking: seat -> timestamp
@@ -556,9 +561,15 @@ export const GameTable: React.FC<GameTableProps> = ({
     }
   }, [gameState.matchId, gameState.roundNumber, gameState.status, playSound, gameState.chain.tiles.length]);
 
+  // Always the board of the latest render (the listener below is registered once per status, so
+  // reading `gameState` directly gave it the board from when it was registered).
+  const latestGameStateRef = useRef(gameState);
+  latestGameStateRef.current = gameState;
+
   // Tab switch recovery: when returning to the game tab, instantly clear any stuck drag, selection, or stale animation states
   useEffect(() => {
     const handleReturnToGame = () => {
+      const gameState = latestGameStateRef.current;
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         justReturnedFromBackgroundRef.current = true;
         setDragState(null);
@@ -2292,6 +2303,27 @@ export const GameTable: React.FC<GameTableProps> = ({
                           }}
                         />
                         <span className="arabic-font">دورك</span>
+                      </div>
+                    )}
+                    {isResyncing && !isRoundOver && (
+                      <div
+                        className="arabic-font"
+                        style={{
+                          position: 'absolute',
+                          bottom: '106%',
+                          right: '8px',
+                          padding: isLandscape ? '1px 6px' : isMobile ? '2px 8px' : '4px 12px',
+                          borderRadius: '16px',
+                          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                          border: '1px solid rgba(148, 163, 184, 0.4)',
+                          color: '#e2e8f0',
+                          fontWeight: 700,
+                          fontSize: isLandscape ? '0.62rem' : isMobile ? '0.7rem' : '0.78rem',
+                          whiteSpace: 'nowrap',
+                          zIndex: 60,
+                        }}
+                      >
+                        جاري تحديث الطاولة...
                       </div>
                     )}
                     {(() => {

@@ -803,6 +803,31 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     if (gameState) client.emit(ServerEvents.GAME_STATE_SYNC, { gameState });
   }
 
+  /**
+   * Called by the client when the player comes back to the tab. The acknowledgement proves the
+   * connection is still alive (a connection that died while the tab was in the background can look
+   * "connected" for up to ~45s, during which nothing arrived and moves were lost), and it carries the
+   * current room and board so the player resumes exactly where the game is now.
+   */
+  @SubscribeMessage('client:resync')
+  handleResync(@ConnectedSocket() client: Socket, @MessageBody() payload: { roomId?: string }) {
+    try {
+      const room = this.findRoom(payload?.roomId || '');
+      const userId: string | undefined = client.data?.user?.id;
+      if (!room || !userId) return { ok: true, room: null, gameState: null };
+      const m = this.getMembership(room, userId);
+      if (!m.isMember) return { ok: true, room: null, gameState: null };
+      client.join(room.id);
+      if (room.code && room.code !== room.id) client.join(room.code);
+      const role: UserRole = m.isJudge ? 'JUDGE' : m.seated ? (m.isAdmin ? 'ADMIN' : 'PLAYER') : 'SPECTATOR';
+      const seat = m.isJudge ? null : m.seated ? m.seated.seat : null;
+      const gameState = this.gameSessionService.getSanitizedState(room.id, seat, role);
+      return { ok: true, room, gameState };
+    } catch (err: any) {
+      return { ok: true, room: null, gameState: null, error: err.message };
+    }
+  }
+
   @SubscribeMessage(ClientEvents.CREATE_ROOM)
   handleCreateRoom(
     @ConnectedSocket() client: Socket,
@@ -1178,6 +1203,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           this.broadcastGameState(roomId);
         }
       } else {
+        // The client reports a return both over the socket and over HTTP; only the first one counts.
+        // (Each duplicate re-sent the whole room and board to every player.)
+        if (!this.playerAwaySince.has(awayKey)) return;
         const awayStart = this.playerAwaySince.get(awayKey);
         this.playerAwaySince.delete(awayKey);
         const awayDurationSec = awayStart ? Math.max(1, Math.round((Date.now() - awayStart) / 1000)) : 0;
@@ -1279,6 +1307,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           this.broadcastGameState(roomId);
         }
       } else {
+        if (!this.playerAwaySince.has(awayKey)) return { success: true, isAway: false };
         const awayStart = this.playerAwaySince.get(awayKey);
         this.playerAwaySince.delete(awayKey);
         const awayDurationSec = awayStart ? Math.max(1, Math.round((Date.now() - awayStart) / 1000)) : 0;

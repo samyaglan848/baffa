@@ -27,6 +27,7 @@ export default function App() {
   const {
     socket,
     isConnected,
+    isResyncing,
     currentUser,
     myRole,
     room,
@@ -627,6 +628,7 @@ export default function App() {
             onLeaveMatch={handleLeaveRoom}
             onTriggerBot={triggerBotTurn}
             onOpenSettings={() => setShowSettings(true)}
+            isResyncing={isResyncing}
           />
         )}
 
