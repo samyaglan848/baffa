@@ -44,6 +44,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { API_URL } from '@/config/api';
+import { gameAuthHeaders } from '@/config/gameAuth';
 
 // Persistent registry of announced rounds
 const globalAnnouncedRounds = new Set<string>();
@@ -807,7 +808,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       const apiUrl = API_URL;
       fetch(`${apiUrl}/api/matches/rematch`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ roomId: targetRoom, userId: currentUserId }),
       }).catch(() => {});
     }

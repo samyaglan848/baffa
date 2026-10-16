@@ -314,7 +314,8 @@ describe('BAFFA Comprehensive Adversarial Security, Anti-Cheat & Data-Integrity 
   describe('PART 4 & 5: Replay & Concurrency Race Condition Resistance', () => {
     const anticheatService = new AnticheatService(mockPrisma);
 
-    it('Rejects replayed or stale sequence numbers', () => {
+    it('Records stale sequence numbers as risk evidence without dropping legal moves', () => {
+      const before = anticheatService.getRiskScore('room_sec', 'attacker_1');
       const resStale = anticheatService.evaluateAction({
         userId: 'attacker_1',
         roomId: 'room_sec',
@@ -324,8 +325,10 @@ describe('BAFFA Comprehensive Adversarial Security, Anti-Cheat & Data-Integrity 
         timestamp: Date.now(),
       });
 
-      assert.strictEqual(resStale.isPermitted, false);
-      assert.strictEqual(resStale.warning, 'Stale action sequence rejected');
+      // Replays are blocked by the engine itself (see the next test); a stale counter alone
+      // must not reject an otherwise legal move.
+      assert.strictEqual(resStale.isPermitted, true);
+      assert.ok(anticheatService.getRiskScore('room_sec', 'attacker_1') > before);
     });
 
     it('Guarantees only one state transition for duplicate move attempts', () => {

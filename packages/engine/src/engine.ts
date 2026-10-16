@@ -134,6 +134,11 @@ export class DominoGameEngine {
     return this.chain;
   }
 
+  /** Epoch ms at which the current turn's thinking time runs out (includes judge extra time). */
+  public getTurnDeadline(): number {
+    return this.turnStartTime + this.turnTimeLimit * 1000;
+  }
+
   public getSequenceNumber(): number {
     return this.sequenceNumber;
   }
@@ -782,6 +787,7 @@ export class DominoGameEngine {
       latestBotMessage: this.latestBotMessage,
       turnTimeLimit: this.turnTimeLimit,
       turnStartTime: this.turnStartTime,
+      serverTime: Date.now(),
     };
   }
 }

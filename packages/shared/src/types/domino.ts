@@ -133,4 +133,6 @@ export interface SanitizedGameState {
   latestBotMessage?: BotChatMessage | null;
   turnTimeLimit?: number;
   turnStartTime?: number;
+  /** Server clock (ms) when this state was produced; lets clients correct for device clock skew. */
+  serverTime?: number;
 }

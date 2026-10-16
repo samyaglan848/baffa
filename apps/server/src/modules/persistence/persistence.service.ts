@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnApplicationShutdown } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getDataDir, getLegacyDbFiles } from '../../config/runtime';
 import { Gender, AccountStatus } from '@baffa/shared';
 
 export interface PersistedUser {
@@ -79,7 +80,7 @@ export interface PersistedDbData {
 }
 
 @Injectable()
-export class PersistenceService implements OnModuleInit {
+export class PersistenceService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(PersistenceService.name);
   private readonly dataDir: string;
   private readonly dbFilePath: string;
@@ -89,15 +90,59 @@ export class PersistenceService implements OnModuleInit {
   private saveTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.dataDir = path.resolve(process.cwd(), 'data');
+    // One fixed location (or DATA_DIR) — no longer depends on the folder the server is started from.
+    this.dataDir = getDataDir();
     this.dbFilePath = path.join(this.dataDir, 'baffa_db.json');
     this.ensureDataDir();
     this.loadFromDisk();
+    this.mergeLegacyDatabases();
+  }
+
+  /** Flush pending writes when the host stops the server (e.g. a redeploy) so nothing is lost. */
+  onApplicationShutdown(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+      this.saveToDiskSync();
+    }
   }
 
   async onModuleInit() {
-    this.ensureDataDir();
-    this.loadFromDisk();
+    // Already loaded in the constructor; reloading here would discard writes made in between.
+  }
+
+  /**
+   * Older builds wrote to `data/` relative to the launch folder, so depending on how the server
+   * was started users/matches ended up in different files. Merge them once into the canonical file.
+   */
+  private mergeLegacyDatabases(): void {
+    if (process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === 'test') return;
+    let added = 0;
+    for (const file of getLegacyDbFiles()) {
+      if (path.resolve(file) === path.resolve(this.dbFilePath) || !fs.existsSync(file)) continue;
+      try {
+        const parsed: PersistedDbData = JSON.parse(fs.readFileSync(file, 'utf-8'));
+        for (const [id, user] of Object.entries(parsed.users || {})) {
+          const existing = this.usersMap.get(id);
+          if (!existing || new Date(user.updatedAt || 0).getTime() > new Date(existing.updatedAt || 0).getTime()) {
+            if (!existing) added++;
+            this.usersMap.set(id, user);
+          }
+        }
+        for (const [id, match] of Object.entries(parsed.matches || {})) {
+          if (!this.matchesMap.has(id)) {
+            this.matchesMap.set(id, match);
+            added++;
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Could not merge legacy database ${file}: ${err.message}`);
+      }
+    }
+    if (added > 0) {
+      this.logger.log(`Merged ${added} records from legacy database files into ${this.dbFilePath}`);
+      this.saveToDiskSync();
+    }
   }
 
   private ensureDataDir(): void {
@@ -159,7 +204,7 @@ export class PersistenceService implements OnModuleInit {
         matches: Object.fromEntries(this.matchesMap),
       };
 
-      const tempPath = `${this.dbFilePath}.tmp_${Date.now()}`;
+      const tempPath = `${this.dbFilePath}.tmp_${process.pid}`;
       fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
       fs.renameSync(tempPath, this.dbFilePath);
     } catch (err: any) {
@@ -172,8 +217,9 @@ export class PersistenceService implements OnModuleInit {
       clearTimeout(this.saveTimeout);
     }
     this.saveTimeout = setTimeout(() => {
+      this.saveTimeout = null;
       this.saveToDiskSync();
-    }, 100);
+    }, 250);
   }
 
   // ==========================================

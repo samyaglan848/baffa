@@ -21,6 +21,7 @@ import {
   UserRole,
 } from '@baffa/shared';
 import { API_URL, SOCKET_URL } from '@/config/api';
+import { gameAuthHeaders, normalizeServerClock } from '@/config/gameAuth';
 
 export interface CurrentUser {
   id: string;
@@ -28,6 +29,43 @@ export interface CurrentUser {
   displayName?: string;
   avatar: string;
   token?: string;
+  /** Signed guest identity issued by the server (guests only). */
+  guestToken?: string;
+}
+
+/** A move shown on the board before the server confirmed it. */
+interface OptimisticMove {
+  baseSeq: number;
+  at: number;
+}
+
+/**
+ * Decides whether a server snapshot replaces the local game state. The server is authoritative: a
+ * snapshot of the same match/round with an equal or newer sequence number wins.
+ *
+ * The old rule also refused every snapshot with fewer tiles on the table. So when a move was
+ * rejected (e.g. the automatic referee's warning) the optimistic tile stayed on the board, the turn
+ * looked passed on, and the player was stuck until somebody else moved; a judge voiding the round
+ * froze every board the same way. The tile-count check is now only used for a short moment right
+ * after our own optimistic move, to avoid flicker from a snapshot sent just before the server got it.
+ */
+function mergeServerGameState(
+  prev: SanitizedGameState | null,
+  incoming: SanitizedGameState,
+  optimistic: OptimisticMove | null
+): SanitizedGameState {
+  if (!prev) return incoming;
+  if (prev.matchId !== incoming.matchId) return incoming;
+  if (incoming.roundNumber > prev.roundNumber) return incoming;
+  if (incoming.roundNumber < prev.roundNumber) return prev;
+  if ((incoming.sequenceNumber ?? 0) < (prev.sequenceNumber || 0)) return prev;
+
+  const pendingOwnMove =
+    optimistic !== null && Date.now() - optimistic.at < 3000 && (incoming.sequenceNumber ?? 0) <= optimistic.baseSeq;
+  if (pendingOwnMove && (incoming.chain?.tiles?.length || 0) < (prev.chain?.tiles?.length || 0)) {
+    return prev;
+  }
+  return incoming;
 }
 
 function getStoredUser(): CurrentUser {
@@ -63,16 +101,35 @@ function getStoredUser(): CurrentUser {
           if (cleanUsername) {
             parsed.username = cleanUsername;
           }
+          const guestToken = sessionStorage.getItem('baffa_guest_token');
+          if (guestToken) parsed.guestToken = guestToken;
+          delete parsed.token;
           return parsed;
         }
       } catch {}
     }
 
-    // 3. New visitor placeholder without writing to localStorage or sessionStorage
+    // 3. New visitor placeholder. The id is kept stable for this tab so repeated calls
+    //    (initial state + mount effect) don't open and close an extra socket connection.
+    let placeholderId = '';
+    try {
+      placeholderId = sessionStorage.getItem('baffa_placeholder_id') || '';
+      if (!placeholderId) {
+        placeholderId = `guest_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+        sessionStorage.setItem('baffa_placeholder_id', placeholderId);
+      }
+    } catch {
+      placeholderId = `guest_${Date.now().toString(36)}`;
+    }
+    let placeholderToken: string | undefined;
+    try {
+      placeholderToken = sessionStorage.getItem('baffa_guest_token') || undefined;
+    } catch {}
     return {
-      id: `guest_${Date.now().toString(36)}`,
+      id: placeholderId,
       username: 'ضيف',
       avatar: 'avatar-1',
+      guestToken: placeholderToken,
     };
   }
   return {
@@ -162,6 +219,7 @@ export function useGameSocket() {
   const activeRoomIdRef = useRef<string | null>(null);
   const leftRoomIdRef = useRef<string | null>(null);
   const isLastActiveRef = useRef<boolean | null>(null);
+  const optimisticMoveRef = useRef<OptimisticMove | null>(null);
   const gameStateRef = useRef<SanitizedGameState | null>(gameState);
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -220,7 +278,7 @@ export function useGameSocket() {
         const apiUrl = API_URL;
         fetch(`${apiUrl}/api/matches/visibility`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(payload),
           keepalive: true,
         }).catch(() => {});
@@ -264,7 +322,7 @@ export function useGameSocket() {
         const apiUrl = API_URL;
         fetch(`${apiUrl}/api/matches/visibility`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(payload),
           keepalive: true,
         }).catch(() => {});
@@ -273,27 +331,15 @@ export function useGameSocket() {
         // Pull latest authoritative match state directly from server bypassing any queued/delayed socket bursts
         const role = myRoleRef.current;
         const uName = encodeURIComponent(user?.username || '');
-        fetch(`${apiUrl}/api/matches/active-state/${currentTargetRoomId}?userId=${user?.id}&role=${role}&username=${uName}`, {
+        fetch(`${apiUrl}/api/matches/active-state/${currentTargetRoomId}`, {
           cache: 'no-store',
+          headers: gameAuthHeaders(),
         })
           .then((r) => (r.ok ? r.json() : null))
           .then((data) => {
+            if (data?.gameState) data.gameState = normalizeServerClock(data.gameState);
             if (data?.success && data?.gameState) {
-              setGameState((prev) => {
-                if (!prev) return data.gameState;
-                if (prev.matchId !== data.gameState.matchId) return data.gameState;
-                if (data.gameState.roundNumber > prev.roundNumber) return data.gameState;
-                if (data.gameState.roundNumber < prev.roundNumber) return prev;
-
-                const currentTiles = prev.chain?.tiles?.length || 0;
-                const incomingTiles = data.gameState.chain?.tiles?.length || 0;
-                if (incomingTiles < currentTiles) return prev;
-
-                if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {
-                  return prev;
-                }
-                return data.gameState;
-              });
+              setGameState((prev) => mergeServerGameState(prev, data.gameState, optimisticMoveRef.current));
               if (data.room) {
                 setRoom(data.room);
               }
@@ -331,6 +377,7 @@ export function useGameSocket() {
       // User identity didn't change: update socket auth parameters seamlessly without dropping connection
       (socketRef.current as any).auth = {
         token: currentUser.token,
+        guestToken: currentUser.guestToken,
         userId: currentUser.id,
         username: currentUser.username,
         avatar: currentUser.avatar,
@@ -339,6 +386,15 @@ export function useGameSocket() {
     }
 
     prevSocketUserIdRef.current = currentUser.id;
+
+    // Identity changed (login / logout): close the previous connection before opening a new one.
+    if (socketRef.current) {
+      try {
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+      } catch {}
+      socketRef.current = null;
+    }
 
     const socket = io(SOCKET_URL, {
       transports: ['websocket'],
@@ -350,6 +406,7 @@ export function useGameSocket() {
       timeout: 10000,
       auth: {
         token: currentUser.token,
+        guestToken: currentUser.guestToken,
         userId: currentUser.id,
         username: currentUser.username,
         avatar: currentUser.avatar,
@@ -385,6 +442,51 @@ export function useGameSocket() {
     socket.on('disconnect', () => {
       setIsConnected(false);
       setSocketInstance(null);
+    });
+
+    // The server tells us which identity it bound to this connection. Guests get a signed token
+    // that proves the guest id is theirs (needed to reclaim their seat after a reconnect).
+    socket.on('server:session', (data: { userId: string; isGuest: boolean; guestToken?: string; tokenRejected?: boolean }) => {
+      if (!data?.userId) return;
+      if (typeof window === 'undefined') return;
+
+      if (data.tokenRejected) {
+        // Saved login expired or is invalid: continue as a guest and ask the player to sign in again.
+        try {
+          localStorage.removeItem('baffa_token');
+          localStorage.removeItem('baffa_user');
+          sessionStorage.removeItem('baffa_token');
+          sessionStorage.setItem('baffa_guest_active', 'true');
+        } catch {}
+        setLatestNotification({
+          type: 'WARNING',
+          message: 'Your login session has expired. Please sign in again.',
+          arabicMessage: 'انتهت جلسة تسجيل الدخول، سجّل دخولك مرة أخرى للعب بحسابك.',
+          timestamp: Date.now(),
+        } as NotificationPayload);
+      }
+
+      if (data.isGuest) {
+        try {
+          if (data.guestToken) sessionStorage.setItem('baffa_guest_token', data.guestToken);
+        } catch {}
+        // Keep this socket: the server already bound the identity, so no reconnect is needed.
+        prevSocketUserIdRef.current = data.userId;
+        setCurrentUser((prev) => {
+          if (prev.id === data.userId && prev.guestToken === data.guestToken && !data.tokenRejected) return prev;
+          const updated: CurrentUser = {
+            ...prev,
+            id: data.userId,
+            guestToken: data.guestToken || prev.guestToken,
+            token: undefined,
+          };
+          try {
+            const { guestToken: _omit, ...persistable } = updated;
+            sessionStorage.setItem('baffa_user', JSON.stringify(persistable));
+          } catch {}
+          return updated;
+        });
+      }
     });
 
     socket.on(ServerEvents.ROOM_SYNC, (data: { room: RoomDetails }) => {
@@ -450,6 +552,8 @@ export function useGameSocket() {
     });
 
     socket.on(ServerEvents.GAME_STATE_SYNC, (data: { gameState: SanitizedGameState }) => {
+      if (!data?.gameState) return;
+      data = { ...data, gameState: normalizeServerClock(data.gameState) };
       // Ignore if this is from a room the user explicitly left
       if (leftRoomIdRef.current && leftRoomIdRef.current === data.gameState.roomId) {
         return;
@@ -462,22 +566,7 @@ export function useGameSocket() {
       if (!activeRoomIdRef.current) {
         return;
       }
-      setGameState((prev) => {
-        if (!prev) return data.gameState;
-        if (prev.matchId !== data.gameState.matchId) return data.gameState;
-        if (data.gameState.roundNumber > prev.roundNumber) return data.gameState;
-        if (data.gameState.roundNumber < prev.roundNumber) return prev;
-
-        const currentTiles = prev.chain?.tiles?.length || 0;
-        const incomingTiles = data.gameState.chain?.tiles?.length || 0;
-        if (incomingTiles < currentTiles) return prev;
-
-        // Never allow an older sequenceNumber packet from background WebSocket queue to overwrite newer state!
-        if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {
-          return prev;
-        }
-        return data.gameState;
-      });
+      setGameState((prev) => mergeServerGameState(prev, data.gameState, optimisticMoveRef.current));
       if (data.gameState.myRole) {
         setMyRole(data.gameState.myRole);
       }
@@ -506,8 +595,22 @@ export function useGameSocket() {
     });
 
     socket.on(ServerEvents.MOVE_REJECTED, (data: { reason: string; tile?: DominoTile }) => {
+      // The move did not happen: let the authoritative state the server sends next undo the
+      // optimistic tile/turn instead of being ignored.
+      optimisticMoveRef.current = null;
       setRejectedMove(data);
       setTimeout(() => setRejectedMove(null), 2500);
+
+      // The rejection reason was never displayed, so a player warned by the automatic referee did not
+      // know why their tile bounced. Arabic reasons are meant for the player; technical ones stay hidden.
+      const reason = data?.reason || '';
+      if (/[؀-ۿ]/.test(reason)) {
+        setLatestNotification((prev) =>
+          prev?.arabicMessage === reason
+            ? prev
+            : ({ type: 'WARNING', message: reason, arabicMessage: reason, timestamp: Date.now() } as NotificationPayload)
+        );
+      }
     });
 
     socket.on(ServerEvents.BOT_MESSAGE, (data: BotChatMessage) => {
@@ -638,12 +741,19 @@ export function useGameSocket() {
       });
     });
 
-    return () => {
-      if (prevSocketUserIdRef.current !== currentUser.id) {
-        socket.disconnect();
-      }
-    };
+    // No cleanup here: the socket is replaced in the effect body only when the identity really
+    // changes. (The old cleanup compared against a stale id and could drop a healthy connection.)
   }, [currentUser.token, currentUser.id]);
+
+  // Close the connection when the app unmounts.
+  useEffect(() => {
+    return () => {
+      try {
+        socketRef.current?.removeAllListeners();
+        socketRef.current?.disconnect();
+      } catch {}
+    };
+  }, []);
 
   const syncBoardState = useCallback(async (targetRoomId?: string) => {
     const rId = targetRoomId || room?.id || gameState?.roomId || activeRoomIdRef.current;
@@ -652,27 +762,15 @@ export function useGameSocket() {
       const apiUrl = API_URL;
       const role = myRoleRef.current;
       const uName = encodeURIComponent(currentUserRef.current.username || '');
-      const res = await fetch(
-        `${apiUrl}/api/matches/active-state/${rId}?userId=${currentUserRef.current.id}&role=${role}&username=${uName}`
-      );
+      const res = await fetch(`${apiUrl}/api/matches/active-state/${rId}`, {
+        cache: 'no-store',
+        headers: gameAuthHeaders(),
+      });
       if (!res.ok) return;
       const data = await res.json();
+      if (data?.gameState) data.gameState = normalizeServerClock(data.gameState);
       if (data.success && data.gameState) {
-        setGameState((prev) => {
-          if (!prev) return data.gameState;
-          if (prev.matchId !== data.gameState.matchId) return data.gameState;
-          if (data.gameState.roundNumber > prev.roundNumber) return data.gameState;
-          if (data.gameState.roundNumber < prev.roundNumber) return prev;
-
-          const currentTiles = prev.chain?.tiles?.length || 0;
-          const incomingTiles = data.gameState.chain?.tiles?.length || 0;
-          if (incomingTiles < currentTiles) return prev;
-
-          if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {
-            return prev;
-          }
-          return data.gameState;
-        });
+        setGameState((prev) => mergeServerGameState(prev, data.gameState, optimisticMoveRef.current));
         if (data.room) {
           setRoom(data.room);
         }
@@ -702,30 +800,18 @@ export function useGameSocket() {
         const apiUrl = API_URL;
         const role = myRoleRef.current;
         const uName = encodeURIComponent(currentUserRef.current.username || '');
-        const res = await fetch(
-          `${apiUrl}/api/matches/active-state/${targetRoomId}?userId=${currentUserRef.current.id}&role=${role}&username=${uName}`
-        );
+        const res = await fetch(`${apiUrl}/api/matches/active-state/${targetRoomId}`, {
+          cache: 'no-store',
+          headers: gameAuthHeaders(),
+        });
         if (!res.ok) return;
         const data = await res.json();
+        if (data?.gameState) data.gameState = normalizeServerClock(data.gameState);
+      if (data?.gameState) data.gameState = normalizeServerClock(data.gameState);
         if (!isSubscribed) return;
 
         if (data.success && data.gameState) {
-          setGameState((prev) => {
-            if (!prev) return data.gameState;
-            if (prev.matchId !== data.gameState.matchId) return data.gameState;
-            if (data.gameState.roundNumber > prev.roundNumber) return data.gameState;
-            if (data.gameState.roundNumber < prev.roundNumber) return prev;
-
-            const serverTiles = data.gameState.chain?.tiles?.length ?? 0;
-            const clientTiles = prev.chain?.tiles?.length ?? 0;
-            if (serverTiles < clientTiles) return prev;
-
-            if (data.gameState.sequenceNumber < (prev.sequenceNumber || 0)) {
-              return prev;
-            }
-
-            return data.gameState;
-          });
+          setGameState((prev) => mergeServerGameState(prev, data.gameState, optimisticMoveRef.current));
 
           if (data.room) {
             setRoom((prevRoom) => {
@@ -1024,7 +1110,7 @@ export function useGameSocket() {
       const apiUrl = API_URL;
       fetch(`${apiUrl}/api/matches/trigger-bot`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ roomId: rId, forceImmediate: Boolean(forceImmediate) }),
       }).catch(() => {});
     }
@@ -1132,7 +1218,7 @@ export function useGameSocket() {
       const apiUrl = API_URL;
       fetch(`${apiUrl}/api/matches/start`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ roomId: targetRoomId, userId: currentUser.id, username: currentUser.username, role: effectiveRole }),
       }).catch((err) => console.error('Fallback start failed:', err));
     }
@@ -1161,6 +1247,7 @@ export function useGameSocket() {
       const targetRoomId = room?.id || gameState?.roomId || activeRoomIdRef.current;
       if (!targetRoomId) return;
 
+      optimisticMoveRef.current = { baseSeq: gameState?.sequenceNumber ?? 0, at: Date.now() };
       // Optimistic instant feedback: remove tile from hand and place on table chain immediately (0ms latency)
       setGameState((prev) => {
         if (!prev) return prev;
@@ -1256,7 +1343,7 @@ export function useGameSocket() {
       if (!socketRef.current || !socketRef.current.connected) {
         fetch(`${apiUrl}/api/matches/play-tile`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             seat: gameState?.mySeat,
@@ -1274,6 +1361,7 @@ export function useGameSocket() {
     const targetRoomId = room?.id || gameState?.roomId || activeRoomIdRef.current;
     if (!targetRoomId) return;
 
+    optimisticMoveRef.current = { baseSeq: gameState?.sequenceNumber ?? 0, at: Date.now() };
     // Optimistic turn advance
     setGameState((prev) => {
       if (!prev) return prev;
@@ -1305,7 +1393,7 @@ export function useGameSocket() {
     if (!socketRef.current || !socketRef.current.connected) {
       fetch(`${apiUrl}/api/matches/pass-turn`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           roomId: targetRoomId,
           seat: gameState?.mySeat,
@@ -1359,7 +1447,7 @@ export function useGameSocket() {
       } else {
         fetch(`${apiUrl}/api/matches/judge-decision`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             action: 'CHEATING',
@@ -1425,7 +1513,7 @@ export function useGameSocket() {
       } else {
         fetch(`${apiUrl}/api/matches/judge-decision`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             action: 'WARN',
@@ -1475,7 +1563,7 @@ export function useGameSocket() {
       } else {
         fetch(`${apiUrl}/api/matches/judge-decision`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             action: 'RED_CARD',
@@ -1530,7 +1618,7 @@ export function useGameSocket() {
       } else {
         fetch(`${apiUrl}/api/matches/judge-decision`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             action: 'MUTE',
@@ -1573,7 +1661,7 @@ export function useGameSocket() {
       } else {
         fetch(`${apiUrl}/api/matches/judge-decision`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             action: 'VOID',
@@ -1617,7 +1705,7 @@ export function useGameSocket() {
       } else {
         fetch(`${apiUrl}/api/matches/judge-decision`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             action: 'EXTRA_TIME',
@@ -1659,7 +1747,7 @@ export function useGameSocket() {
       } else {
         fetch(`${apiUrl}/api/matches/judge-decision`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             action: 'TERMINATE',
@@ -1842,7 +1930,7 @@ export function useGameSocket() {
       } else {
         fetch(`${apiUrl}/api/matches/judge-decision`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             action: 'SUB',
@@ -1885,7 +1973,7 @@ export function useGameSocket() {
     // Proactive HTTP fallback so next round ALWAYS triggers smoothly
     fetch(`${apiUrl}/api/matches/next-round`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         roomId: targetRoomId,
         userId: currentUserRef.current.id,
@@ -1947,7 +2035,7 @@ export function useGameSocket() {
         const apiUrl = API_URL;
         fetch(`${apiUrl}/api/matches/rematch`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             roomId: targetRoomId,
             userId: currentUserRef.current?.id,
@@ -1975,7 +2063,7 @@ export function useGameSocket() {
       const apiUrl = API_URL;
       fetch(`${apiUrl}/api/matches/leave`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ roomId: targetRoomId, userId: currentUserRef.current?.id }),
         keepalive: true,
       }).catch(() => {});

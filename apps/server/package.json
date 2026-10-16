@@ -8,7 +8,7 @@
     "start": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "test": "tsc -p tsconfig.json && node --test dist/tests/**/*.spec.js"
+    "test": "tsc -p tsconfig.json && node --test \"dist/tests/*.spec.js\""
   },
   "dependencies": {
     "@baffa/engine": "^1.0.0",

@@ -10,6 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
+import { randomBytes } from 'crypto';
 import {
   AdminMoveSeatPayload,
   AdminToggleBotPayload,
@@ -47,15 +48,34 @@ import {
 } from '@baffa/shared';
 import { RoomService } from '../modules/room/room.service';
 import { GameSessionService } from '../modules/game/game-session.service';
-import { AuthService } from '../modules/auth/auth.service';
+import { AuthService, isGuestId } from '../modules/auth/auth.service';
 import { VoiceService } from '../modules/voice/voice.service';
 import { AnticheatService } from '../modules/anticheat/anticheat.service';
 import { PersistenceService } from '../modules/persistence/persistence.service';
+import { toPublicAvatar } from '../modules/profile/avatar-url';
+
+export interface HttpIdentity {
+  id: string;
+  username: string;
+  avatar: string;
+  isGuest: boolean;
+}
+
+function socketCorsOrigins(): string[] | '*' {
+  const raw = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '';
+  const list = raw
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter((o) => o.length > 0 && o !== '*');
+  return list.length > 0 ? list : '*';
+}
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: socketCorsOrigins(),
   },
+  // 1MB per message is plenty for game events (avatars are no longer sent inline).
+  maxHttpBufferSize: 1e6,
 })
 export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(GameGateway.name);
@@ -74,52 +94,71 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     private readonly persistence: PersistenceService
   ) {}
 
+  private readonly roomEmptySince = new Map<string, number>();
+  private janitorTimer?: NodeJS.Timeout;
+
+  /**
+   * Rooms (and their game engines + timers) were never removed unless the last player pressed
+   * "leave". Closed tabs left them in memory forever, so the server slowly filled up.
+   * A room with no connected participant for 15 minutes is now cleaned up.
+   */
+  private runRoomJanitor() {
+    const now = Date.now();
+    const EMPTY_ROOM_TTL_MS = 15 * 60 * 1000;
+    for (const room of this.roomService.getAllRooms()) {
+      const hasLiveParticipant = this.collectRoomTargets(room).some((id) => this.server.sockets.sockets.get(id)?.connected);
+      if (hasLiveParticipant) {
+        this.roomEmptySince.delete(room.id);
+        continue;
+      }
+      const since = this.roomEmptySince.get(room.id) ?? now;
+      this.roomEmptySince.set(room.id, since);
+      if (now - since >= EMPTY_ROOM_TTL_MS) {
+        this.gameSessionService.endSession(room.id);
+        this.roomService.deleteRoom(room.id);
+        this.roomEmptySince.delete(room.id);
+        this.logger.log(`Cleaned up abandoned room ${room.id}`);
+      }
+    }
+    for (const id of this.roomEmptySince.keys()) {
+      if (!this.roomService.getRoom(id)) this.roomEmptySince.delete(id);
+    }
+    for (const [key, info] of this.recentlyLeftUsers.entries()) {
+      if (now - info.timestamp > 60_000) this.recentlyLeftUsers.delete(key);
+    }
+    const liveRoomIds = this.roomService.getAllRooms().map((r) => r.id);
+    for (const [key, ts] of this.playerAwaySince.entries()) {
+      const belongsToLiveRoom = liveRoomIds.some((id) => key.startsWith(`${id}_`));
+      if (!belongsToLiveRoom || now - ts > 6 * 60 * 60 * 1000) this.playerAwaySince.delete(key);
+    }
+  }
+
   afterInit() {
     this.logger.log('Authenticated GameGateway initialized');
+    this.janitorTimer = setInterval(() => {
+      try {
+        this.runRoomJanitor();
+      } catch (err: any) {
+        this.logger.warn(`Room janitor error: ${err.message}`);
+      }
+    }, 60_000);
+    this.janitorTimer.unref?.();
     this.gameSessionService.setCallbacks({
       broadcastStateToRoom: (roomId: string) => this.broadcastGameState(roomId),
       emitErrorToPlayer: (socketId: string, error: string) => {
         this.server.to(socketId).emit(ServerEvents.MOVE_REJECTED, { reason: error });
       },
       broadcastBotChat: (roomId: string, chat: BotChatMessage) => {
-        const room = this.roomService.getRoom(roomId) || this.roomService.getRoomByCode(roomId);
-        const actualRoomId = room ? room.id : roomId;
-        const roomCode = room?.code;
-
-        this.server.to(actualRoomId).emit(ServerEvents.BOT_MESSAGE, chat);
-        if (roomCode && roomCode !== actualRoomId) {
-          this.server.to(roomCode).emit(ServerEvents.BOT_MESSAGE, chat);
-        }
-        if (roomId !== actualRoomId && roomId !== roomCode) {
-          this.server.to(roomId).emit(ServerEvents.BOT_MESSAGE, chat);
-        }
-
-        // Direct emission to every connected player socket in this room
-        const connected = this.roomService.getConnectedPlayersInRoom(actualRoomId);
-        for (const cp of connected) {
-          if (cp.socketId) {
-            this.server.to(cp.socketId).emit(ServerEvents.BOT_MESSAGE, chat);
-          }
-        }
-
-        // Also broadcast as QUICK_CHAT_BROADCAST so it renders in in-game chat stream and bubbles
-        const quickChatPayload = {
+        this.emitToRoom(roomId, ServerEvents.BOT_MESSAGE, chat);
+        // Also delivered as QUICK_CHAT_BROADCAST so it renders in the in-game chat stream and bubbles
+        this.emitToRoom(roomId, ServerEvents.QUICK_CHAT_BROADCAST, {
           userId: `bot_${chat.seat}`,
           messageId: chat.text,
           senderName: chat.botName,
           seat: chat.seat,
           timestamp: chat.timestamp,
-        };
-        this.server.to(actualRoomId).emit(ServerEvents.QUICK_CHAT_BROADCAST, quickChatPayload);
-        if (roomCode && roomCode !== actualRoomId) {
-          this.server.to(roomCode).emit(ServerEvents.QUICK_CHAT_BROADCAST, quickChatPayload);
-        }
-        for (const cp of connected) {
-          if (cp.socketId) {
-            this.server.to(cp.socketId).emit(ServerEvents.QUICK_CHAT_BROADCAST, quickChatPayload);
-          }
-        }
-        this.logger.log(`[BOT_MESSAGE_BROADCAST] room=${actualRoomId} bot=${chat.botName} (seat ${chat.seat}) said: "${chat.text}" (targets: ${connected.length})`);
+        });
+        this.logger.debug(`[BOT_MESSAGE] room=${roomId} bot=${chat.botName} (seat ${chat.seat}): "${chat.text}"`);
       },
       broadcastStatsUpdated: (roomId: string) => {
         this.server.to(roomId).emit(ServerEvents.STATS_UPDATED, { timestamp: Date.now() });
@@ -127,158 +166,119 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       broadcastNotification: (roomId: string, notification: NotificationPayload) => {
         this.broadcastNotificationToRoom(roomId, notification);
       },
+      broadcastRefereeDecision: (roomId: string, decision: RefereeDecisionBroadcastPayload) => {
+        this.emitToRoom(roomId, ServerEvents.REFEREE_DECISION_BROADCAST, decision);
+      },
+      notifySeat: (roomId: string, seat: PlayerSeat, notification: NotificationPayload) => {
+        this.notifySeatPlayer(roomId, seat, notification);
+      },
     });
+  }
+
+  /**
+   * The referee's decision card disappears after a few seconds and names the player only by seat,
+   * so a warned player often missed it. They now also get their own message that stays until closed.
+   */
+  private notifyWarnedPlayer(roomId: string, seat: PlayerSeat, judgeName: string, reason: string, isCheating: boolean) {
+    this.notifySeatPlayer(roomId, seat, {
+      type: isCheating ? 'ALERT' : 'WARNING',
+      message: isCheating ? 'Second warning from the referee: cheating penalty.' : 'The referee gave you a warning.',
+      arabicMessage: isCheating
+        ? `🟥 الحكم ${judgeName} اداك الإنذار التاني (${reason}). اتحسبت عليك حالة غش واتنهت الجولة.`
+        : `🟨 الحكم ${judgeName} اداك إنذار: ${reason}. الإنذار التاني في نفس الجولة بيتحسب غش.`,
+      timestamp: Date.now(),
+      persistent: true,
+    });
+  }
+
+  /** Delivers a notification only to the human player sitting in a seat (all of their connections). */
+  private notifySeatPlayer(roomId: string, seat: PlayerSeat, notification: NotificationPayload) {
+    const room = this.findRoom(roomId);
+    const playerId = room?.seats[seat]?.playerId;
+    if (!room || !playerId || room.seats[seat].isBot) return;
+    for (const s of this.server.sockets.sockets.values()) {
+      if (s.connected && s.data?.user?.id === playerId) s.emit(ServerEvents.NOTIFICATION, notification);
+    }
   }
 
   public broadcastNotificationToRoom(roomId: string, notif: NotificationPayload, excludeSocketId?: string) {
-    const room = this.roomService.getRoom(roomId) || this.roomService.getRoomByCode(roomId);
-    const actualRoomId = room ? room.id : roomId;
-    const roomCode = room?.code;
-
-    // 1. Native socket.io broadcast to room channels
-    if (excludeSocketId) {
-      this.server.to(actualRoomId).except(excludeSocketId).emit(ServerEvents.NOTIFICATION, notif);
-      if (roomCode && roomCode !== actualRoomId) {
-        this.server.to(roomCode).except(excludeSocketId).emit(ServerEvents.NOTIFICATION, notif);
-      }
-    } else {
-      this.server.to(actualRoomId).emit(ServerEvents.NOTIFICATION, notif);
-      if (roomCode && roomCode !== actualRoomId) {
-        this.server.to(roomCode).emit(ServerEvents.NOTIFICATION, notif);
-      }
-    }
-
-    // 2. Direct fallback to any known individual sockets
-    const targetSockets = new Set<string>();
-    const inRoom = this.server.sockets.adapter.rooms.get(actualRoomId);
-    if (inRoom) for (const s of inRoom) targetSockets.add(s);
-    if (roomCode) {
-      const inCode = this.server.sockets.adapter.rooms.get(roomCode);
-      if (inCode) for (const s of inCode) targetSockets.add(s);
-    }
-    const connected = this.roomService.getConnectedPlayersInRoom(actualRoomId);
-    for (const cp of connected) {
-      if (cp.socketId) targetSockets.add(cp.socketId);
-    }
-    if (excludeSocketId) targetSockets.delete(excludeSocketId);
-
-    for (const socketId of targetSockets) {
-      this.server.to(socketId).emit(ServerEvents.NOTIFICATION, notif);
-    }
-
-    try {
-      require('fs').appendFileSync('debug.log', `[NOTIFICATION_BROADCAST] room=${actualRoomId} targets=${targetSockets.size} msg=${notif.arabicMessage}\n`);
-    } catch (e) {}
+    this.emitToRoom(roomId, ServerEvents.NOTIFICATION, notif, excludeSocketId);
   }
 
   public syncRoomToAll(roomId: string, room: any, excludeSocketId?: string) {
-    const actualRoomId = room?.id || roomId;
-    const roomCode = room?.code;
-
-    // 1. Native socket.io broadcast to room channels
-    if (excludeSocketId) {
-      this.server.to(actualRoomId).except(excludeSocketId).emit(ServerEvents.ROOM_SYNC, { room });
-      if (roomCode && roomCode !== actualRoomId) {
-        this.server.to(roomCode).except(excludeSocketId).emit(ServerEvents.ROOM_SYNC, { room });
-      }
-    } else {
-      this.server.to(actualRoomId).emit(ServerEvents.ROOM_SYNC, { room });
-      if (roomCode && roomCode !== actualRoomId) {
-        this.server.to(roomCode).emit(ServerEvents.ROOM_SYNC, { room });
-      }
-    }
-
-    // 2. Direct fallback to known individual sockets
-    const targetSockets = new Set<string>();
-    const inRoom = this.server.sockets.adapter.rooms.get(actualRoomId);
-    if (inRoom) for (const s of inRoom) targetSockets.add(s);
-    if (roomCode) {
-      const inCode = this.server.sockets.adapter.rooms.get(roomCode);
-      if (inCode) for (const s of inCode) targetSockets.add(s);
-    }
-    const connected = this.roomService.getConnectedPlayersInRoom(actualRoomId);
-    for (const cp of connected) {
-      if (cp.socketId) targetSockets.add(cp.socketId);
-    }
-    if (excludeSocketId) targetSockets.delete(excludeSocketId);
-
-    for (const socketId of targetSockets) {
-      this.server.to(socketId).emit(ServerEvents.ROOM_SYNC, { room });
-    }
+    this.emitToRoom(room?.id || roomId, ServerEvents.ROOM_SYNC, { room }, excludeSocketId);
   }
 
   handleConnection(client: Socket) {
-    const token =
-      client.handshake.auth?.token ||
-      (client.handshake.headers?.authorization?.startsWith('Bearer ')
-        ? client.handshake.headers.authorization.substring(7)
-        : null);
+    const auth = (client.handshake.auth || {}) as Record<string, any>;
+    const bearer = client.handshake.headers?.authorization?.startsWith('Bearer ')
+      ? client.handshake.headers.authorization.substring(7)
+      : null;
+    const token: string | null = (typeof auth.token === 'string' && auth.token) || bearer || null;
+    const guestToken: string | null = typeof auth.guestToken === 'string' ? auth.guestToken : null;
 
-    client.on('disconnect', (reason: string) => {
-      try {
-        require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[DISCONNECT] id=${client.id} user=${client.data?.user?.username} reason=${reason} transport=${(client as any).conn?.transport?.name}\n`);
-      } catch(e) {}
-    });
+    let resolvedUser: { id: string; username: string; avatar: string; isAuthenticated: boolean; isGuest: boolean } | null = null;
+    let tokenRejected = false;
 
-    let resolvedUser: { id: string; username: string; avatar: string; isAuthenticated: boolean } | null = null;
-
+    // 1. Registered account: only a correctly signed, unexpired token is accepted.
     if (token) {
-      const userPayload = this.authService.validateToken(token);
-      if (userPayload) {
+      const userPayload = this.authService.validateGameToken(token);
+      if (userPayload && !userPayload.isGuest) {
         const persisted = this.persistence.getUserById(userPayload.sub);
         let cleanName = (persisted?.displayName || persisted?.username || userPayload.username || '').trim();
         cleanName = cleanName.replace(/_\d{3,4}$/, '');
         if (!cleanName) cleanName = 'لاعب';
 
-        const cleanAvatar = persisted?.customAvatarUrl || persisted?.avatarUrl || 'avatar-1';
-
         resolvedUser = {
           id: userPayload.sub,
           username: cleanName,
-          avatar: cleanAvatar,
+          avatar: this.publicAvatar(userPayload.sub, persisted?.customAvatarUrl || persisted?.avatarUrl || 'avatar-1'),
           isAuthenticated: true,
+          isGuest: false,
         };
-
-        if (persisted && (persisted.username !== cleanName || (persisted.displayName && persisted.displayName !== cleanName))) {
-          this.persistence.saveUser({
-            id: persisted.id,
-            username: cleanName,
-            displayName: cleanName,
-          });
-        }
-
         this.logger.log(`Authenticated client connected: ${cleanName} (${client.id})`);
+      } else if (userPayload && userPayload.isGuest) {
+        resolvedUser = this.buildGuestIdentity(userPayload.sub, auth.username, auth.avatar);
+      } else {
+        tokenRejected = true;
       }
     }
 
-    if (!resolvedUser) {
-      // Check if client provided persistent guest info from local state
-      const authUserId = client.handshake.auth?.userId;
-      const authUsername = client.handshake.auth?.username;
-      const authAvatar = client.handshake.auth?.avatar;
-
-      let guestUsername = typeof authUsername === 'string' && authUsername.trim().length > 0
-        ? authUsername.trim().replace(/_\d{3,4}$/, '')
-        : 'ضيف';
-      if (guestUsername.startsWith('Guest_') || guestUsername.startsWith('guest_') || guestUsername.startsWith('ضيف_')) {
-        guestUsername = 'ضيف';
+    // 2. Guest with a server-issued guest token (proves ownership of the guest id).
+    if (!resolvedUser && guestToken) {
+      const guestPayload = this.authService.validateGameToken(guestToken);
+      if (guestPayload && guestPayload.isGuest) {
+        resolvedUser = this.buildGuestIdentity(guestPayload.sub, auth.username, auth.avatar);
       }
+    }
 
-      const guestId = (typeof authUserId === 'string' && authUserId.length > 0)
-        ? authUserId
-        : `guest_${client.id}`;
-      const guestAvatar = typeof authAvatar === 'string' ? authAvatar : 'avatar-1';
-
-      resolvedUser = {
-        id: guestId,
-        username: guestUsername || 'ضيف',
-        avatar: guestAvatar,
-        isAuthenticated: false,
-      };
-      this.logger.log(`Client connected: ${resolvedUser.username} (${resolvedUser.id}) [${client.id}]`);
+    // 3. Guest without a token yet: accept the client-generated guest id only if nobody is using it,
+    //    otherwise hand out a fresh one. Registered ids can never be claimed this way.
+    if (!resolvedUser) {
+      const claimed = auth.userId;
+      const guestId = isGuestId(claimed) && !this.isIdentityInUse(claimed)
+        ? claimed
+        : `guest_${randomBytes(9).toString('hex')}`;
+      resolvedUser = this.buildGuestIdentity(guestId, auth.username, auth.avatar);
     }
 
     client.data.user = resolvedUser;
+
+    // Tell the client which identity the server bound to this connection.
+    // Guests receive a signed token so a reconnect (or another device) can prove it is them.
+    client.emit('server:session', {
+      userId: resolvedUser.id,
+      username: resolvedUser.username,
+      isGuest: resolvedUser.isGuest,
+      guestToken: resolvedUser.isGuest
+        ? this.authService.issueGuestToken(resolvedUser.id, resolvedUser.username)
+        : undefined,
+      tokenRejected,
+    });
+
+    if (!resolvedUser.isAuthenticated) {
+      this.logger.log(`Guest connected: ${resolvedUser.username} (${resolvedUser.id}) [${client.id}]`);
+    }
 
     try {
       this.rebindConnectingClient(client, resolvedUser);
@@ -286,6 +286,71 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       this.logger.warn(`Auto-rebind error for ${client.id}: ${err.message}`);
     }
   }
+
+  /** At most 6 chat messages / reactions per 5 seconds per connection. */
+  private isChatFlooding(client: Socket): boolean {
+    const now = Date.now();
+    const recent: number[] = (client.data.chatTimes || []).filter((t: number) => now - t < 5000);
+    if (recent.length >= 6) {
+      client.data.chatTimes = recent;
+      return true;
+    }
+    recent.push(now);
+    client.data.chatTimes = recent;
+    return false;
+  }
+
+  private hasOtherLiveSocket(userId: string, exceptSocketId: string): boolean {
+    for (const s of this.server.sockets.sockets.values()) {
+      if (s.id !== exceptSocketId && s.connected && s.data?.user?.id === userId) return true;
+    }
+    return false;
+  }
+
+  private buildGuestIdentity(guestId: string, rawName: unknown, rawAvatar: unknown) {
+    let guestUsername = typeof rawName === 'string' ? rawName.trim().replace(/_\d{3,4}$/, '').slice(0, 25) : '';
+    if (
+      !guestUsername ||
+      guestUsername.startsWith('Guest_') ||
+      guestUsername.startsWith('guest_') ||
+      guestUsername.startsWith('ضيف_')
+    ) {
+      guestUsername = 'ضيف';
+    }
+    const avatar = typeof rawAvatar === 'string' && /^(avatar-\d{1,2}|bot-[a-z-]+)$/.test(rawAvatar) ? rawAvatar : 'avatar-1';
+    return { id: guestId, username: guestUsername, avatar, isAuthenticated: false, isGuest: true };
+  }
+
+  /** True when an id is already bound to a live socket or referenced by any room. */
+  private isIdentityInUse(userId: string): boolean {
+    for (const s of this.server?.sockets?.sockets?.values?.() || []) {
+      if (s.data?.user?.id === userId) return true;
+    }
+    for (const r of this.roomService.getAllRooms()) {
+      if (
+        r.seats.some((s) => s.playerId === userId) ||
+        r.judge?.userId === userId ||
+        r.spectator?.userId === userId ||
+        r.spectators?.some((sp) => sp.userId === userId) ||
+        r.currentAdminId === userId ||
+        r.ownerId === userId ||
+        r.originalAdminId === userId
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Base64 photos stored in the DB are ~30-100KB each. Sending them inside every room/game
+   * sync made each bot move push hundreds of KB to every player. Real-time payloads now carry
+   * a short URL to the existing avatar endpoint instead.
+   */
+  public publicAvatar(userId: string, avatar: string | null | undefined): string {
+    return toPublicAvatar(userId, avatar, this.persistence.getUserById(userId)?.updatedAt);
+  }
+
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
@@ -324,6 +389,16 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
     // Clean up voice peer
     this.voiceService.removeSocket(client.id);
+
+    // Reconnect race: when a player's connection drops, the browser usually reconnects with a new
+    // socket *before* the server notices the old one is gone. Without this check the late
+    // disconnect of the old socket marked the (already reconnected) player as disconnected and
+    // handed their turns to the bot. If the same identity still has a live socket, do nothing.
+    if (userId && this.hasOtherLiveSocket(userId, client.id)) {
+      this.logger.log(`Ignoring stale disconnect of ${client.id}: user ${userId} is still connected on another socket`);
+      this.roomService.unregisterSocket(client.id);
+      return;
+    }
 
     if (roomId && player) {
       const room = this.roomService.getRoom(roomId);
@@ -447,8 +522,11 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             seated.presence = 'ONLINE';
             seated.isTemporarilyBotControlled = false;
             this.roomService.cancelDisconnectGrace(room.id, seated.seat);
+            // Also re-arms the turn flow; the room's bot timer is no longer cleared here (that froze
+            // the table whenever a player reconnected during a bot's turn).
             this.gameSessionService.setBotTakeover(room.id, seated.seat, false);
-            this.gameSessionService.clearBotTimeout(room.id);
+          } else {
+            this.gameSessionService.resumeTurnFlow(room.id);
           }
 
           if (hadGrace) {
@@ -507,243 +585,222 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
 
   /**
-   * Resolves caller identity. Guarantees that guests cannot spoof registered user UUIDs.
+   * Resolves the caller identity from the connection itself (set during the handshake from a
+   * verified token). IDs sent inside event payloads are ignored — previously a guest could send
+   * another player's id (visible in the room data) and act as that player.
+   * Guests may still change their display name through the payload.
    */
   private resolveUser(client: Socket, payloadUser?: any): { id: string; username: string; avatar: string } {
-    if (client.data.user?.isAuthenticated) {
-      const persisted = this.persistence.getUserById(client.data.user.id);
-      let name = (persisted?.displayName || persisted?.username || client.data.user.username || '').trim();
+    const bound = client.data.user as
+      | { id: string; username: string; avatar: string; isAuthenticated: boolean; isGuest?: boolean }
+      | undefined;
+
+    if (!bound || !bound.id) {
+      // Should never happen (handshake always binds an identity) — fall back to a socket-scoped guest.
+      const fallback = this.buildGuestIdentity(`guest_${client.id.replace(/[^A-Za-z0-9_-]/g, '')}`, payloadUser?.username, payloadUser?.avatar);
+      client.data.user = fallback;
+      return { id: fallback.id, username: fallback.username, avatar: fallback.avatar };
+    }
+
+    if (bound.isAuthenticated) {
+      const persisted = this.persistence.getUserById(bound.id);
+      let name = (persisted?.displayName || persisted?.username || bound.username || '').trim();
       name = name.replace(/_\d{3,4}$/, '');
-      const avatar = persisted?.customAvatarUrl || persisted?.avatarUrl || client.data.user.avatar || 'avatar-1';
-      return {
-        id: client.data.user.id,
-        username: name || 'لاعب',
-        avatar,
-      };
+      const avatar = this.publicAvatar(bound.id, persisted?.customAvatarUrl || persisted?.avatarUrl || bound.avatar || 'avatar-1');
+      return { id: bound.id, username: name || 'لاعب', avatar };
     }
 
-    const possibleId = payloadUser?.id || client.data.user?.id;
-    if (possibleId && possibleId !== 'default_user' && !possibleId.startsWith('guest_')) {
-      const persisted = this.persistence.getUserById(possibleId);
-      if (persisted) {
-        let name = (persisted.displayName || persisted.username || '').trim();
-        name = name.replace(/_\d{3,4}$/, '');
-        const avatar = persisted.customAvatarUrl || persisted.avatarUrl || 'avatar-1';
-        return {
-          id: persisted.id,
-          username: name || 'لاعب',
-          avatar,
-        };
-      }
+    // Guest: id is fixed, name/avatar are cosmetic and may be updated by the client.
+    const nameCandidate = payloadUser?.username;
+    if (typeof nameCandidate === 'string' && nameCandidate.trim().length >= 2 && nameCandidate.trim().length <= 25) {
+      const refreshed = this.buildGuestIdentity(bound.id, nameCandidate, payloadUser?.avatar || bound.avatar);
+      bound.username = refreshed.username;
+      bound.avatar = refreshed.avatar;
     }
+    return { id: bound.id, username: bound.username || 'ضيف', avatar: bound.avatar || 'avatar-1' };
+  }
 
-    // Guest user: Respect consistent ID provided by client
-    const guestId =
-      payloadUser?.id &&
-      typeof payloadUser.id === 'string' &&
-      payloadUser.id.length > 0 &&
-      payloadUser.id !== 'default_user'
-        ? payloadUser.id
-        : client.data.user?.id || `guest_${client.id}`;
+  private findRoom(roomIdOrCode: string) {
+    if (!roomIdOrCode || typeof roomIdOrCode !== 'string') return undefined;
+    return this.roomService.getRoom(roomIdOrCode) || this.roomService.getRoomByCode(roomIdOrCode);
+  }
 
-    let customName = payloadUser?.username;
-    if (typeof customName === 'string' && customName.trim().length >= 2 && customName.trim().length <= 25) {
-      customName = customName.trim().replace(/_\d{3,4}$/, '');
-    } else {
-      customName = client.data.user?.username || 'ضيف';
-      customName = customName.replace(/_\d{3,4}$/, '');
-      if (customName.startsWith('Guest_') || customName.startsWith('guest_') || customName.startsWith('ضيف_')) {
-        customName = 'ضيف';
-      }
-    }
-
-    const resolved = {
-      id: guestId,
-      username: customName || 'ضيف',
-      avatar: payloadUser?.avatar || 'avatar-1',
-    };
-
-    client.data.user = { ...resolved, isAuthenticated: false };
-    return resolved;
+  /** Membership of a user id in a room, by id only (never by display name). */
+  private getMembership(room: any, userId: string) {
+    const seated = room.seats.find((s: any) => !s.isBot && s.occupied && s.playerId === userId);
+    const isJudge = Boolean(room.judge && room.judge.userId === userId);
+    const isSpectator = Boolean(
+      room.spectator?.userId === userId || room.spectators?.some((sp: any) => sp.userId === userId)
+    );
+    const isAdmin =
+      room.currentAdminId === userId || room.originalAdminId === userId || room.ownerId === userId;
+    return { seated, isJudge, isSpectator, isAdmin, isMember: Boolean(seated || isJudge || isSpectator || isAdmin) };
   }
 
   /**
-   * Validates room existence and caller membership in the target room.
+   * Validates room existence and that the caller (by verified identity) belongs to the room.
    */
   private validateCallerInRoom(client: Socket, roomId: string, payloadUser?: any) {
     if (!roomId || typeof roomId !== 'string') {
       throw new Error('Invalid roomId provided');
     }
-    let player = this.roomService.getPlayerBySocket(client.id);
-    const room = this.roomService.getRoom(roomId);
+    const room = this.findRoom(roomId);
     if (!room) {
       throw new Error(`Room ${roomId} not found`);
     }
 
-    // Always ensure socket has joined both the room ID and room code Socket.io channels
-    client.join(roomId);
-    if (room.id && room.id !== roomId) client.join(room.id);
-    if (room.code && room.code !== roomId) client.join(room.code);
-
-    // Resolve caller identity with priority to authenticated credentials
     const userAuth = this.resolveUser(client, payloadUser);
-    const userId = userAuth.id || player?.userId;
-    const username = userAuth.username || player?.username;
-
-    if (!player || player.roomId !== roomId) {
-      if (userId || username) {
-        const seated = room.seats.find(
-          (s) => (userId && s.playerId === userId) || (!s.isBot && username && s.username === username)
-        );
-        const isAdmin = Boolean(
-          (userId && (room.currentAdminId === userId || room.originalAdminId === userId || room.ownerId === userId)) ||
-          (username && (room.currentAdminId === username || room.ownerId === username))
-        );
-        const isSpectator = Boolean(
-          (userId && room.spectator?.userId === userId) ||
-          (username && room.spectator?.username === username) ||
-          room.spectators?.some((sp) => (userId && sp.userId === userId) || (username && sp.username === username))
-        );
-        const isJudge = Boolean(
-          (userId && room.judge?.userId === userId) ||
-          (username && room.judge?.username === username)
-        );
-
-        if (!player) {
-          const user = {
-            id: userId || `recovered_${client.id}`,
-            username: seated?.username || username || 'Player',
-            avatar: payloadUser?.avatar || seated?.avatar || client.data.user?.avatar || 'avatar-1',
-          };
-          const role = isJudge
-            ? 'JUDGE'
-            : isSpectator
-            ? 'SPECTATOR'
-            : isAdmin
-            ? 'ADMIN'
-            : seated
-            ? 'PLAYER'
-            : 'PLAYER';
-          this.roomService.registerSocket(client.id, user, role);
-          player = this.roomService.getPlayerBySocket(client.id);
-        }
-        if (player) {
-          player.roomId = roomId;
-          if (isJudge || isSpectator || player.role === 'JUDGE' || player.role === 'SPECTATOR') {
-            player.seat = null;
-            player.role = (isJudge || player.role === 'JUDGE') ? 'JUDGE' : 'SPECTATOR';
-          } else if (seated) {
-            player.seat = seated.seat;
-            player.role = isAdmin ? 'ADMIN' : 'PLAYER';
-          } else {
-            player.seat = null;
-            player.role = isAdmin ? 'ADMIN' : 'PLAYER';
-          }
-        }
-      }
+    const membership = this.getMembership(room, userAuth.id);
+    let player = this.roomService.getPlayerBySocket(client.id);
+    if (player && player.userId !== userAuth.id) {
+      // Stale registration from a different identity on this socket — rebuild it.
+      this.roomService.unregisterSocket(client.id);
+      player = undefined;
     }
+
+    const registeredHere = Boolean(player && player.roomId === room.id);
+    if (!membership.isMember && !registeredHere) {
+      throw new Error('غير مسموح: أنت لست مشاركاً في هذه الغرفة');
+    }
+
+    client.join(room.id);
+    if (room.code && room.code !== room.id) client.join(room.code);
 
     if (!player) {
-      throw new Error('Client is not registered in any room');
+      const role: UserRole = membership.isJudge
+        ? 'JUDGE'
+        : membership.isSpectator
+        ? 'SPECTATOR'
+        : membership.isAdmin
+        ? 'ADMIN'
+        : 'PLAYER';
+      this.roomService.registerSocket(client.id, userAuth, role);
+      player = this.roomService.getPlayerBySocket(client.id)!;
     }
-    if (player.roomId !== roomId) {
-      player.roomId = roomId;
+
+    player.roomId = room.id;
+    if (membership.isJudge) {
+      player.role = 'JUDGE';
+      player.seat = null;
+    } else if (membership.isSpectator && !membership.seated) {
+      player.role = 'SPECTATOR';
+      player.seat = null;
+    } else if (membership.seated) {
+      player.seat = membership.seated.seat;
+      player.role = membership.isAdmin ? 'ADMIN' : 'PLAYER';
+    } else {
+      player.seat = null;
+      player.role = membership.isAdmin ? 'ADMIN' : 'PLAYER';
     }
+
     return { player, room };
   }
 
   /**
-   * Authoritatively validates and authorizes the presiding Judge/Referee in a room.
-   * Auto-joins the room channel and guarantees player registration with JUDGE role.
+   * Authorizes the presiding Judge/Referee of a room. Only the user recorded as the room's
+   * judge may use referee actions. (Previously any caller was promoted to judge automatically,
+   * so any player could hand a cheating penalty to the other team.)
    */
   private validateJudgeInRoom(client: Socket, roomId: string, payloadUser?: any): { player: any; room: any } {
-    if (!roomId || typeof roomId !== 'string') {
-      throw new Error('Invalid roomId provided');
+    const { player, room } = this.validateCallerInRoom(client, roomId, payloadUser);
+    if (!room.judge || room.judge.userId !== player.userId) {
+      throw new Error('غير مسموح: هذا الإجراء متاح لحكم الغرفة فقط');
     }
-    const room = this.roomService.getRoom(roomId);
+    room.judge.isConnected = true;
+    player.role = 'JUDGE';
+    player.seat = null;
+    return { player, room };
+  }
+
+  /** Every socket that should receive updates for a room (room channel, code channel, registered players). */
+  private collectRoomTargets(room: any, excludeSocketId?: string): string[] {
+    const targets = new Set<string>();
+    const add = (channel?: string) => {
+      if (!channel) return;
+      const members = this.server.sockets.adapter.rooms.get(channel);
+      if (members) for (const id of members) targets.add(id);
+    };
+    add(room.id);
+    if (room.code && room.code !== room.id) add(room.code);
+    for (const cp of this.roomService.getConnectedPlayersInRoom(room.id)) {
+      if (cp.socketId) targets.add(cp.socketId);
+    }
+    if (excludeSocketId) targets.delete(excludeSocketId);
+    return Array.from(targets);
+  }
+
+  /** Emits once per socket (the old code emitted the same event up to 3 times to each player). */
+  private emitToRoom(roomIdOrCode: string, event: string, payload: any, excludeSocketId?: string) {
+    const room = this.findRoom(roomIdOrCode);
     if (!room) {
-      throw new Error(`Room ${roomId} not found`);
+      if (excludeSocketId) this.server.to(roomIdOrCode).except(excludeSocketId).emit(event, payload);
+      else this.server.to(roomIdOrCode).emit(event, payload);
+      return;
     }
-
-    client.join(roomId);
-    const userAuth = this.resolveUser(client, payloadUser);
-    let player = this.roomService.getPlayerBySocket(client.id);
-
-    if (!player) {
-      this.roomService.registerSocket(client.id, userAuth, 'JUDGE');
-      player = this.roomService.getPlayerBySocket(client.id);
-    }
-
-    if (player) {
-      player.roomId = roomId;
-      player.role = 'JUDGE';
-    }
-
-    if (!room.judge) {
-      room.judge = {
-        userId: userAuth.id || player?.userId || 'judge_user',
-        username: userAuth.username || player?.username || 'الحكم',
-        avatar: userAuth.avatar || player?.avatar || 'avatar-1',
-        isConnected: true,
-        isMuted: false,
-      };
-    }
-
-    return { player: player!, room };
+    const targets = this.collectRoomTargets(room, excludeSocketId);
+    if (targets.length > 0) this.server.to(targets).emit(event, payload);
   }
 
   private broadcastGameState(roomId: string, directSocketId?: string) {
-    const room = this.roomService.getRoom(roomId);
+    const room = this.findRoom(roomId);
     if (!room) return;
 
-    this.server.to(roomId).emit(ServerEvents.ROOM_SYNC, { room });
+    const targets = new Set(this.collectRoomTargets(room));
+    if (directSocketId) targets.add(directSocketId);
+    if (targets.size === 0) return;
 
-    const socketIds = new Set<string>();
-    if (directSocketId) {
-      socketIds.add(directSocketId);
-    }
-    const socketsInRoom = this.server.sockets.adapter.rooms.get(roomId);
-    if (socketsInRoom) {
-      for (const socketId of socketsInRoom) {
-        socketIds.add(socketId);
-      }
-    }
-    const playersInRoom = this.roomService.getConnectedPlayersInRoom(roomId);
-    for (const p of playersInRoom) {
-      if (p.socketId) {
-        socketIds.add(p.socketId);
-      }
-    }
+    this.server.to(Array.from(targets)).emit(ServerEvents.ROOM_SYNC, { room });
 
-    for (const socketId of socketIds) {
-      this.server.to(socketId).emit(ServerEvents.ROOM_SYNC, { room });
+    const hasSession = Boolean(this.gameSessionService.getSession(room.id));
+    if (!hasSession) return;
 
-      const player = this.roomService.getPlayerBySocket(socketId);
-      const isJudge =
-        player?.role === 'JUDGE' ||
-        room.judge?.userId === player?.userId ||
-        Boolean(room.judge && player?.username && room.judge.username === player.username);
-      const isSpectator =
-        player?.role === 'SPECTATOR' ||
-        room.spectator?.userId === player?.userId ||
-        Boolean(room.spectator && player?.username && room.spectator.username === player.username);
+    // Cache the masked state per (seat, role): at most a handful of variants per room.
+    const cache = new Map<string, any>();
+    for (const socketId of targets) {
+      const socket = this.server.sockets.sockets.get(socketId);
+      const userId: string | undefined =
+        socket?.data?.user?.id || this.roomService.getPlayerBySocket(socketId)?.userId;
+      if (!userId) continue;
 
-      const seated = (isJudge || isSpectator)
-        ? undefined
-        : room.seats.find((s) => s.playerId === player?.userId || (!s.isBot && s.username === player?.username));
-      const seat = (isJudge || isSpectator) ? null : (seated ? seated.seat : (player?.seat ?? null));
-      const role = isJudge
+      // Seat and role are resolved strictly by user id. (Matching by display name leaked a
+      // player's private hand to anyone who joined with the same name, e.g. two guests named "ضيف".)
+      const m = this.getMembership(room, userId);
+      const role: UserRole = m.isJudge
         ? 'JUDGE'
-        : isSpectator
+        : m.seated
+        ? (m.isAdmin ? 'ADMIN' : 'PLAYER')
+        : m.isSpectator
         ? 'SPECTATOR'
-        : (player?.role ?? (room.currentAdminId === player?.userId ? 'ADMIN' : 'PLAYER'));
+        : 'SPECTATOR';
+      const seat = m.isJudge ? null : m.seated ? m.seated.seat : null;
 
-      // Sanitized state strictly masks private hands for opponents, judges, and spectators
-      const sanitized = this.gameSessionService.getSanitizedState(roomId, seat, role);
+      const key = `${seat}_${role}`;
+      let sanitized = cache.get(key);
+      if (sanitized === undefined) {
+        sanitized = this.gameSessionService.getSanitizedState(room.id, seat, role);
+        cache.set(key, sanitized);
+      }
       if (sanitized) {
         this.server.to(socketId).emit(ServerEvents.GAME_STATE_SYNC, { gameState: sanitized });
       }
     }
+  }
+
+  /**
+   * After a rejected move the client still shows its optimistic board (tile already on the table,
+   * turn passed on). Sending the authoritative state right away rolls that back; without it the
+   * player stared at a board where it was no longer their turn until someone else moved.
+   */
+  private resyncPlayer(client: Socket, roomId: string) {
+    const room = this.findRoom(roomId);
+    if (!room || !this.gameSessionService.getSession(room.id)) return;
+    const userId: string | undefined = client.data?.user?.id;
+    if (!userId) return;
+    const m = this.getMembership(room, userId);
+    const role: UserRole = m.isJudge ? 'JUDGE' : m.seated ? (m.isAdmin ? 'ADMIN' : 'PLAYER') : 'SPECTATOR';
+    const seat = m.isJudge ? null : m.seated ? m.seated.seat : null;
+    const gameState = this.gameSessionService.getSanitizedState(room.id, seat, role);
+    if (gameState) client.emit(ServerEvents.GAME_STATE_SYNC, { gameState });
   }
 
   @SubscribeMessage(ClientEvents.CREATE_ROOM)
@@ -818,6 +875,11 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           client.leave(r);
         }
       }
+      // joinRoom() cancels the disconnect grace itself, so remember whether there was one first
+      // (the old check ran afterwards, never matched, and left the seat flagged as bot-controlled).
+      const seatBefore = room.seats.find((s) => !s.isBot && s.occupied && s.playerId === user.id);
+      const hadActiveGrace = Boolean(seatBefore && room.disconnectGraces?.some((g) => g.seat === seatBefore.seat));
+
       const updatedRoom = this.roomService.joinRoom(room.id, client.id, user);
       client.join(room.id);
       if (room.code && room.code !== room.id) {
@@ -828,18 +890,34 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.voiceService.joinVoice(room.id, user.id, client.id, 'PLAYER');
       }
 
+      // A player coming back into a running match (after pressing "leave", or a new player taking a
+      // bot seat) must also replace the bot inside the game engine. Before, only the room seat was
+      // switched to human: the bot stopped playing that seat, the engine still listed the bot, and
+      // every turn of that seat waited for the full timer — the table looked frozen.
+      const mySeat = updatedRoom.seats.find((s) => !s.isBot && s.occupied && s.playerId === user.id);
+      const engine = this.gameSessionService.getSession(updatedRoom.id);
+      if (updatedRoom.matchStatus === 'PLAYING' && mySeat && engine) {
+        const enginePlayer = engine.getSanitizedState(null).players[mySeat.seat];
+        if (enginePlayer && (enginePlayer.isBot || enginePlayer.playerId !== user.id)) {
+          this.gameSessionService.updateSeatMetadata(updatedRoom.id, mySeat.seat, {
+            isBot: false,
+            playerId: user.id,
+            username: mySeat.username || user.username,
+            avatar: mySeat.avatar || user.avatar,
+            isConnected: true,
+            isTemporarilyBotControlled: false,
+          });
+        }
+        this.gameSessionService.setBotTakeover(updatedRoom.id, mySeat.seat, false);
+      }
+
       this.server.to(room.id).emit(ServerEvents.ROOM_SYNC, { room: updatedRoom });
       if (room.code && room.code !== room.id) {
         this.server.to(room.code).emit(ServerEvents.ROOM_SYNC, { room: updatedRoom });
       }
       client.emit(ServerEvents.ROOM_SYNC, { room: updatedRoom });
 
-      // If returning player from disconnect grace during an active match
-      const player = this.roomService.getPlayerBySocket(client.id);
-      const hasActiveGrace = player && player.seat !== null && room.disconnectGraces?.some((g) => g.seat === player.seat);
-      if (room.matchStatus === 'PLAYING' && hasActiveGrace && player && player.seat !== null) {
-        this.roomService.cancelDisconnectGrace(room.id, player.seat);
-        this.gameSessionService.setBotTakeover(room.id, player.seat, false);
+      if (room.matchStatus === 'PLAYING' && hadActiveGrace) {
         const returnNotif: NotificationPayload = {
           type: 'SUCCESS',
           message: `Player ${user.username} has returned to the game!`,
@@ -1052,28 +1130,18 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (!room) return;
       const roomId = room.id;
 
-      let player = this.roomService.getPlayerBySocket(client.id);
-      let userId = (payload as any)?.userId || (payload as any)?.user?.id || client.data?.user?.id || player?.userId;
-      let username = (payload as any)?.username || (payload as any)?.user?.username || player?.username || client.data?.user?.username;
-
-      if (!userId) {
-        const seated = room.seats.find((s) => s.occupied && !s.isBot && s.playerId === client.data?.user?.id);
-        if (seated) {
-          userId = seated.playerId!;
-          username = seated.username || 'أحد اللاعبين';
-        }
-      }
+      // Identity comes from the connection, never from the payload.
+      const userId: string | undefined = client.data?.user?.id;
       if (!userId) return;
-      if (!username) username = 'أحد اللاعبين';
+      const membership = this.getMembership(room, userId);
+      if (!membership.isMember) return;
+      const username: string = membership.seated?.username || client.data?.user?.username || 'أحد اللاعبين';
 
       client.join(roomId);
 
       const isAway = !payload.isVisible || !payload.hasWindowFocus;
       const awayKey = `${roomId}_${userId}`;
 
-      try {
-        require('fs').appendFileSync('debug.log', `[APP_VISIBILITY_RECEIVED] client=${client.id} room=${roomId} user=${userId} (${username}) isAway=${isAway}\n`);
-      } catch (e) {}
 
       if (isAway) {
         if (this.playerAwaySince.has(awayKey)) return;
@@ -1131,8 +1199,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (seatObj) {
           seatObj.presence = 'ONLINE';
           seatObj.isTemporarilyBotControlled = false;
+          // Previously this also cleared the room's bot timer: coming back to the tab during a bot's
+          // turn cancelled the bot's move and the game stood still until the turn timer expired.
           this.gameSessionService.setBotTakeover(roomId, seatObj.seat, false);
-          this.gameSessionService.clearBotTimeout(roomId);
         }
         if (room.judge && room.judge.userId === userId) {
           (room.judge as any).presence = 'ONLINE';
@@ -1157,35 +1226,23 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   public handleAppVisibilityChangedDirect(payload: {
     roomId?: string;
-    userId?: string;
-    username?: string;
     isVisible?: boolean;
     hasWindowFocus?: boolean;
-  }) {
+  }, identity: HttpIdentity) {
     try {
       if (!payload?.roomId) return { success: false, error: 'roomId required' };
       const room = this.roomService.getRoom(payload.roomId) || this.roomService.getRoomByCode(payload.roomId);
       if (!room) return { success: false, error: 'Room not found' };
       const roomId = room.id;
 
-      let userId = payload.userId;
-      let username = payload.username;
-      if (!userId) {
-        const seated = room.seats.find((s) => s.occupied && !s.isBot && s.playerId);
-        if (seated) {
-          userId = seated.playerId!;
-          username = seated.username || 'أحد اللاعبين';
-        }
-      }
-      if (!userId) return { success: false, error: 'userId not found' };
-      if (!username) username = 'أحد اللاعبين';
+      const membership = this.getMembership(room, identity.id);
+      if (!membership.isMember) return { success: false, error: 'Not a participant in this room' };
+      const userId = identity.id;
+      const username = membership.seated?.username || identity.username || 'أحد اللاعبين';
 
       const isAway = !payload.isVisible || !payload.hasWindowFocus;
       const awayKey = `${roomId}_${userId}`;
 
-      try {
-        require('fs').appendFileSync('debug.log', `[APP_VISIBILITY_HTTP] room=${roomId} user=${userId} (${username}) isAway=${isAway}\n`);
-      } catch (e) {}
 
       if (isAway) {
         if (this.playerAwaySince.has(awayKey)) return { success: true, isAway: true };
@@ -1265,12 +1322,16 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
   }
 
-  public handleLeaveRoomDirect(roomId?: string, userId?: string) {
+  public handleLeaveRoomDirect(roomId: string | undefined, identity: HttpIdentity) {
+    const userId = identity.id;
     try {
       if (!roomId) return { success: false, error: 'roomId required' };
       const room = this.roomService.getRoom(roomId) || this.roomService.getRoomByCode(roomId);
       if (!room) return { success: false, error: 'Room not found' };
       const actualRoomId = room.id;
+      if (!this.getMembership(room, userId).isMember) {
+        return { success: true, alreadyHandled: true };
+      }
 
       // Check deduplication
       if (userId) {
@@ -1510,9 +1571,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const userAuth = this.resolveUser(client, (payload as any)?.user);
       const isJudge =
         player?.role === 'JUDGE' ||
-        room.judge?.userId === userAuth.id ||
-        room.judge?.username === userAuth.username ||
-        room.judge?.userId === player?.userId;
+        room.judge?.userId === userAuth.id;
       const isAdmin =
         room.currentAdminId === player.userId ||
         room.currentAdminId === userAuth.id ||
@@ -1550,24 +1609,17 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { roomId: string; user?: any; role?: string }
   ) {
-    try { require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[ADMIN_START_MATCH] received payload=${JSON.stringify(payload)}\n`); } catch(e) {}
     try {
       const { player, room } = this.validateCallerInRoom(client, payload?.roomId, payload?.user);
       const userAuth = this.resolveUser(client, payload?.user);
-      try { require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[ADMIN_START_MATCH] validated player=${player?.userId} role=${player?.role}\n`); } catch(e) {}
       const allBotsOccupied = room.seats.filter((s) => s.occupied && !s.isBot).length === 0;
 
-      const isJudgeRequest =
-        payload?.role === 'JUDGE' ||
-        player.role === 'JUDGE' ||
-        Boolean(
-          room.judge &&
-            (room.judge.userId === userAuth.id ||
-              room.judge.username === userAuth.username ||
-              room.judge.userId === player.userId)
-        );
+      const isAlreadyJudge = Boolean(room.judge && room.judge.userId === userAuth.id);
+      const isJudgeRequest = payload?.role === 'JUDGE' || isAlreadyJudge;
 
-      if (isJudgeRequest) {
+      // Only become judge if not already the judge: joinAsJudge() toggles an existing judge back
+      // into a player seat, which used to silently remove the referee when they pressed "start".
+      if (payload?.role === 'JUDGE' && !isAlreadyJudge) {
         try {
           this.roomService.joinAsJudge(room.id, client.id, userAuth);
         } catch (err: any) {
@@ -1584,8 +1636,6 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         room.ownerId === player.userId ||
         room.currentAdminId === userAuth.id ||
         room.ownerId === userAuth.id ||
-        player.role === 'JUDGE' ||
-        player.role === 'ADMIN' ||
         isJudgeRequest ||
         allBotsOccupied ||
         isSoloHuman ||
@@ -1606,7 +1656,6 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       }
       this.broadcastGameState(payload.roomId, client.id);
     } catch (err: any) {
-      try { require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[ADMIN_START_MATCH] error: ${err.message}\n`); } catch(e) {}
       this.logger.error(`Error starting match in room ${payload?.roomId}: ${err.message}`);
       client.emit(ServerEvents.ROOM_ERROR, { message: err.message });
     }
@@ -1618,7 +1667,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() payload: PlayTilePayload
   ) {
     try {
-      const { player } = this.validateCallerInRoom(client, payload?.roomId);
+      const { player, room } = this.validateCallerInRoom(client, payload?.roomId);
       if (player.seat === null || !Number.isInteger(player.seat) || player.seat < 0 || player.seat > 3) {
         client.emit(ServerEvents.MOVE_REJECTED, { reason: 'Player is not seated in an active slot' });
         return;
@@ -1628,8 +1677,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         !payload.tile ||
         !Array.isArray(payload.tile) ||
         payload.tile.length !== 2 ||
-        typeof payload.tile[0] !== 'number' ||
-        typeof payload.tile[1] !== 'number' ||
+        !Number.isInteger(payload.tile[0]) ||
+        !Number.isInteger(payload.tile[1]) ||
         payload.tile[0] < 0 ||
         payload.tile[0] > 6 ||
         payload.tile[1] < 0 ||
@@ -1645,7 +1694,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       }
 
       const result = this.gameSessionService.playTile(
-        payload.roomId,
+        room.id,
         player.seat,
         payload.tile,
         payload.end,
@@ -1657,9 +1706,11 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           reason: result.error || 'Illegal move rejected',
           tile: payload.tile,
         });
+        this.resyncPlayer(client, room.id);
       }
     } catch (err: any) {
       client.emit(ServerEvents.MOVE_REJECTED, { reason: err.message || 'Action rejected' });
+      if (payload?.roomId) this.resyncPlayer(client, payload.roomId);
     }
   }
 
@@ -1669,20 +1720,22 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() payload: PassTurnPayload
   ) {
     try {
-      const { player } = this.validateCallerInRoom(client, payload?.roomId);
+      const { player, room } = this.validateCallerInRoom(client, payload?.roomId);
       if (player.seat === null || !Number.isInteger(player.seat) || player.seat < 0 || player.seat > 3) {
         client.emit(ServerEvents.MOVE_REJECTED, { reason: 'Player is not seated in an active slot' });
         return;
       }
 
-      const result = this.gameSessionService.passTurn(payload.roomId, player.seat, payload.sequenceNumber);
+      const result = this.gameSessionService.passTurn(room.id, player.seat, payload.sequenceNumber);
       if (!result.success) {
         client.emit(ServerEvents.MOVE_REJECTED, {
           reason: result.error || 'Cannot pass turn',
         });
+        this.resyncPlayer(client, room.id);
       }
     } catch (err: any) {
       client.emit(ServerEvents.MOVE_REJECTED, { reason: err.message || 'Pass rejected' });
+      if (payload?.roomId) this.resyncPlayer(client, payload.roomId);
     }
   }
 
@@ -1732,8 +1785,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           timestamp: Date.now(),
         };
 
-        this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
-        client.emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
         this.broadcastGameState(payload.roomId);
       } else {
         client.emit(ServerEvents.ROOM_ERROR, { message: result.error || 'فشل تطبيق عقوبة الغش' });
@@ -1784,8 +1836,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           timestamp: Date.now(),
         };
 
-        this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
-        client.emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.notifyWarnedPlayer(room.id, seat, player.username, reason, isCheating);
         this.broadcastGameState(payload.roomId);
         if (room.seats.every((s: any) => s.isBot)) {
           this.gameSessionService.checkAndTriggerBotTurn(payload.roomId, true);
@@ -1832,8 +1884,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           timestamp: Date.now(),
         };
 
-        this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
-        client.emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
         this.broadcastGameState(payload.roomId);
       } else {
         client.emit(ServerEvents.ROOM_ERROR, { message: result.error || 'فشل تطبيق الكارت الأحمر' });
@@ -2036,8 +2087,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             timestamp: Date.now(),
           };
 
-          this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
-          client.emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+          this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
           this.broadcastGameState(payload.roomId, client.id);
           if (room.seats.every((s: any) => s.isBot)) {
             this.gameSessionService.checkAndTriggerBotTurn(payload.roomId, true);
@@ -2070,8 +2120,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             timestamp: Date.now(),
           };
 
-          this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
-          client.emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+          this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
           this.broadcastGameState(payload.roomId, client.id);
         } else {
           client.emit(ServerEvents.ROOM_ERROR, { message: returnRes.error || 'فشل إعادة اللاعب إلى المقعد' });
@@ -2129,15 +2178,10 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() payload: { roomId: string; user?: any }
   ) {
     try {
-      let userId: string | undefined = payload?.user?.id;
-      try {
-        const { player } = this.validateCallerInRoom(client, payload?.roomId, (payload as any)?.user);
-        userId = player.userId;
-      } catch {
-        const room = this.roomService.getRoom(payload?.roomId);
-        userId = userId || room?.currentAdminId || 'user';
-      }
-      const result = this.gameSessionService.requestNextRound(payload.roomId, userId || 'user');
+      const { player, room } = this.validateCallerInRoom(client, payload?.roomId, (payload as any)?.user);
+      const userId = player.userId;
+      payload.roomId = room.id;
+      const result = this.gameSessionService.requestNextRound(payload.roomId, userId);
       if (result.success) {
         this.broadcastGameState(payload.roomId);
       }
@@ -2231,19 +2275,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
   }
 
-  public startRematchForRoom(targetRoomId?: string, userId?: string, username?: string) {
-    this.logger.log(`[HTTP REMATCH TRIGGERED] targetRoomId=${targetRoomId}, userId=${userId}, username=${username}`);
-
-    let room = targetRoomId ? this.roomService.getRoom(targetRoomId) : null;
+  public startRematchForRoom(targetRoomId: string | undefined, identity: HttpIdentity) {
+    let room = targetRoomId ? this.findRoom(targetRoomId) : undefined;
+    if (room && !this.getMembership(room, identity.id).isMember) {
+      return { success: false, error: 'Not a participant in this room' };
+    }
     if (!room) {
-      const user = {
-        id: userId || `user_${Date.now()}`,
-        username: username || 'Player',
-        avatar: 'avatar-1',
-      };
       room = this.roomService.createRoom(
-        'system_rematch',
-        user,
+        `http_${identity.id}`,
+        identity,
         'Quick Match (Ahwa)',
         {
           targetScore: 101,
@@ -2258,68 +2298,59 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       );
     }
 
-    const adminId = room.currentAdminId || userId || 'admin';
+    const adminId = room.currentAdminId || identity.id;
     this.gameSessionService.startRematch(room.id, adminId, {
-      userId: userId || adminId,
-      username: username || 'Player',
-      avatar: 'avatar-1',
+      userId: identity.id,
+      username: identity.username,
+      avatar: identity.avatar,
     });
 
-    this.server.to(room.id).emit(ServerEvents.REMATCH_STARTED, { roomId: room.id });
+    this.emitToRoom(room.id, ServerEvents.REMATCH_STARTED, { roomId: room.id });
     this.broadcastGameState(room.id);
     return { success: true, roomId: room.id };
   }
 
-  public startMatchForRoom(targetRoomId?: string, userId?: string, username?: string, role?: string) {
-    try { require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[HTTP_START_MATCH] received targetRoomId=${targetRoomId} userId=${userId} role=${role}\n`); } catch(e) {}
-    this.logger.log(`[HTTP START MATCH TRIGGERED] targetRoomId=${targetRoomId}, userId=${userId}, username=${username}, role=${role}`);
-    if (!targetRoomId) {
-      throw new Error('Room ID is required');
-    }
-    const room = this.roomService.getRoom(targetRoomId);
+  public startMatchForRoom(targetRoomId: string | undefined, identity: HttpIdentity) {
+    const room = targetRoomId ? this.findRoom(targetRoomId) : undefined;
     if (!room) {
-      try { require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[HTTP_START_MATCH] error: Room ${targetRoomId} not found\n`); } catch(e) {}
-      throw new Error(`Room ${targetRoomId} not found`);
+      return { success: false, error: 'Room not found' };
     }
-
-    const isJudge =
-      role === 'JUDGE' ||
-      Boolean(room.judge && (room.judge.userId === userId || room.judge.username === username));
+    const m = this.getMembership(room, identity.id);
+    if (!m.isMember) {
+      return { success: false, error: 'Not a participant in this room' };
+    }
 
     const existingEngine = this.gameSessionService.getSession(room.id);
     if (existingEngine && existingEngine.getStatus() === 'PLAYING') {
-      this.gameSessionService.checkAndTriggerBotTurn(room.id, true);
+      this.gameSessionService.checkAndTriggerBotTurn(room.id);
       this.broadcastGameState(room.id);
       return { success: true, roomId: room.id };
     }
 
-    if (isJudge && userId && !room.judge) {
-      try {
-        const updated = this.roomService.joinAsJudge(room.id, `http_${userId}`, {
-          id: userId,
-          username: username || 'Judge',
-          avatar: 'avatar-1',
-        });
-        this.server.to(room.id).emit(ServerEvents.ROOM_SYNC, { room: updated });
-      } catch (err: any) {
-        this.logger.warn(`Could not join as judge via HTTP start: ${err.message}`);
-      }
+    const humanSeats = room.seats.filter((s) => s.occupied && !s.isBot);
+    const isAuthorized = m.isAdmin || m.isJudge || Boolean(m.seated) || humanSeats.length <= 1;
+    if (!isAuthorized) {
+      return { success: false, error: 'Only the room admin or presiding judge can start the match' };
     }
 
-    const adminId = room.currentAdminId || userId || 'admin';
-    this.gameSessionService.startMatch(room.id, adminId);
-    const updatedRoom = this.roomService.getRoom(room.id);
-    if (updatedRoom) {
-      this.server.to(room.id).emit(ServerEvents.ROOM_SYNC, { room: updatedRoom });
+    try {
+      this.gameSessionService.startMatch(room.id, room.currentAdminId || identity.id);
+    } catch (err: any) {
+      return { success: false, error: err.message };
     }
     this.broadcastGameState(room.id);
     return { success: true, roomId: room.id };
   }
 
-  public triggerBotForRoom(targetRoomId?: string, forceImmediate?: boolean) {
-    if (!targetRoomId) return { success: false, error: 'Room ID is required' };
-    this.gameSessionService.checkAndTriggerBotTurn(targetRoomId, false, Boolean(forceImmediate));
-    return { success: true, roomId: targetRoomId };
+  public triggerBotForRoom(targetRoomId: string | undefined, forceImmediate: boolean | undefined, identity: HttpIdentity) {
+    const room = targetRoomId ? this.findRoom(targetRoomId) : undefined;
+    if (!room) return { success: false, error: 'Room ID is required' };
+    if (!this.getMembership(room, identity.id).isMember) {
+      return { success: false, error: 'Not a participant in this room' };
+    }
+    const canForce = Boolean(forceImmediate) && room.judge?.userId === identity.id;
+    this.gameSessionService.checkAndTriggerBotTurn(room.id, false, canForce);
+    return { success: true, roomId: room.id };
   }
 
   public executeJudgeDecision(payload: {
@@ -2331,12 +2362,23 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     muteType?: 'CHAT' | 'REACTIONS' | 'VOICE';
     mute?: boolean;
     winnerTeam?: 1 | 2;
-  }) {
-    const room = this.roomService.getRoom(payload.roomId);
+  }, identity: HttpIdentity) {
+    const room = payload?.roomId ? this.findRoom(payload.roomId) : undefined;
     if (!room) return { success: false, error: 'Room not found' };
+    payload.roomId = room.id;
 
-    const judgeName = payload.user?.username || room.judge?.username || 'الحكم';
-    const judgeId = payload.user?.id || room.judge?.userId || 'judge';
+    // Only the room's presiding judge may issue referee decisions.
+    if (!room.judge || room.judge.userId !== identity.id) {
+      return { success: false, error: 'غير مسموح: هذا الإجراء متاح لحكم الغرفة فقط' };
+    }
+    const seatNum = Number(payload.seat);
+    if (['WARN', 'RED_CARD', 'CHEATING', 'MUTE', 'SUB'].includes(payload.action) &&
+        (!Number.isInteger(seatNum) || seatNum < 0 || seatNum > 3)) {
+      return { success: false, error: 'رقم المقعد غير صالح' };
+    }
+
+    const judgeName = room.judge.username || 'الحكم';
+    const judgeId = room.judge.userId;
 
     if (payload.action === 'WARN') {
       const seat = Number(payload.seat) as PlayerSeat;
@@ -2364,7 +2406,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           reason,
           timestamp: Date.now(),
         };
-        this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.notifyWarnedPlayer(room.id, seat, judgeName, reason, isCheating);
         this.broadcastGameState(payload.roomId);
         if (room.seats.every((s: any) => s.isBot)) {
           this.gameSessionService.checkAndTriggerBotTurn(payload.roomId, true);
@@ -2393,7 +2436,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           reason,
           timestamp: Date.now(),
         };
-        this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
         this.broadcastGameState(payload.roomId);
         return { success: true, result: broadcastPayload };
       }
@@ -2413,7 +2456,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           reason,
           timestamp: Date.now(),
         };
-        this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
         this.broadcastGameState(payload.roomId);
         return { success: true, result: broadcastPayload };
       }
@@ -2437,7 +2480,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           reason: `منح +${secs} ثانية وقت تفكير إضافي`,
           timestamp: Date.now(),
         };
-        this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
         this.broadcastGameState(payload.roomId);
         return { success: true, result: broadcastPayload };
       }
@@ -2458,7 +2501,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           reason,
           timestamp: Date.now(),
         };
-        this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+        this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
         this.broadcastGameState(payload.roomId);
         return { success: true, result: broadcastPayload };
       }
@@ -2483,7 +2526,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         reason: mute ? `مخالفة في ${label}` : `إلغاء عقوبة ${label}`,
         timestamp: Date.now(),
       };
-      this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+      this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
       this.broadcastGameState(payload.roomId);
       return { success: true, result: broadcastPayload };
     }
@@ -2516,7 +2559,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             reason: `استبدال بالبوت ${kickRes.botConfig.name}`,
             timestamp: Date.now(),
           };
-          this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+          this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
           this.broadcastGameState(payload.roomId);
           if (room.seats.every((s: any) => s.isBot)) {
             this.gameSessionService.checkAndTriggerBotTurn(payload.roomId, true);
@@ -2546,7 +2589,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             reason: 'إعادة اللاعب للمقعد بقرار تحكيمي',
             timestamp: Date.now(),
           };
-          this.server.to(payload.roomId).emit(ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
+          this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
           this.broadcastGameState(payload.roomId);
           return { success: true, result: broadcastPayload };
         }
@@ -2557,49 +2600,23 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     return { success: false, error: 'Unknown action' };
   }
 
-  public getActiveGameStateForRoom(roomId: string, userId?: string, reqRole?: string, username?: string) {
-    const room = this.roomService.getRoom(roomId);
+  public getActiveGameStateForRoom(roomId: string, identity: HttpIdentity) {
+    const room = this.findRoom(roomId);
     if (!room) {
       return { success: false, error: 'Room not found' };
     }
-
-    const isJudge =
-      reqRole === 'JUDGE' ||
-      (userId && room.judge?.userId === userId) ||
-      (username && room.judge?.username === username);
-    const isSpectator =
-      reqRole === 'SPECTATOR' ||
-      (userId && room.spectator?.userId === userId) ||
-      (username && room.spectator?.username === username) ||
-      Boolean(room.spectators?.some((s) => (userId && s.userId === userId) || (username && s.username === username)));
-
-    let seated = (isJudge || isSpectator)
-      ? undefined
-      : room.seats.find((s) => !s.isBot && ((userId && s.playerId === userId) || (username && s.username === username)));
-
-    // Fallback: if only 1 human player exists in room, bind to that seat
-    if (!seated && !isJudge && !isSpectator) {
-      const humanSeats = room.seats.filter((s) => s.occupied && !s.isBot);
-      if (humanSeats.length === 1 && (room.currentAdminId === userId || room.originalAdminId === userId || (username && humanSeats[0].username === username))) {
-        seated = humanSeats[0];
-      }
+    const m = this.getMembership(room, identity.id);
+    if (!m.isMember) {
+      return { success: false, error: 'Not a participant in this room' };
     }
 
-    const seat = (isJudge || isSpectator) ? null : (seated ? seated.seat : null);
-    const role: UserRole = isJudge
-      ? 'JUDGE'
-      : isSpectator
-      ? 'SPECTATOR'
-      : (seated ? 'PLAYER' : (room.currentAdminId === userId ? 'ADMIN' : 'PLAYER'));
-
-    if (userId) {
-      const callerSeat = room.seats.find((s) => s.playerId === userId && !s.isBot);
-      if (callerSeat && callerSeat.presence === 'AWAY') {
-        callerSeat.presence = 'ONLINE';
-      }
+    if (m.seated && m.seated.presence === 'AWAY') {
+      m.seated.presence = 'ONLINE';
     }
 
-    const sanitized = this.gameSessionService.getSanitizedState(roomId, seat, role);
+    const role: UserRole = m.isJudge ? 'JUDGE' : m.seated ? (m.isAdmin ? 'ADMIN' : 'PLAYER') : m.isSpectator ? 'SPECTATOR' : 'PLAYER';
+    const seat = m.isJudge ? null : m.seated ? m.seated.seat : null;
+    const sanitized = this.gameSessionService.getSanitizedState(room.id, seat, role);
     return {
       success: true,
       room,
@@ -2607,42 +2624,71 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     };
   }
 
-  public handleNextRoundHttp(roomId?: string, userId?: string) {
-    if (!roomId) return { success: false, error: 'roomId required' };
-    const room = this.roomService.getRoom(roomId);
+  public handleNextRoundHttp(roomId: string | undefined, identity: HttpIdentity) {
+    const room = roomId ? this.findRoom(roomId) : undefined;
     if (!room) return { success: false, error: 'Room not found' };
-    const effectiveUserId = userId || room.currentAdminId || 'user';
-    const result = this.gameSessionService.requestNextRound(roomId, effectiveUserId);
-    this.broadcastGameState(roomId);
-    return result;
-  }
-
-  public handlePlayTileHttp(payload: { roomId?: string; seat?: number; tile?: DominoTile; end?: ChainEnd; userId?: string }) {
-    if (!payload?.roomId || !payload?.tile) return { success: false, error: 'Invalid payload' };
-    const room = this.roomService.getRoom(payload.roomId);
-    if (!room) return { success: false, error: 'Room not found' };
-    let seat = payload.seat;
-    if (seat === undefined || seat === null) {
-      const seated = room.seats.find((s) => s.playerId === payload.userId || (!s.isBot && s.playerId));
-      seat = seated ? seated.seat : 0;
+    if (!this.getMembership(room, identity.id).isMember) {
+      return { success: false, error: 'Not a participant in this room' };
     }
-    const result = this.gameSessionService.playTile(payload.roomId, seat as PlayerSeat, payload.tile, payload.end);
-    this.broadcastGameState(payload.roomId);
+    const result = this.gameSessionService.requestNextRound(room.id, identity.id);
+    if (result.success) this.broadcastGameState(room.id);
     return result;
   }
 
-  public handlePassTurnHttp(payload: { roomId?: string; seat?: number; userId?: string }) {
+  public handlePlayTileHttp(
+    payload: { roomId?: string; tile?: DominoTile; end?: ChainEnd; sequenceNumber?: number },
+    identity: HttpIdentity
+  ) {
+    if (!payload?.roomId || !this.isValidTile(payload.tile)) return { success: false, error: 'Invalid payload' };
+    if (payload.end && !['LEFT', 'RIGHT', 'START'].includes(payload.end)) {
+      return { success: false, error: 'Invalid chain end specified' };
+    }
+    const room = this.findRoom(payload.roomId);
+    if (!room) return { success: false, error: 'Room not found' };
+    const m = this.getMembership(room, identity.id);
+    if (!m.seated) return { success: false, error: 'Player is not seated in this room' };
+    // The seat always comes from the verified identity (the old endpoint trusted a "seat" field).
+    return this.gameSessionService.playTile(room.id, m.seated.seat, payload.tile as DominoTile, payload.end, payload.sequenceNumber);
+  }
+
+  public handlePassTurnHttp(payload: { roomId?: string; sequenceNumber?: number }, identity: HttpIdentity) {
     if (!payload?.roomId) return { success: false, error: 'Invalid payload' };
-    const room = this.roomService.getRoom(payload.roomId);
+    const room = this.findRoom(payload.roomId);
     if (!room) return { success: false, error: 'Room not found' };
-    let seat = payload.seat;
-    if (seat === undefined || seat === null) {
-      const seated = room.seats.find((s) => s.playerId === payload.userId || (!s.isBot && s.playerId));
-      seat = seated ? seated.seat : 0;
+    const m = this.getMembership(room, identity.id);
+    if (!m.seated) return { success: false, error: 'Player is not seated in this room' };
+    return this.gameSessionService.passTurn(room.id, m.seated.seat, payload.sequenceNumber);
+  }
+
+  private isValidTile(tile: any): tile is DominoTile {
+    return (
+      Array.isArray(tile) &&
+      tile.length === 2 &&
+      Number.isInteger(tile[0]) &&
+      Number.isInteger(tile[1]) &&
+      tile[0] >= 0 &&
+      tile[0] <= 6 &&
+      tile[1] >= 0 &&
+      tile[1] <= 6
+    );
+  }
+
+  /** Resolves a verified identity from an HTTP Authorization header (account or guest token). */
+  public identityFromAuthHeader(authHeader?: string): HttpIdentity | null {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    const payload = this.authService.validateGameToken(authHeader.substring(7));
+    if (!payload) return null;
+    if (payload.isGuest) {
+      return { id: payload.sub, username: payload.username || 'ضيف', avatar: 'avatar-1', isGuest: true };
     }
-    const result = this.gameSessionService.passTurn(payload.roomId, seat as PlayerSeat);
-    this.broadcastGameState(payload.roomId);
-    return result;
+    const persisted = this.persistence.getUserById(payload.sub);
+    const name = ((persisted?.displayName || persisted?.username || payload.username || '').trim().replace(/_\d{3,4}$/, '')) || 'لاعب';
+    return {
+      id: payload.sub,
+      username: name,
+      avatar: this.publicAvatar(payload.sub, persisted?.customAvatarUrl || persisted?.avatarUrl || 'avatar-1'),
+      isGuest: false,
+    };
   }
 
   @SubscribeMessage('client:trigger_bot')
@@ -2650,12 +2696,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { roomId?: string; forceImmediate?: boolean }
   ) {
-    if (payload?.roomId) {
-      this.gameSessionService.checkAndTriggerBotTurn(
-        payload.roomId,
-        false,
-        Boolean(payload?.forceImmediate)
-      );
+    try {
+      if (!payload?.roomId) return;
+      const { player, room } = this.validateCallerInRoom(client, payload.roomId);
+      // Watchdog nudge: schedules the bot only if one is due and not already scheduled.
+      // Skipping the bot's thinking time is reserved for the room's judge.
+      const canForce = Boolean(payload.forceImmediate) && room.judge?.userId === player.userId;
+      this.gameSessionService.checkAndTriggerBotTurn(room.id, false, canForce);
+    } catch {
+      // Not a member of this room: ignore.
     }
   }
 
@@ -2694,7 +2743,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         }
       }
 
-      this.server.to(payload.roomId).emit(ServerEvents.QUICK_CHAT_BROADCAST, {
+      if (typeof payload.messageId !== 'string' || !payload.messageId.trim() || payload.messageId.length > 200) return;
+      if (this.isChatFlooding(client)) return;
+      this.emitToRoom(room.id, ServerEvents.QUICK_CHAT_BROADCAST, {
         userId: player.userId,
         messageId: payload.messageId,
         senderName: player.username,
@@ -2733,7 +2784,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         }
       }
 
-      this.server.to(payload.roomId).emit(ServerEvents.EMOTE_REACTION_BROADCAST, {
+      if (typeof payload.emoji !== 'string' || !payload.emoji || payload.emoji.length > 32) return;
+      if (this.isChatFlooding(client)) return;
+      this.emitToRoom(room.id, ServerEvents.EMOTE_REACTION_BROADCAST, {
         userId: player.userId,
         emoji: payload.emoji,
         senderName: player.username,
@@ -2750,8 +2803,12 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
    */
   public handleProfileUpdated(profile: any): void {
     if (!profile || !profile.id) return;
-    const freshAvatar = profile.customAvatarUrl || profile.avatarUrl || profile.avatarId || 'avatar-1';
+    const freshAvatar = this.publicAvatar(
+      profile.id,
+      profile.customAvatarUrl || profile.avatarUrl || profile.avatarId || 'avatar-1'
+    );
     const freshName = profile.displayName || profile.username;
+    const affectedRooms = new Set<string>();
 
     // 1. Update rooms in RoomService
     if (this.roomService) {
@@ -2779,6 +2836,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             updated = true;
           }
           if (updated && this.server) {
+            affectedRooms.add(roomId);
             this.server.to(roomId).emit(ServerEvents.ROOM_SYNC, { room });
           }
         }
@@ -2808,18 +2866,26 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       }
     }
 
-    // 3. Global socket event
+    // 3. Notify the user's own sockets and the rooms they are in (previously this was sent to
+    //    every connected socket on the server, including the full base64 photo).
     if (this.server) {
-      this.server.emit('server:profile_updated', {
-        userId: profile.id,
-        username: profile.username,
-        displayName: profile.displayName,
-        avatarUrl: profile.avatarUrl,
-        avatarId: profile.avatarId,
-        customAvatarUrl: profile.customAvatarUrl,
-        bio: profile.bio,
-        gender: profile.gender,
-      });
+      const targets: string[] = Array.from(affectedRooms);
+      for (const s of this.server.sockets.sockets.values()) {
+        if (s.data?.user?.id === profile.id) targets.push(s.id);
+      }
+      if (targets.length > 0) {
+        const publicCustom = profile.customAvatarUrl ? freshAvatar : null;
+        this.server.to(targets).emit('server:profile_updated', {
+          userId: profile.id,
+          username: profile.username,
+          displayName: profile.displayName,
+          avatarUrl: publicCustom || profile.avatarUrl,
+          avatarId: profile.avatarId,
+          customAvatarUrl: publicCustom,
+          bio: profile.bio,
+          gender: profile.gender,
+        });
+      }
     }
   }
 }

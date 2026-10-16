@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc -w",
-    "test": "node --test dist/tests/**/*.spec.js || tsc && node --test dist/tests/**/*.spec.js"
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-test/tests/*.spec.js\""
   },
   "dependencies": {
     "@baffa/shared": "^1.0.0"

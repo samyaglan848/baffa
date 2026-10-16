@@ -1,4 +1,15 @@
-import { Controller, Get, Param, Query, Post, Body, Inject, forwardRef } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  Post,
+  Body,
+  Headers,
+  Inject,
+  forwardRef,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { MatchService } from './match.service';
 import { GameGateway } from '../../gateways/game.gateway';
 
@@ -10,77 +21,97 @@ export class MatchController {
     private readonly gameGateway: GameGateway,
   ) {}
 
+  /**
+   * HTTP fallbacks used by the web client while its socket is reconnecting.
+   * Every action now requires the caller's token (account token or server-issued guest token);
+   * the user id / seat sent in the body is ignored and taken from the verified token instead.
+   */
+  private requireIdentity(authHeader?: string) {
+    const identity = this.gameGateway.identityFromAuthHeader(authHeader);
+    if (!identity) {
+      throw new UnauthorizedException('يجب تسجيل الدخول أو الدخول كضيف أولاً');
+    }
+    return identity;
+  }
+
   @Post('rematch')
   async triggerRematch(
-    @Body() body: { roomId?: string; userId?: string; username?: string }
+    @Headers('authorization') authHeader: string | undefined,
+    @Body() body: { roomId?: string }
   ) {
-    return this.gameGateway.startRematchForRoom(body?.roomId, body?.userId, body?.username);
+    return this.gameGateway.startRematchForRoom(body?.roomId, this.requireIdentity(authHeader));
   }
 
   @Post('visibility')
   async handleVisibility(
-    @Body() body: { roomId?: string; userId?: string; username?: string; isVisible?: boolean; hasWindowFocus?: boolean }
+    @Headers('authorization') authHeader: string | undefined,
+    @Body() body: { roomId?: string; isVisible?: boolean; hasWindowFocus?: boolean }
   ) {
-    return this.gameGateway.handleAppVisibilityChangedDirect(body);
+    return this.gameGateway.handleAppVisibilityChangedDirect(body, this.requireIdentity(authHeader));
   }
 
   @Post('leave')
   async handleLeaveRoom(
-    @Body() body: { roomId?: string; userId?: string }
+    @Headers('authorization') authHeader: string | undefined,
+    @Body() body: { roomId?: string }
   ) {
-    return this.gameGateway.handleLeaveRoomDirect(body?.roomId, body?.userId);
+    return this.gameGateway.handleLeaveRoomDirect(body?.roomId, this.requireIdentity(authHeader));
   }
 
   @Post('start')
   async triggerStartMatch(
-    @Body() body: { roomId?: string; userId?: string; username?: string; role?: string }
+    @Headers('authorization') authHeader: string | undefined,
+    @Body() body: { roomId?: string }
   ) {
-    return this.gameGateway.startMatchForRoom(body?.roomId, body?.userId, body?.username, body?.role);
+    return this.gameGateway.startMatchForRoom(body?.roomId, this.requireIdentity(authHeader));
   }
 
   @Post('trigger-bot')
   async triggerBot(
+    @Headers('authorization') authHeader: string | undefined,
     @Body() body: { roomId?: string; forceImmediate?: boolean }
   ) {
-    return this.gameGateway.triggerBotForRoom(body?.roomId, body?.forceImmediate);
+    return this.gameGateway.triggerBotForRoom(body?.roomId, body?.forceImmediate, this.requireIdentity(authHeader));
   }
 
   @Post('judge-decision')
   async handleJudgeDecisionHttp(
+    @Headers('authorization') authHeader: string | undefined,
     @Body() body: any
   ) {
-    return this.gameGateway.executeJudgeDecision(body);
+    return this.gameGateway.executeJudgeDecision(body, this.requireIdentity(authHeader));
   }
 
   @Post('next-round')
   async handleNextRoundHttp(
-    @Body() body: { roomId?: string; userId?: string; user?: any }
+    @Headers('authorization') authHeader: string | undefined,
+    @Body() body: { roomId?: string }
   ) {
-    return this.gameGateway.handleNextRoundHttp(body?.roomId, body?.userId || body?.user?.id);
+    return this.gameGateway.handleNextRoundHttp(body?.roomId, this.requireIdentity(authHeader));
   }
 
   @Post('play-tile')
   async handlePlayTileHttp(
-    @Body() body: { roomId?: string; seat?: number; tile?: any; end?: any; userId?: string }
+    @Headers('authorization') authHeader: string | undefined,
+    @Body() body: { roomId?: string; tile?: any; end?: any; sequenceNumber?: number }
   ) {
-    return this.gameGateway.handlePlayTileHttp(body);
+    return this.gameGateway.handlePlayTileHttp(body, this.requireIdentity(authHeader));
   }
 
   @Post('pass-turn')
   async handlePassTurnHttp(
-    @Body() body: { roomId?: string; seat?: number; userId?: string }
+    @Headers('authorization') authHeader: string | undefined,
+    @Body() body: { roomId?: string; sequenceNumber?: number }
   ) {
-    return this.gameGateway.handlePassTurnHttp(body);
+    return this.gameGateway.handlePassTurnHttp(body, this.requireIdentity(authHeader));
   }
 
   @Get('active-state/:roomId')
   async getActiveState(
-    @Param('roomId') roomId: string,
-    @Query('userId') userId?: string,
-    @Query('role') role?: string,
-    @Query('username') username?: string
+    @Headers('authorization') authHeader: string | undefined,
+    @Param('roomId') roomId: string
   ) {
-    return this.gameGateway.getActiveGameStateForRoom(roomId, userId, role, username);
+    return this.gameGateway.getActiveGameStateForRoom(roomId, this.requireIdentity(authHeader));
   }
 
   @Get('history')

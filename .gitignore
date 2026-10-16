@@ -5,6 +5,7 @@ node_modules/
 
 # Build outputs
 dist/
+dist-test/
 build/
 .next/
 out/
@@ -41,6 +42,12 @@ Thumbs.db
 # Temporary test / scratch files
 scratch/
 
-# Database files
+# Database files & user uploads (contain e-mails, password hashes and photos — never commit)
+data/
+apps/server/data/
+uploads/
+apps/server/uploads/
+.jwt_secret
+.jwt_refresh_secret
 *.sqlite
 *.db

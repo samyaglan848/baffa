@@ -1,3 +1,9 @@
+import * as dotenv from 'dotenv';
+import * as nodePath from 'path';
+// Load apps/server/.env for local development (never overrides variables set by the host, e.g. Render).
+dotenv.config({ path: nodePath.resolve(__dirname, '..', '.env') });
+dotenv.config();
+
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
@@ -6,21 +12,36 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as express from 'express';
 
+export function getAllowedOrigins(): string[] {
+  const raw = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '';
+  return raw
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter((o) => o.length > 0 && o !== '*');
+}
+
 async function bootstrap() {
   const logger = new Logger('BAFFA-Server');
   const app = await NestFactory.create(AppModule, {
     bodyParser: false,
   });
 
+  // CORS: restrict to the configured web origins when CORS_ORIGINS / CORS_ORIGIN is set
+  // (comma-separated). Auth uses the Authorization header, not cookies, so credentials are off.
+  const allowedOrigins = getAllowedOrigins();
   app.enableCors({
-    origin: '*',
+    origin: allowedOrigins.length > 0 ? allowedOrigins : '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
+    credentials: false,
   });
+  if (allowedOrigins.length === 0) {
+    logger.warn('CORS_ORIGINS is not set: API accepts requests from any website. Set it to your web app URL.');
+  }
 
-  // Enable high-limit payload parsing for large high-res photo uploads (up to 50MB)
-  app.use(json({ limit: '50mb' }));
-  app.use(urlencoded({ limit: '50mb', extended: true }));
+  // Avatar uploads are limited to 2MB images (≈2.7MB as base64); 5MB leaves headroom.
+  // The previous 50MB limit let a single request tie up the server's memory.
+  app.use(json({ limit: '5mb' }));
+  app.use(urlencoded({ limit: '5mb', extended: true }));
 
   // Production Health Check Endpoint
   const expressApp = app.getHttpAdapter().getInstance();
@@ -30,7 +51,6 @@ async function bootstrap() {
       service: 'BAFFA Game Server',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      memoryUsage: process.memoryUsage(),
     });
   });
 
@@ -57,5 +77,14 @@ async function bootstrap() {
   console.log(`   🌐 BAFFA Web App:     http://localhost:3000`);
   console.log(`=================================================\n`);
 }
+
+// Last-resort safety net: log unexpected errors instead of letting one bad timer callback or
+// rejected promise take down the whole server (all live matches are held in memory).
+process.on('unhandledRejection', (reason: any) => {
+  new Logger('Process').error(`Unhandled promise rejection: ${reason?.stack || reason}`);
+});
+process.on('uncaughtException', (err: any) => {
+  new Logger('Process').error(`Uncaught exception: ${err?.stack || err}`);
+});
 
 bootstrap();

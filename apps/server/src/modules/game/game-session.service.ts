@@ -8,6 +8,7 @@ import {
   MatchResult,
   NotificationPayload,
   PlayerSeat,
+  RefereeDecisionBroadcastPayload,
   RoundResult,
   SanitizedGameState,
   TeamId,
@@ -26,6 +27,10 @@ export interface GameSessionCallbacks {
   broadcastBotChat: (roomId: string, chat: BotChatMessage) => void;
   broadcastStatsUpdated: (roomId: string) => void;
   broadcastNotification?: (roomId: string, notification: NotificationPayload) => void;
+  /** Shows the referee decision card (same one the human judge uses) to everyone in the room. */
+  broadcastRefereeDecision?: (roomId: string, decision: RefereeDecisionBroadcastPayload) => void;
+  /** Sends a notification only to the human sitting in a seat. */
+  notifySeat?: (roomId: string, seat: PlayerSeat, notification: NotificationPayload) => void;
 }
 
 @Injectable()
@@ -81,16 +86,14 @@ export class GameSessionService {
         s.occupied &&
         !s.isBot &&
         s.playerId !== room.judge?.userId &&
-        s.username !== room.judge?.username &&
-        s.playerId !== room.spectator?.userId &&
-        s.username !== room.spectator?.username
+        s.playerId !== room.spectator?.userId
     );
     const isSoloHuman = humanSeats.length <= 1;
     const allBotsOccupied = humanSeats.length === 0;
     const hasJudge = Boolean(room.judge);
     const isJudgeUser =
       room.judge &&
-      (room.judge.userId === adminId || room.judge.username === adminId);
+      room.judge.userId === adminId;
 
     const isAuthorized =
       room.currentAdminId === adminId ||
@@ -118,11 +121,11 @@ export class GameSessionService {
       // Check if this seat is occupied by a judge or spectator who is NOT a table player
       const isJudgeOccupying = Boolean(
         room.judge &&
-        (seat.playerId === room.judge.userId || (seat.username && seat.username === room.judge.username))
+        seat.playerId === room.judge.userId
       );
       const isSpectatorOccupying = Boolean(
         room.spectator &&
-        (seat.playerId === room.spectator.userId || (seat.username && seat.username === room.spectator.username))
+        seat.playerId === room.spectator.userId
       );
 
       // Check if a real human player is genuinely seated here
@@ -223,9 +226,6 @@ export class GameSessionService {
       this.checkAndTriggerBotTurn(roomId, true);
     }
 
-    try {
-      require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[START-MATCH] room=${roomId}\n`);
-    } catch(e) {}
 
     return engine;
   }
@@ -239,6 +239,14 @@ export class GameSessionService {
     adminId?: string,
     callerPlayer?: { userId: string; username: string; avatar: string }
   ): DominoGameEngine {
+    // Idempotent: when several players press "play again" (or socket + HTTP fallback both
+    // arrive) the first request starts the match and the others must not touch it. Previously the
+    // second request cleared the running bot/turn timers and the new match froze.
+    const running = this.sessions.get(roomId);
+    if (running && running.getStatus() === 'PLAYING') {
+      return running;
+    }
+
     const existingTimeout = this.botTimeouts.get(roomId);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
@@ -258,32 +266,35 @@ export class GameSessionService {
     // Ensure the caller is properly seated if provided and not Judge or Spectator
     if (callerPlayer?.userId) {
       const isJudge =
-        room.judge?.userId === callerPlayer.userId ||
-        Boolean(room.judge && callerPlayer.username && room.judge.username === callerPlayer.username);
+        room.judge?.userId === callerPlayer.userId;
       const isSpectator =
         room.spectator?.userId === callerPlayer.userId ||
-        Boolean(room.spectator && callerPlayer.username && room.spectator.username === callerPlayer.username);
+        Boolean(room.spectators?.some((sp) => sp.userId === callerPlayer.userId));
 
       if (!isJudge && !isSpectator) {
         let existingSeat = room.seats.find(
           (s) =>
-            s.playerId === callerPlayer.userId ||
-            (!s.isBot && callerPlayer.username && s.username === callerPlayer.username)
+            s.playerId === callerPlayer.userId
         );
         if (!existingSeat) {
-          // Seat them in first available seat or Seat 0
-          existingSeat = room.seats.find((s) => !s.occupied || s.isBot) || room.seats[0];
-          existingSeat.occupied = true;
-          existingSeat.playerId = callerPlayer.userId;
-          existingSeat.username = callerPlayer.username;
-          existingSeat.avatar = callerPlayer.avatar;
+          // Seat them in a free or bot seat — never over another human player.
+          existingSeat = room.seats.find((s) => !s.occupied || s.isBot);
+          if (existingSeat) {
+            existingSeat.occupied = true;
+            existingSeat.playerId = callerPlayer.userId;
+            existingSeat.username = callerPlayer.username;
+            existingSeat.avatar = callerPlayer.avatar;
+            delete existingSeat.botId;
+          }
         }
-        existingSeat.occupied = true;
-        existingSeat.isBot = false;
-        existingSeat.isReady = true;
-        existingSeat.isConnected = true;
-        existingSeat.presence = 'IN_ROOM';
-        existingSeat.isTemporarilyBotControlled = false;
+        if (existingSeat) {
+          existingSeat.occupied = true;
+          existingSeat.isBot = false;
+          existingSeat.isReady = true;
+          existingSeat.isConnected = true;
+          existingSeat.presence = 'IN_ROOM';
+          existingSeat.isTemporarilyBotControlled = false;
+        }
       }
     }
 
@@ -318,70 +329,77 @@ export class GameSessionService {
     return this.startMatch(roomId, effectiveAdminId);
   }
 
+  /**
+   * Applies an automatic-referee violation exactly like a human judge's yellow card: the first
+   * violation in a round is a warning, the second is a cheating penalty that ends the round.
+   *
+   * Previously the auto-judge called the engine directly, which (a) skipped the round-end handling
+   * (timers, match finalisation), (b) kept its own per-action counter so a play violation followed by
+   * a pass violation silently triggered the engine's 2nd-card penalty with no announcement, and
+   * (c) only announced "seat N" in a generic notification, so the punished player usually never knew.
+   * Returns the message to show the offending player, or null when nothing was applied.
+   */
   private applyAutoJudgeDecision(
     roomId: string,
     seat: PlayerSeat,
     decision: ReturnType<AutoJudgeService['evaluateAction']>
-  ) {
-    const engine = this.sessions.get(roomId);
-    if (!engine || !decision.shouldAutoAct) {
-      return false;
+  ): string | null {
+    if (!decision.shouldAutoAct || !this.sessions.get(roomId)) {
+      return null;
     }
 
-    const reason = `${decision.reason} (auto judge)`;
-    const judgeId = 'SERVER_AUTO_JUDGE';
+    const room = this.roomService.getRoom(roomId);
+    const playerName = room?.seats[seat]?.username || `لاعب ${seat + 1}`;
+    const offence = decision.arabicReason;
+    const result = this.warnPlayer(roomId, 'SERVER_AUTO_JUDGE', seat, offence);
+    if (!result.success) return null;
 
-    if (decision.action === 'WARN_PLAYER') {
-      const result = engine.warnPlayer(judgeId, seat, reason);
-      if (result.success) {
-        this.callbacks?.broadcastNotification?.(roomId, {
-          type: 'WARNING',
-          message: decision.reason,
-          arabicMessage: decision.arabicMessage,
-          timestamp: Date.now(),
-          userId: `seat_${seat}`,
-          username: `Seat ${seat + 1}`,
-          persistent: true,
-        });
-        this.callbacks?.broadcastStateToRoom(roomId);
-        return true;
-      }
+    const isCheating = Boolean(result.isCheatingTriggered);
+    const targetTeam = (seat % 2 === 0 ? 1 : 2) as TeamId;
+    const beneficiaryTeam = (seat % 2 === 0 ? 2 : 1) as TeamId;
+
+    this.callbacks?.broadcastRefereeDecision?.(roomId, {
+      actionType: isCheating ? 'YELLOW_CARD_2_CHEATING' : 'YELLOW_CARD_1',
+      judgeName: 'الحكم الآلي',
+      targetSeat: seat,
+      targetPlayerName: playerName,
+      targetTeam,
+      beneficiaryTeam,
+      title: isCheating ? 'إنذار ثانٍ - احتساب غش وإنهاء الجولة' : 'كارت أصفر (إنذار أول)',
+      arabicMessage: isCheating
+        ? `الإنذار الثاني للاعب ${playerName}: تم احتساب غش وإنهاء الجولة ومنح نقاطها للفريق المنافس.`
+        : `إنذار أول للاعب ${playerName}. المخالفة الجاية في نفس الجولة تتحسب غش.`,
+      reason: offence,
+      timestamp: Date.now(),
+    });
+
+    const personalMessage = isCheating
+      ? `🟥 أخدت الإنذار التاني (${offence}). اتحسبت عليك حالة غش واتنهت الجولة.`
+      : `🟨 أخدت إنذار من الحكم الآلي: ${offence}. لو اتكررت في نفس الجولة هتتحسب غش.`;
+    this.callbacks?.notifySeat?.(roomId, seat, {
+      type: isCheating ? 'ALERT' : 'WARNING',
+      message: isCheating ? 'Second warning: cheating penalty applied.' : 'You received a warning from the automatic referee.',
+      arabicMessage: personalMessage,
+      timestamp: Date.now(),
+      persistent: true,
+    });
+
+    return personalMessage;
+  }
+
+  private seatHoldsTile(engine: DominoGameEngine, seat: PlayerSeat, tile: DominoTile): boolean {
+    if (!Array.isArray(tile) || tile.length !== 2) return false;
+    const hand = engine.getRawHands()[seat] || [];
+    return hand.some((t) => (t[0] === tile[0] && t[1] === tile[1]) || (t[0] === tile[1] && t[1] === tile[0]));
+  }
+
+  /** Runs timer callbacks without letting an exception escape and crash the whole server. */
+  private safeTimer(label: string, roomId: string, fn: () => void) {
+    try {
+      fn();
+    } catch (err: any) {
+      this.logger.error(`[${label}] room=${roomId} failed: ${err?.stack || err?.message || err}`);
     }
-
-    if (decision.action === 'CHEATING_PENALTY') {
-      const result = engine.penalizeCheating(judgeId, seat, reason);
-      if (result.success) {
-        this.callbacks?.broadcastNotification?.(roomId, {
-          type: 'ALERT',
-          message: decision.reason,
-          arabicMessage: decision.arabicMessage,
-          timestamp: Date.now(),
-          userId: `seat_${seat}`,
-          username: `Seat ${seat + 1}`,
-          persistent: true,
-        });
-        this.callbacks?.broadcastStateToRoom(roomId);
-        return true;
-      }
-    }
-
-    if (decision.action === 'VOID_ROUND') {
-      const result = engine.voidCurrentRound();
-      if (result.success) {
-        this.callbacks?.broadcastStateToRoom(roomId);
-        return true;
-      }
-    }
-
-    if (decision.action === 'TERMINATE_MATCH') {
-      const result = engine.terminateMatch(1, reason);
-      if (result.success) {
-        this.callbacks?.broadcastStateToRoom(roomId);
-        return true;
-      }
-    }
-
-    return false;
   }
 
   /**
@@ -400,8 +418,21 @@ export class GameSessionService {
     }
 
     const room = this.roomService.getRoom(roomId);
-    const legalMoves = engine.getLegalMovesForSeat(seat);
-    const isIllegalTile = !!tile && Array.isArray(tile) && tile.length === 2 && legalMoves.length > 0 && !legalMoves.some((move) => move.tile[0] === tile[0] && move.tile[1] === tile[1]);
+    // The automatic referee only judges a deliberate attempt: it must be this seat's turn and the
+    // tile must actually be in the player's hand. Late/duplicate clicks that arrive after the turn
+    // moved on (network lag, double taps) are simply rejected instead of being punished.
+    const isOwnTurn = engine.getStatus() === 'PLAYING' && engine.getCurrentTurnSeat() === seat;
+    const holdsTile = this.seatHoldsTile(engine, seat, tile);
+    const legalMoves = isOwnTurn ? engine.getLegalMovesForSeat(seat) : [];
+    const isIllegalTile =
+      isOwnTurn &&
+      holdsTile &&
+      legalMoves.length > 0 &&
+      !legalMoves.some(
+        (move) =>
+          (move.tile[0] === tile[0] && move.tile[1] === tile[1]) ||
+          (move.tile[0] === tile[1] && move.tile[1] === tile[0])
+      );
     if (!room?.judge && isIllegalTile) {
       const autoDecision = this.autoJudgeService.evaluateAction({
         roomId,
@@ -411,9 +442,9 @@ export class GameSessionService {
         payload: { tile },
         hasHumanJudge: false,
       });
-      if (autoDecision.shouldAutoAct) {
-        this.applyAutoJudgeDecision(roomId, seat, autoDecision);
-        return { success: false, error: autoDecision.arabicMessage || autoDecision.reason };
+      const penaltyMessage = this.applyAutoJudgeDecision(roomId, seat, autoDecision);
+      if (penaltyMessage) {
+        return { success: false, error: penaltyMessage };
       }
     }
 
@@ -469,8 +500,9 @@ export class GameSessionService {
     }
 
     const room = this.roomService.getRoom(roomId);
-    const legalMoves = engine.getLegalMovesForSeat(seat);
-    if (!room?.judge && legalMoves.length > 0) {
+    const isOwnTurn = engine.getStatus() === 'PLAYING' && engine.getCurrentTurnSeat() === seat;
+    const legalMoves = isOwnTurn ? engine.getLegalMovesForSeat(seat) : [];
+    if (!room?.judge && isOwnTurn && legalMoves.length > 0) {
       const autoDecision = this.autoJudgeService.evaluateAction({
         roomId,
         seat,
@@ -478,9 +510,9 @@ export class GameSessionService {
         actionType: 'PASS_TURN',
         hasHumanJudge: false,
       });
-      if (autoDecision.shouldAutoAct) {
-        this.applyAutoJudgeDecision(roomId, seat, autoDecision);
-        return { success: false, error: autoDecision.arabicMessage || autoDecision.reason };
+      const penaltyMessage = this.applyAutoJudgeDecision(roomId, seat, autoDecision);
+      if (penaltyMessage) {
+        return { success: false, error: penaltyMessage };
       }
     }
 
@@ -725,7 +757,7 @@ export class GameSessionService {
     const isBotOrJudgeMatch = room.seats.every((s) => s.isBot) || Boolean(room.judge);
     if (!isBotOrJudgeMatch) return;
 
-    setTimeout(() => {
+    setTimeout(() => this.safeTimer('AUTO_ADVANCE', roomId, () => {
       const engine = this.sessions.get(roomId);
       if (!engine || engine.getStatus() !== 'ROUND_FINISHED') return;
 
@@ -741,7 +773,7 @@ export class GameSessionService {
           this.checkAndTriggerBotTurn(roomId, true);
         }
       }
-    }, delayMs);
+    }), delayMs);
   }
 
   /**
@@ -755,13 +787,8 @@ export class GameSessionService {
 
     const result = engine.grantExtraTime(seconds);
     if (result.success) {
-      this.clearTurnTimer(roomId);
-      const room = this.roomService.getRoom(roomId);
-      const baseSecs = room?.settings?.roundTimerSeconds || 20;
-      const timeout = setTimeout(() => {
-        this.handleTurnTimeout(roomId);
-      }, (baseSecs + seconds) * 1000);
-      this.turnTimers.set(roomId, timeout);
+      // Re-arm the turn timer from the engine's extended deadline.
+      this.startTurnTimer(roomId);
 
       this.callbacks?.broadcastStateToRoom(roomId);
 
@@ -838,9 +865,7 @@ export class GameSessionService {
     const engine = this.sessions.get(roomId);
     if (engine) {
       engine.updateSeatPlayer(seat, updates);
-      if (updates.isBot && engine.getCurrentTurnSeat() === seat) {
-        this.checkAndTriggerBotTurn(roomId);
-      }
+      this.resumeTurnFlow(roomId);
       this.callbacks?.broadcastStateToRoom(roomId);
     }
   }
@@ -854,11 +879,24 @@ export class GameSessionService {
     if (engine) {
       engine.setBotTakeover(seat, active);
       this.callbacks?.broadcastStateToRoom(roomId);
-
-      if (!active) {
-        this.clearBotTimeout(roomId);
-      }
+      // Note: the room's bot timer is NOT cleared here any more. It belongs to whichever real bot is
+      // on turn; clearing it when a player came back (reconnect / returning to the tab) left a bot's
+      // turn with no scheduled move, so the table sat still until the full turn timer ran out.
+      this.resumeTurnFlow(roomId);
     }
+  }
+
+  /**
+   * Makes sure a running round can always move forward: a turn timer is armed and, if a bot is on
+   * turn, its move is scheduled. Safe to call any time (it never postpones an existing countdown).
+   */
+  public resumeTurnFlow(roomId: string) {
+    const engine = this.sessions.get(roomId);
+    if (!engine || engine.getStatus() !== 'PLAYING') return;
+    if (!this.turnTimers.has(roomId)) {
+      this.startTurnTimer(roomId);
+    }
+    this.checkAndTriggerBotTurn(roomId);
   }
 
   /**
@@ -899,10 +937,7 @@ export class GameSessionService {
    */
   public checkAndTriggerBotTurn(roomId: string, force = false, forceImmediate = false) {
     const engine = this.sessions.get(roomId);
-    this.logger.log(`[BOT-TRIGGER] room=${roomId} force=${force} forceImmediate=${forceImmediate} status=${engine?.getStatus() ?? 'NO_ENGINE'} seat=${engine?.getCurrentTurnSeat() ?? 'N/A'}`);
-    try {
-      require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[BOT-TRIGGER] room=${roomId} force=${force} forceImmediate=${forceImmediate} status=${engine?.getStatus() ?? 'NO_ENGINE'} seat=${engine?.getCurrentTurnSeat() ?? 'N/A'}\n`);
-    } catch(e) {}
+    this.logger.debug(`[BOT-TRIGGER] room=${roomId} force=${force} forceImmediate=${forceImmediate} status=${engine?.getStatus() ?? 'NO_ENGINE'} seat=${engine?.getCurrentTurnSeat() ?? 'N/A'}`);
     if (!engine || engine.getStatus() !== 'PLAYING') {
       return;
     }
@@ -958,7 +993,7 @@ export class GameSessionService {
 
     const resolvedBotId = seatInfo?.botId || enginePlayer?.botId || 'EL_SAMY';
     const timeout = setTimeout(() => {
-      this.executeBotTurn(roomId, currentSeat, resolvedBotId);
+      this.safeTimer('BOT_TURN', roomId, () => this.executeBotTurn(roomId, currentSeat, resolvedBotId));
     }, delayMs);
 
     this.botTimeouts.set(roomId, timeout);
@@ -967,9 +1002,6 @@ export class GameSessionService {
   private executeBotTurn(roomId: string, scheduledSeat: PlayerSeat, botId: BotId) {
     this.botTimeouts.delete(roomId);
 
-    try {
-      require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[EXECUTE-BOT] room=${roomId} scheduledSeat=${scheduledSeat} botId=${botId}\n`);
-    } catch(e) {}
 
     try {
       const engine = this.sessions.get(roomId);
@@ -1048,7 +1080,6 @@ export class GameSessionService {
       }
 
       if (decision.action === 'PLAY' && decision.tile) {
-        try { require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[BOT-PLAY] room=${roomId} seat=${currentSeat} tile=${JSON.stringify(decision.tile)}\n`); } catch(e) {}
         const playRes = engine.playTile(currentSeat, decision.tile, decision.end);
         if (!playRes.success) {
           this.logger.warn(`Bot move for seat ${currentSeat} returned error: ${playRes.error}, attempting legal fallback`);
@@ -1079,7 +1110,6 @@ export class GameSessionService {
           }
         }
       } else {
-        try { require('fs').appendFileSync('c:/Users/AlHuda/Desktop/baffa/debug.log', `[BOT-PASS] room=${roomId} seat=${currentSeat}\n`); } catch(e) {}
         const legalMoves = engine.getLegalMovesForSeat(currentSeat);
         if (legalMoves.length > 0) {
           const fallback = legalMoves[0];
@@ -1129,6 +1159,13 @@ export class GameSessionService {
     }
   }
 
+  /**
+   * Extra server-side tolerance after the visible countdown hits zero, so a move made in the last
+   * second still arrives before the server auto-plays for the player (mobile networks add latency).
+   * The time shown to players is unchanged.
+   */
+  private static readonly TURN_TIMEOUT_GRACE_MS = 1500;
+
   public startTurnTimer(roomId: string) {
     this.clearTurnTimer(roomId);
 
@@ -1137,38 +1174,52 @@ export class GameSessionService {
       return;
     }
 
-    const room = this.roomService.getRoom(roomId);
-    const timerSeconds = room?.settings?.roundTimerSeconds || 20;
+    // Follows the engine's own deadline (which also includes any judge-granted extra time).
+    const delay = Math.max(0, engine.getTurnDeadline() - Date.now()) + GameSessionService.TURN_TIMEOUT_GRACE_MS;
+    const turnSeat = engine.getCurrentTurnSeat();
+    const matchId = engine.getMatchId();
+    const round = engine.getRoundNumber();
 
     const timeout = setTimeout(() => {
-      this.handleTurnTimeout(roomId);
-    }, timerSeconds * 1000);
+      this.turnTimers.delete(roomId);
+      this.safeTimer('TURN_TIMEOUT', roomId, () => this.handleTurnTimeout(roomId, { turnSeat, matchId, round }));
+    }, delay);
 
     this.turnTimers.set(roomId, timeout);
   }
 
-  private handleTurnTimeout(roomId: string) {
+  private handleTurnTimeout(
+    roomId: string,
+    expected?: { turnSeat: PlayerSeat; matchId: string; round: number }
+  ) {
     const engine = this.sessions.get(roomId);
     if (!engine || engine.getStatus() !== 'PLAYING') return;
 
-    const room = this.roomService.getRoom(roomId);
+    // Stale timer guard: the turn already moved on (or a new round/match started).
+    if (
+      expected &&
+      (engine.getCurrentTurnSeat() !== expected.turnSeat ||
+        engine.getMatchId() !== expected.matchId ||
+        engine.getRoundNumber() !== expected.round)
+    ) {
+      this.startTurnTimer(roomId);
+      return;
+    }
+
+    // Deadline was extended (judge extra time) after this timer was scheduled.
+    if (Date.now() < engine.getTurnDeadline()) {
+      this.startTurnTimer(roomId);
+      return;
+    }
+
     const currentSeat = engine.getCurrentTurnSeat();
     const legalMoves = engine.getLegalMovesForSeat(currentSeat);
 
-    const hasHumanJudge = Boolean(room?.judge);
-    if (!hasHumanJudge && legalMoves.length > 0) {
-      const autoDecision = this.autoJudgeService.evaluateAction({
-        roomId,
-        seat: currentSeat,
-        engine,
-        actionType: 'TIMEOUT',
-        hasHumanJudge: false,
-      });
-      if (autoDecision.shouldAutoAct) {
-        this.applyAutoJudgeDecision(roomId, currentSeat, autoDecision);
-        return;
-      }
-    }
+    // Note: a timeout is no longer escalated by the automatic referee. Previously the first
+    // timeout with playable tiles produced a "warning" and then returned WITHOUT playing and
+    // WITHOUT restarting the timer — the match froze on that seat forever (and a disconnected
+    // player's team was stuck). Running out of time is lag/slowness, not cheating: the move is
+    // auto-played exactly as the in-game notification says.
 
     const existingBot = this.botTimeouts.get(roomId);
     if (existingBot) {
@@ -1343,6 +1394,7 @@ export class GameSessionService {
       this.botTimeouts.delete(roomId);
     }
     this.sessions.delete(roomId);
+    this.anticheatService.clearRoom(roomId);
     this.logger.log(`Game session for room ${roomId} has been terminated.`);
   }
 }

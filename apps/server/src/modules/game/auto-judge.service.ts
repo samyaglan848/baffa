@@ -11,8 +11,16 @@ export interface AutoJudgeDecision {
   action: 'WARN_PLAYER' | 'CHEATING_PENALTY' | 'VOID_ROUND' | 'TERMINATE_MATCH' | 'NONE';
   reason: string;
   arabicMessage: string;
+  /** Short Arabic description of the offence, shown to the player and the room. */
+  arabicReason: string;
   isDecisionFinal: boolean;
 }
+
+const ARABIC_OFFENCES: Record<AutoJudgeActionType, string> = {
+  PLAY_TILE: 'محاولة لعب ورقة مش راكبة على الطرفين',
+  PASS_TURN: 'محاولة الدق (باص) ومعاك ورق ينفع يتلعب',
+  TIMEOUT: 'انتهاء الوقت ومعاك ورق ينفع يتلعب',
+};
 
 export interface AutoJudgeInput {
   roomId: string;
@@ -41,11 +49,16 @@ export class AutoJudgeService {
         action: 'NONE',
         reason: 'A human judge is present; server auto-judge is not required.',
         arabicMessage: 'الحكم البشري موجود، لا يلزم اتخاذ قرار تلقائي من السيرفر.',
+        arabicReason: '',
         isDecisionFinal: false,
       };
     }
 
-    const key = `${roomId}:${seat}:${actionType}`;
+    // Counts are per match and per round (like the referee's yellow cards, which the engine also
+    // resets every round). Previously one warning anywhere in a room's lifetime meant the next
+    // misclick — even in a later match — was punished as cheating.
+    const key = `${roomId}:${engine.getMatchId()}:${engine.getRoundNumber()}:${seat}:${actionType}`;
+    this.pruneOldKeys(roomId, `${roomId}:${engine.getMatchId()}:${engine.getRoundNumber()}:`);
     const currentCount = this.invalidActionCounts.get(key) ?? 0;
     const legalMoves = engine.getLegalMovesForSeat(seat);
 
@@ -77,6 +90,7 @@ export class AutoJudgeService {
         action: 'NONE',
         reason: 'No automatic judge action required for this event.',
         arabicMessage: 'لا توجد مخالفة تستدعي تدخل الحكم التلقائي.',
+        arabicReason: '',
         isDecisionFinal: false,
       };
     }
@@ -86,6 +100,14 @@ export class AutoJudgeService {
     this.logger.warn(`[AUTO_JUDGE] room=${roomId} seat=${seat} action=${actionType} severity=${assessment.severity} count=${nextCount}`);
 
     return assessment;
+  }
+
+  private pruneOldKeys(roomId: string, currentPrefix: string) {
+    for (const k of this.invalidActionCounts.keys()) {
+      if (k.startsWith(`${roomId}:`) && !k.startsWith(currentPrefix)) {
+        this.invalidActionCounts.delete(k);
+      }
+    }
   }
 
   private buildDecision(
@@ -111,6 +133,7 @@ export class AutoJudgeService {
       arabicMessage: repeated
         ? `تم رصد مخالفة متكررة من المقعد ${Number(seat) + 1}. يحرك الحكم التلقائي عقوبة الغش فورياً.`
         : `تم رصد مخالفة من المقعد ${Number(seat) + 1}. الحكم التلقائي يصدر إنذاراً أولياً.`,
+      arabicReason: ARABIC_OFFENCES[actionType],
       isDecisionFinal: repeated,
     };
   }

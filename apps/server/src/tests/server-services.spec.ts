@@ -77,7 +77,7 @@ describe('BAFFA Server Services Test Suite (Auth, Anti-Cheat, Multi-Role Room, V
       assert.strictEqual(res.isPermitted, true);
     });
 
-    it('Rejects stale/replayed sequence numbers', () => {
+    it('Records stale/replayed sequence numbers as risk evidence', () => {
       const res = anticheatService.evaluateAction({
         userId: 'stale_player',
         roomId: 'room_1',
@@ -87,8 +87,9 @@ describe('BAFFA Server Services Test Suite (Auth, Anti-Cheat, Multi-Role Room, V
         timestamp: Date.now(),
       });
 
-      assert.strictEqual(res.isPermitted, false);
-      assert.strictEqual(res.warning, 'Stale action sequence rejected');
+      // Stale counters are recorded as evidence; the engine rejects any move that is not legal.
+      assert.strictEqual(res.isPermitted, true);
+      assert.ok(anticheatService.getRiskScore('room_1', 'stale_player') > 0);
     });
   });
 

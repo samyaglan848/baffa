@@ -285,7 +285,8 @@ describe('BAFFA Production User Profile System (Prompt 7)', () => {
 
       const res = await profileService.uploadCustomAvatar(mockUser.id, validPng, 'image/png');
       assert.ok(res.customAvatarUrl);
-      assert.ok(res.customAvatarUrl.includes('/uploads/avatars/'));
+      // Photos are stored inside the database as a data URL (works on hosts without a persistent disk)
+      assert.ok(res.customAvatarUrl.startsWith('data:image/png;base64,'));
       assert.strictEqual(res.avatarUrl, res.customAvatarUrl);
     });
 

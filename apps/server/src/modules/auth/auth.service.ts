@@ -32,9 +32,13 @@ import {
   AccountStatus,
 } from '@baffa/shared';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'baffa-super-secret-production-key-2026';
-const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || 'baffa-super-refresh-secret-production-key-2026';
+import { getSecret } from '../../config/runtime';
+
+// Secrets come from the environment; if missing, a random secret is generated and stored
+// in the data folder (never a hard-coded value that would let anyone forge tokens).
+const JWT_SECRET_LAZY = () => getSecret('JWT_SECRET');
+const JWT_REFRESH_SECRET_LAZY = () => getSecret('JWT_REFRESH_SECRET');
+const GUEST_TOKEN_EXPIRY = '30d';
 const ACCESS_TOKEN_EXPIRY = '30d';
 const REFRESH_TOKEN_EXPIRY = '90d';
 
@@ -43,6 +47,19 @@ export interface JwtPayload {
   username: string;
   email?: string | null;
   role?: string;
+  /** 'guest' for server-issued guest identity tokens; undefined for registered accounts */
+  typ?: string;
+}
+
+/** Guest identities are always prefixed like this and can never collide with registered ids. */
+export function isGuestId(id: unknown): id is string {
+  return (
+    typeof id === 'string' &&
+    id.length >= 8 &&
+    id.length <= 80 &&
+    /^[A-Za-z0-9_-]+$/.test(id) &&
+    (id.startsWith('guest_') || id.startsWith('user_guest_'))
+  );
 }
 
 export interface InMemoryUserRecord {
@@ -109,6 +126,9 @@ export class AuthService {
    */
   private checkRateLimit(key: string, maxAttempts = 10, windowMs = 60000): void {
     const now = Date.now();
+    if (this.rateLimitMap.size > 5000) {
+      for (const [k, r] of this.rateLimitMap.entries()) if (now > r.resetAt) this.rateLimitMap.delete(k);
+    }
     const record = this.rateLimitMap.get(key);
 
     if (!record || now > record.resetAt) {
@@ -134,8 +154,8 @@ export class AuthService {
    * Generates Access & Rotating Refresh Tokens
    */
   public generateTokens(payload: JwtPayload): AuthTokens {
-    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
-    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
+    const accessToken = jwt.sign(payload, JWT_SECRET_LAZY(), { expiresIn: ACCESS_TOKEN_EXPIRY });
+    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET_LAZY(), {
       expiresIn: REFRESH_TOKEN_EXPIRY,
     });
 
@@ -147,38 +167,48 @@ export class AuthService {
   }
 
   /**
-   * Validates JWT Access Token with support for guest accounts and graceful session recovery
+   * Validates a registered-account access token.
+   * Only tokens with a valid signature that have not expired are accepted.
+   * (Previously any string starting with "user_" was accepted as a token, and tokens with a
+   * bad signature were decoded and trusted anyway — that allowed logging in as anyone.)
    */
   public validateToken(token: string): JwtPayload | null {
+    const payload = this.verifyAccessToken(token);
+    if (!payload || payload.typ === 'guest' || isGuestId(payload.sub)) return null;
+    return payload;
+  }
+
+  /**
+   * Validates either a registered-account token or a server-issued guest token.
+   * Used by the game socket and the game HTTP fallbacks.
+   */
+  public validateGameToken(token: string): (JwtPayload & { isGuest: boolean }) | null {
+    const payload = this.verifyAccessToken(token);
+    if (!payload) return null;
+    if (payload.typ === 'guest') {
+      if (!isGuestId(payload.sub)) return null;
+      return { ...payload, isGuest: true };
+    }
+    if (isGuestId(payload.sub)) return null;
+    return { ...payload, isGuest: false };
+  }
+
+  /** Issues a signed token that proves ownership of a guest id (so other players cannot claim it). */
+  public issueGuestToken(guestId: string, username: string): string {
+    return jwt.sign({ sub: guestId, username, role: 'PLAYER', typ: 'guest' }, JWT_SECRET_LAZY(), {
+      expiresIn: GUEST_TOKEN_EXPIRY,
+    });
+  }
+
+  private verifyAccessToken(token: string): JwtPayload | null {
     if (!token || typeof token !== 'string') return null;
     const cleanToken = token.trim();
-    if (!cleanToken) return null;
-
-    // Handle guest user identifier tokens directly (e.g. user_guest_..., guest_..., user_...)
-    if (
-      cleanToken.startsWith('user_guest_') ||
-      cleanToken.startsWith('guest_') ||
-      cleanToken.startsWith('user_')
-    ) {
-      const persisted = this.persistence.getUserById(cleanToken);
-      return {
-        sub: cleanToken,
-        username: persisted?.displayName || persisted?.username || 'لاعب',
-        email: persisted?.email || null,
-        role: 'PLAYER',
-      };
-    }
-
+    if (!cleanToken || cleanToken.split('.').length !== 3) return null;
     try {
-      return jwt.verify(cleanToken, JWT_SECRET) as JwtPayload;
+      const decoded = jwt.verify(cleanToken, JWT_SECRET_LAZY(), { algorithms: ['HS256'] }) as JwtPayload;
+      if (!decoded || typeof decoded.sub !== 'string' || !decoded.sub) return null;
+      return decoded;
     } catch {
-      // Gracefully decode payload if signature failed or expired during active usage
-      try {
-        const decoded = jwt.decode(cleanToken) as JwtPayload;
-        if (decoded && decoded.sub) {
-          return decoded;
-        }
-      } catch {}
       return null;
     }
   }
@@ -1577,7 +1607,7 @@ export class AuthService {
    */
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
     try {
-      const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as JwtPayload;
+      const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET_LAZY(), { algorithms: ['HS256'] }) as JwtPayload;
       const oldHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
       try {

@@ -63,9 +63,16 @@ export class AnticheatService {
       telemetry.expectedSequence !== undefined &&
       telemetry.clientSequence < telemetry.expectedSequence
     ) {
-      riskRecord.riskScore += 10;
+      // Recorded as evidence only. The engine itself rejects anything that is not a legal move for
+      // the player whose turn it is, so a replayed/duplicated action can never apply twice.
+      // Rejecting here used to drop perfectly legal moves whenever any unrelated state change
+      // (a chat message, a player reconnecting, a judge warning) bumped the sequence number just
+      // before the player clicked.
+      riskRecord.riskScore += 1;
       riskRecord.reasons.push(`Stale sequence: received ${telemetry.clientSequence}, expected ${telemetry.expectedSequence}`);
-      return { isPermitted: false, warning: 'Stale action sequence rejected' };
+    }
+    if (riskRecord.reasons.length > 50) {
+      riskRecord.reasons.splice(0, riskRecord.reasons.length - 50);
     }
 
     return { isPermitted: true };
@@ -84,6 +91,11 @@ export class AnticheatService {
       ipAddress?: string;
     }
   ) {
+    if (!this.prisma.isAvailable) {
+      // No database: keep a lightweight log line instead of attempting a DB connection per move.
+      this.logger.debug(`[AUDIT] Action: ${action} | User: ${details.userId || 'system'} | Room: ${details.roomId || 'none'}`);
+      return;
+    }
     try {
       await this.prisma.auditLog.create({
         data: {
@@ -97,8 +109,15 @@ export class AnticheatService {
       });
     } catch {
       // In-memory or database graceful fallback
-      this.logger.log(`[AUDIT] Action: ${action} | User: ${details.userId || 'system'} | Room: ${details.roomId || 'none'}`);
+      this.logger.debug(`[AUDIT] Action: ${action} | User: ${details.userId || 'system'} | Room: ${details.roomId || 'none'}`);
     }
+  }
+
+  /** Frees per-room telemetry when a room is closed (these maps previously grew forever). */
+  public clearRoom(roomId: string): void {
+    const prefix = `${roomId}_`;
+    for (const k of this.userRiskScores.keys()) if (k.startsWith(prefix)) this.userRiskScores.delete(k);
+    for (const k of this.lastActionTimes.keys()) if (k.startsWith(prefix)) this.lastActionTimes.delete(k);
   }
 
   public getRiskScore(roomId: string, userId: string): number {

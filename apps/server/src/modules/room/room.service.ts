@@ -15,6 +15,7 @@ import {
 } from '@baffa/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PersistenceService } from '../persistence/persistence.service';
+import { toPublicAvatar } from '../profile/avatar-url';
 
 export interface ConnectedPlayer {
   socketId: string;
@@ -33,15 +34,47 @@ export class RoomService {
   private socketPlayers: Map<string, ConnectedPlayer> = new Map();
   private graceTimers: Map<string, NodeJS.Timeout> = new Map(); // `${roomId}_${seat}` -> Timeout
   private lobbyDisconnectTimers: Map<string, NodeJS.Timeout> = new Map(); // `${roomId}_${userId}` -> Timeout
+  /** Seat a player held when they left a running match (`${roomId}_${userId}` -> seat), so they get it back. */
+  private departedSeats: Map<string, PlayerSeat> = new Map();
 
   constructor(
     private prisma: PrismaService,
     @Optional() private persistence?: PersistenceService
   ) {}
 
+  /** Turn time must be one of the sane values the UI offers (5-60s). Out-of-range values
+   *  (negative, huge, text) made the turn timer fire instantly and auto-play every move. */
+  public static clampTimer(value: unknown): number {
+    const n = Math.round(Number(value));
+    if (!Number.isFinite(n) || n <= 0) return 20;
+    return Math.min(60, Math.max(5, n));
+  }
+
+  /** Keeps only known settings with valid values (the client could previously inject anything). */
+  public static sanitizeSettings(input: Partial<RoomSettings> | undefined): Partial<RoomSettings> {
+    const out: Partial<RoomSettings> = {};
+    if (!input || typeof input !== 'object') return out;
+    const bools: (keyof RoomSettings)[] = [
+      'fillWithBots', 'isPrivate', 'allowJudge', 'allowSpectator', 'voiceEnabled', 'quickChatEnabled', 'reactionsEnabled',
+    ];
+    for (const key of bools) {
+      if (key in input) (out as any)[key] = Boolean((input as any)[key]);
+    }
+    if ('targetScore' in input) out.targetScore = Number(input.targetScore) === 151 ? 151 : 101;
+    if ('maxPlayers' in input) out.maxPlayers = Number(input.maxPlayers) === 2 ? 2 : 4;
+    if ('roundTimerSeconds' in input) out.roundTimerSeconds = RoomService.clampTimer(input.roundTimerSeconds);
+    if ('selectedBotId' in input && typeof input.selectedBotId === 'string') out.selectedBotId = input.selectedBotId;
+    if ('roomName' in input && typeof input.roomName === 'string') out.roomName = input.roomName.trim().slice(0, 40);
+    return out;
+  }
+
   private resolveUserMeta(user: { id: string; username: string; avatar?: string }): { username: string; avatar: string } {
     const persisted = this.persistence?.getUserById(user.id);
-    const resolvedAvatar = persisted?.customAvatarUrl || persisted?.avatarUrl || user.avatar || 'avatar-1';
+    const resolvedAvatar = toPublicAvatar(
+      user.id,
+      persisted?.customAvatarUrl || persisted?.avatarUrl || user.avatar || 'avatar-1',
+      persisted?.updatedAt
+    );
     let resolvedName = (persisted?.displayName || persisted?.username || user.username || '').trim();
     resolvedName = resolvedName.replace(/_\d{3,4}$/, '');
     if (!resolvedName) resolvedName = 'لاعب';
@@ -149,7 +182,7 @@ export class RoomService {
       targetScore: settings?.targetScore === 151 ? 151 : 101,
       maxPlayers: settings?.maxPlayers === 2 ? 2 : 4,
       fillWithBots: settings?.fillWithBots ?? true,
-      roundTimerSeconds: settings?.roundTimerSeconds || 20,
+      roundTimerSeconds: RoomService.clampTimer(settings?.roundTimerSeconds),
       isPrivate: settings?.isPrivate ?? false,
       allowJudge: settings?.allowJudge ?? true,
       allowSpectator: settings?.allowSpectator ?? true,
@@ -226,7 +259,7 @@ export class RoomService {
     const room: RoomDetails = {
       id,
       code,
-      name: name || `Room ${code}`,
+      name: (typeof name === "string" && name.trim() ? name.trim().slice(0, 40) : "") || `Room ${code}`,
       ownerId: ownerUser.id,
       currentAdminId: ownerUser.id,
       originalAdminId: ownerUser.id,
@@ -366,8 +399,15 @@ export class RoomService {
 
     // New unseated user
     if (room.matchStatus !== 'LOBBY') {
-      // Check if there is an available BOT seat that the joining player can take over to PLAY!
-      let availableBotSeat = room.seats.find((s) => s.isBot && s.occupied);
+      // A player returning to a match they left gets their own seat back (their team and hand), not
+      // simply the first bot seat — that used to drop them onto the other team's bot.
+      const departedKey = `${roomId}_${user.id}`;
+      const previousSeat = this.departedSeats.get(departedKey);
+      this.departedSeats.delete(departedKey);
+      let availableBotSeat =
+        previousSeat !== undefined && room.seats[previousSeat]?.isBot ? room.seats[previousSeat] : undefined;
+      // Otherwise: is there an available BOT seat that the joining player can take over to PLAY?
+      if (!availableBotSeat) availableBotSeat = room.seats.find((s) => s.isBot && s.occupied);
       if (!availableBotSeat) {
         availableBotSeat = room.seats.find((s) => !s.occupied);
       }
@@ -468,7 +508,7 @@ export class RoomService {
 
     const isCurrentJudge =
       room.judge &&
-      (room.judge.userId === user.id || (room.judge.username && room.judge.username === user.username));
+      room.judge.userId === user.id;
 
     if (isCurrentJudge) {
       const fallbackSeatIndex = room.seats.findIndex((seat) => !seat.occupied || seat.isBot);
@@ -504,7 +544,7 @@ export class RoomService {
       throw new Error('A Judge is already presiding over this room (Max 1)');
     }
 
-    if (room.spectator?.userId === user.id || room.spectator?.username === user.username) {
+    if (room.spectator?.userId === user.id) {
       room.spectator = null;
     }
 
@@ -519,7 +559,7 @@ export class RoomService {
     // When joining as Judge: replace the user's vacated seat with a bot.
     // If no other human players are seated, guarantee ALL 4 seats are active Egyptian bots!
     const otherHumanSeats = room.seats.filter(
-      (s) => !s.isBot && s.occupied && s.playerId !== user.id && s.username !== user.username
+      (s) => !s.isBot && s.occupied && s.playerId !== user.id
     );
     const noOtherHumans = otherHumanSeats.length === 0;
 
@@ -527,7 +567,7 @@ export class RoomService {
       room.seats.forEach((seat, idx) => {
         const isVacatingUser =
           !seat.isBot &&
-          (seat.playerId === user.id || (user.username && seat.username === user.username));
+          seat.playerId === user.id;
 
         if (noOtherHumans || isVacatingUser || !seat.occupied) {
           const botConfig = defaultBots[idx % defaultBots.length];
@@ -587,13 +627,13 @@ export class RoomService {
 
     const isCurrentSpectator =
       room.spectator &&
-      (room.spectator.userId === user.id || (room.spectator.username && room.spectator.username === user.username));
+      room.spectator.userId === user.id;
 
     if (room.spectator && !isCurrentSpectator && room.spectator.isConnected) {
       throw new Error('A Spectator is already watching this room (Max 1)');
     }
 
-    if (room.judge?.userId === user.id || room.judge?.username === user.username) {
+    if (room.judge?.userId === user.id) {
       room.judge = null;
     }
 
@@ -607,14 +647,14 @@ export class RoomService {
 
     // Vacate seat occupied by this user and guarantee all empty seats are populated with bots
     const otherHumanSeats = room.seats.filter(
-      (s) => !s.isBot && s.occupied && s.playerId !== user.id && s.username !== user.username
+      (s) => !s.isBot && s.occupied && s.playerId !== user.id
     );
     const noOtherHumans = otherHumanSeats.length === 0;
 
     room.seats.forEach((seat, idx) => {
       const isVacatingUser =
         !seat.isBot &&
-        (seat.playerId === user.id || (user.username && seat.username === user.username));
+        seat.playerId === user.id;
 
       if (noOtherHumans || !seat.occupied || isVacatingUser) {
         const botConfig = defaultBots[idx % defaultBots.length];
@@ -928,13 +968,13 @@ export class RoomService {
     if ((settings as any)?.roomName || (settings as any)?.name) {
       const newName = ((settings as any).roomName || (settings as any).name).trim();
       if (newName) {
-        room.name = newName;
+        room.name = String(newName).slice(0, 40);
       }
     }
 
     room.settings = {
       ...room.settings,
-      ...settings,
+      ...RoomService.sanitizeSettings(settings),
     };
 
     return room;
@@ -1192,6 +1232,7 @@ export class RoomService {
             Math.floor(Math.random() * (availableBots.length > 0 ? availableBots.length : egyptianBots.length))
           ];
 
+          this.departedSeats.set(`${roomId}_${player.userId}`, seat.seat);
           seat.occupied = true;
           seat.playerId = `bot_${seat.seat}`;
           seat.username = chosenBot.name;
@@ -1396,10 +1437,26 @@ export class RoomService {
 
   public deleteRoom(roomId: string): void {
     this.rooms.delete(roomId);
+    const prefix = `${roomId}_`;
+    for (const key of this.departedSeats.keys()) {
+      if (key.startsWith(prefix)) this.departedSeats.delete(key);
+    }
     for (const [key, timer] of this.graceTimers.entries()) {
-      if (key.startsWith(roomId)) {
+      if (key.startsWith(prefix)) {
         clearTimeout(timer);
         this.graceTimers.delete(key);
+      }
+    }
+    for (const [key, timer] of this.lobbyDisconnectTimers.entries()) {
+      if (key.startsWith(prefix)) {
+        clearTimeout(timer);
+        this.lobbyDisconnectTimers.delete(key);
+      }
+    }
+    for (const player of this.socketPlayers.values()) {
+      if (player.roomId === roomId) {
+        player.roomId = null;
+        player.seat = null;
       }
     }
     this.logger.log(`Room ${roomId} has been deleted.`);
