@@ -19,6 +19,7 @@ import { LocalProfileStorage } from './storage/local-profile-storage';
 import { ImageProcessor } from './storage/image-processor';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getPersistentUploadsDir } from '../../config/runtime';
 import { GameGateway } from '../../gateways/game.gateway';
 import { PersistenceService, PersistedUser } from '../persistence/persistence.service';
 
@@ -817,7 +818,9 @@ export class ProfileService {
     const cleanId = path.basename(identifier);
 
     // 1. Check disk candidates
+    const persistentUploads = getPersistentUploadsDir();
     const diskDirs = [
+      ...(persistentUploads ? [path.join(persistentUploads, 'avatars')] : []),
       path.resolve(process.cwd(), 'uploads', 'avatars'),
       path.resolve(process.cwd(), 'apps', 'server', 'uploads', 'avatars'),
       path.resolve(__dirname, '..', '..', '..', '..', 'uploads', 'avatars'),

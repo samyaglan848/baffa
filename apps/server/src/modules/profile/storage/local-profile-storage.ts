@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { IProfileImageStorage, StoredProfileImage } from './profile-storage.interface';
 import { Injectable, Logger } from '@nestjs/common';
+import { getPersistentUploadsDir } from '../../../config/runtime';
 
 @Injectable()
 export class LocalProfileStorage implements IProfileImageStorage {
@@ -10,7 +11,9 @@ export class LocalProfileStorage implements IProfileImageStorage {
   private readonly baseUrl: string;
 
   constructor() {
+    const persistent = getPersistentUploadsDir();
     this.uploadDirs = [
+      ...(persistent ? [path.join(persistent, 'avatars')] : []),
       path.resolve(process.cwd(), 'uploads', 'avatars'),
       path.resolve(process.cwd(), 'apps', 'server', 'uploads', 'avatars'),
       path.resolve(__dirname, '..', '..', '..', '..', 'uploads', 'avatars'),

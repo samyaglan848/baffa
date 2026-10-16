@@ -11,6 +11,7 @@ import { json, urlencoded } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as express from 'express';
+import { getPersistentUploadsDir } from './config/runtime';
 
 export function getAllowedOrigins(): string[] {
   const raw = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '';
@@ -55,7 +56,9 @@ async function bootstrap() {
   });
 
   // Serve static uploaded avatars safely across monorepo layouts
+  const persistentUploads = getPersistentUploadsDir();
   const uploadsCandidateDirs = [
+    ...(persistentUploads ? [persistentUploads] : []),
     path.resolve(process.cwd(), 'uploads'),
     path.resolve(process.cwd(), 'apps', 'server', 'uploads'),
     path.resolve(__dirname, '..', 'uploads'),

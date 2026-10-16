@@ -100,3 +100,49 @@ export function getSecret(envName: 'JWT_SECRET' | 'JWT_REFRESH_SECRET'): string 
   secretCache.set(envName, secret);
   return secret;
 }
+
+let cachedUploadsDir: string | null | undefined;
+
+/**
+ * Persistent folder for uploaded profile photos: `<DATA_DIR>/uploads`, or null when DATA_DIR is
+ * not set (local development keeps using the project's `uploads/` folders).
+ *
+ * The project folders are wiped on every redeploy on hosts like Render, so with DATA_DIR pointing
+ * at a persistent disk the photos live next to the database. On first use, photos found in the
+ * old project folders are copied over once so nothing goes missing during the move.
+ */
+export function getPersistentUploadsDir(): string | null {
+  if (cachedUploadsDir !== undefined) return cachedUploadsDir;
+  if (!process.env.DATA_DIR || !process.env.DATA_DIR.trim()) {
+    cachedUploadsDir = null;
+    return null;
+  }
+
+  const dir = path.join(getDataDir(), 'uploads');
+  const avatarsDir = path.join(dir, 'avatars');
+  try {
+    fs.mkdirSync(avatarsDir, { recursive: true });
+    const legacyAvatarDirs = [
+      path.resolve(process.cwd(), 'uploads', 'avatars'),
+      path.resolve(process.cwd(), 'apps', 'server', 'uploads', 'avatars'),
+      path.resolve(__dirname, '..', '..', '..', '..', 'uploads', 'avatars'),
+    ];
+    let copied = 0;
+    for (const legacy of new Set(legacyAvatarDirs)) {
+      if (path.resolve(legacy) === path.resolve(avatarsDir) || !fs.existsSync(legacy)) continue;
+      for (const name of fs.readdirSync(legacy)) {
+        const target = path.join(avatarsDir, name);
+        if (!fs.existsSync(target)) {
+          fs.copyFileSync(path.join(legacy, name), target);
+          copied++;
+        }
+      }
+    }
+    if (copied > 0) logger.log(`Copied ${copied} profile photos into ${avatarsDir}`);
+  } catch (err: any) {
+    logger.error(`Could not prepare uploads directory ${dir}: ${err.message}`);
+  }
+
+  cachedUploadsDir = dir;
+  return dir;
+}
