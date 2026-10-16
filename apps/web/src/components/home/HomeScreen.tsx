@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { Play, PlusCircle, LogIn, BookOpen, ShieldCheck, UserCheck, Gavel, Eye, ShieldAlert, WifiOff, Cpu, Bot, Radio, X } from 'lucide-react';
 import { JoinRoomModal } from '../room/JoinRoomModal';
-import { CreateRoomModal } from '../room/CreateRoomModal';
 import { AuthModal } from '../auth/AuthModal';
 import { RoomSettings, UserRole } from '@baffa/shared';
 import { DominoTile } from '../common/DominoTile';
@@ -28,7 +27,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onQuickPlay,
   onAuthSuccess,
 }) => {
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  // "Create room" goes straight to the lobby. The old settings window before it asked for the same
+  // things the lobby already has (name, role, points, turn time, chat), so players saw two lobbies.
+  const handleCreateRoom = () => {
+    onCreateRoom(
+      `بَفّة ${currentUser.username}`,
+      {
+        targetScore: 101,
+        roundTimerSeconds: 20,
+        fillWithBots: true,
+        allowJudge: true,
+        allowSpectator: true,
+        voiceEnabled: true,
+        quickChatEnabled: true,
+        reactionsEnabled: true,
+        maxPlayers: 4,
+      },
+      'PLAYER'
+    );
+  };
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -264,7 +281,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* 2. Create Room (Neon Cyan Card) */}
         <div
-          onClick={() => setShowCreateModal(true)}
+          onClick={handleCreateRoom}
           className="baffa-card"
           style={{
             padding: isMobile ? '18px 16px' : '30px 24px',
@@ -466,13 +483,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </div>
 
       {/* Modals */}
-      <CreateRoomModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreate={onCreateRoom}
-        defaultRoomName={`بَفّة ${currentUser.username}`}
-      />
-
       <JoinRoomModal
         isOpen={showJoinModal}
         onClose={() => setShowJoinModal(false)}
