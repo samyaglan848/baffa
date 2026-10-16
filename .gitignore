@@ -51,3 +51,8 @@ apps/server/uploads/
 .jwt_refresh_secret
 *.sqlite
 *.db
+
+# Compiled output must never sit next to the TypeScript source: the web build picked these stale
+# copies up instead of the .ts files, so newer events had no name.
+packages/shared/src/**/*.js
+packages/shared/src/**/*.d.ts
