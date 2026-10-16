@@ -230,7 +230,7 @@ export function useGameSocket() {
   // made in those seconds was lost and the card bounced back.
   const socketVerifiedRef = useRef(true);
   /** A "create room" request that has not produced a room yet (see createRoom). */
-  const pendingCreateRef = useRef<{ payload: any; at: number; retried: boolean } | null>(null);
+  const pendingCreateRef = useRef<{ payload: any; at: number; retried: boolean; sentVia: Socket | null } | null>(null);
   const resyncTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isResyncing, setIsResyncing] = useState(false);
   const finishResync = useCallback(() => {
@@ -483,9 +483,12 @@ export function useGameSocket() {
       setSocketInstance(socket);
       freshConnectionRef.current = true;
       socketVerifiedRef.current = true;
+      // Only when the request went out on a connection that was replaced since (it is lost); a request
+      // queued on this same socket is delivered by socket.io itself (re-sending it made two rooms).
       const pendingCreate = pendingCreateRef.current;
-      if (pendingCreate && !activeRoomIdRef.current && Date.now() - pendingCreate.at < 15000) {
+      if (pendingCreate && pendingCreate.sentVia !== socket && !activeRoomIdRef.current && Date.now() - pendingCreate.at < 15000) {
         socket.emit(ClientEvents.CREATE_ROOM, pendingCreate.payload);
+        pendingCreate.sentVia = socket;
       }
       if (activeRoomIdRef.current) {
         if (myRoleRef.current === 'JUDGE') {
@@ -923,14 +926,16 @@ export function useGameSocket() {
       // Right after the page loads the connection is set up (and sometimes replaced once), and a
       // press in that moment was lost: nothing happened. The request is kept until the room
       // arrives and is re-sent on the next connection or after 3s without an answer.
-      pendingCreateRef.current = { payload, at: Date.now(), retried: false };
+      pendingCreateRef.current = { payload, at: Date.now(), retried: false, sentVia: null };
       const send = () => {
         const pending = pendingCreateRef.current;
         if (!pending || activeRoomIdRef.current) return;
         const s = socketRef.current;
         if (!s) return; // re-sent from the 'connect' handler
         if (!s.connected) s.connect();
+        // A not-yet-connected socket queues the request and sends it once connected.
         s.emit(ClientEvents.CREATE_ROOM, pending.payload);
+        pending.sentVia = s;
       };
       send();
       setTimeout(() => {
