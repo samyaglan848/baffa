@@ -68,6 +68,9 @@ function mergeServerGameState(
   return incoming;
 }
 
+/** Set by getStoredUser when it finds an account's details without a valid login (see below). */
+let staleAccountDetected = false;
+
 function getStoredUser(): CurrentUser {
   if (typeof window !== 'undefined') {
     // 1. Check if a real registered user account with token exists in localStorage
@@ -104,6 +107,22 @@ function getStoredUser(): CurrentUser {
           const guestToken = sessionStorage.getItem('baffa_guest_token');
           if (guestToken) parsed.guestToken = guestToken;
           delete parsed.token;
+          // A guest can only pick a built-in avatar. An uploaded/Google photo here means these are an
+          // account's details left behind after its login was dropped: the page showed the player's
+          // name and photo next to a "Login" button and an empty profile. Treat it as an expired login.
+          const isPresetAvatar = typeof parsed.avatar !== 'string' || /^(avatar-\d{1,2}|bot-[a-z-]+)$/.test(parsed.avatar);
+          if (!isPresetAvatar || parsed.email || parsed.googleId) {
+            staleAccountDetected = true;
+            parsed.username = 'ضيف';
+            parsed.avatar = 'avatar-1';
+            delete parsed.displayName;
+            delete parsed.email;
+            delete parsed.googleId;
+            delete parsed.customAvatarUrl;
+            try {
+              sessionStorage.setItem('baffa_user', JSON.stringify(parsed));
+            } catch {}
+          }
           return parsed;
         }
       } catch {}
@@ -164,6 +183,17 @@ export function useGameSocket() {
     if (typeof window !== 'undefined') {
       const user = getStoredUser();
       setCurrentUser(user);
+      if (staleAccountDetected) {
+        staleAccountDetected = false;
+        setLatestNotification({
+          type: 'WARNING',
+          message: 'Your login has expired. Please sign in again.',
+          arabicMessage: 'انتهى تسجيل دخولك، سجّل دخولك تاني. بياناتك وصورتك وماتشاتك محفوظة وهترجع بمجرد ما تسجّل.',
+          timestamp: Date.now(),
+          persistent: true,
+        } as NotificationPayload);
+        setSessionExpired(true);
+      }
     }
   }, []);
 

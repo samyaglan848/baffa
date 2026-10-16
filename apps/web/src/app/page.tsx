@@ -308,8 +308,7 @@ export default function App() {
         reactionsEnabled: true,
         selectedBotId: 'EL_SAMY',
       },
-      'ADMIN',
-      { autoStart: true }
+      'ADMIN'
     );
     setPreparingTable(true);
     setCurrentView('HOME');
