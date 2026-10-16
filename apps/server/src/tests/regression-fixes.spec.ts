@@ -243,6 +243,25 @@ describe('Regression: players leaving / returning never freeze the table', () =>
   });
 });
 
+describe('Regression: leaving a room really leaves it', () => {
+  it('the creator who leaves a running match is no longer a member or a broadcast target', () => {
+    const { session, roomService, room } = makeHarness();
+    session.startMatch(room.id, 'user_host_1');
+    roomService.leaveRoom(room.id, 'sock_host');
+
+    const after = roomService.getRoom(room.id)!;
+    for (const field of ['currentAdminId', 'originalAdminId', 'ownerId'] as const) {
+      assert.notStrictEqual(after[field], 'user_host_1', `${field} must not keep the player who left`);
+    }
+    assert.ok(!after.seats.some((s) => s.playerId === 'user_host_1'), 'seat handed to a bot');
+    // The old socket must not keep receiving the room's events (bot moves, chat, sounds).
+    roomService.registerSocket('sock_host_again', { id: 'user_host_1', username: 'Host', avatar: 'avatar-1' }, 'PLAYER');
+    const targets = roomService.getConnectedPlayersInRoom(room.id).map((p) => p.userId);
+    assert.ok(!targets.includes('user_host_1'));
+    session.endSession(room.id);
+  });
+});
+
 describe('Regression: automatic referee is announced and consistent', () => {
   it('play violation then pass violation = warning, then announced cheating penalty', () => {
     const { session, room } = makeHarness();

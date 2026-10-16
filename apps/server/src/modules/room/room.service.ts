@@ -1262,6 +1262,15 @@ export class RoomService {
       }
     }
 
+    // A player who leaves is no longer the room's owner either. The creator used to stay recorded as
+    // owner/original admin, so the server kept treating them as a member: every bot move, chat and
+    // notification (with its sound) still reached them after leaving, and any reconnect pulled them
+    // back into the room.
+    const successor = room.currentAdminId !== player.userId ? room.currentAdminId : '';
+    if (room.currentAdminId === player.userId) room.currentAdminId = successor;
+    if (room.originalAdminId === player.userId) room.originalAdminId = successor;
+    if (room.ownerId === player.userId) room.ownerId = successor;
+
     player.roomId = null;
     player.seat = null;
 

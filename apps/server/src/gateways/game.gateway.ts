@@ -76,6 +76,10 @@ function socketCorsOrigins(): string[] | '*' {
   },
   // 1MB per message is plenty for game events (avatars are no longer sent inline).
   maxHttpBufferSize: 1e6,
+  // Detect a dead connection in ~18s instead of the default ~45s (phones kill the connection of a
+  // backgrounded page without closing it, and both sides kept waiting on it).
+  pingInterval: 10000,
+  pingTimeout: 8000,
 })
 export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(GameGateway.name);
@@ -1105,6 +1109,12 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (leftPlayerSeat !== null) {
           this.roomService.cancelDisconnectGrace(actualRoomId, leftPlayerSeat);
         }
+        if (!this.roomService.getPlayerBySocket(client.id) && userId) {
+          // Unregistered connection (e.g. after a reconnect): leaveRoom() would silently do nothing
+          // and the player would stay seated / owner of the room they just left.
+          const m = this.getMembership(room, userId);
+          this.roomService.registerSocket(client.id, this.resolveUser(client), m.isJudge ? 'JUDGE' : m.isSpectator && !m.seated ? 'SPECTATOR' : 'PLAYER');
+        }
         const updatedRoom = this.roomService.leaveRoom(actualRoomId, client.id);
         if (updatedRoom) {
           this.syncRoomToAll(actualRoomId, updatedRoom);
@@ -1420,9 +1430,18 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         }
         const connectedPlayers = this.roomService.getConnectedPlayersInRoom(actualRoomId);
         const targetPlayer = connectedPlayers.find((p) => p.userId === userId);
-        const updatedRoom = targetPlayer?.socketId
-          ? this.roomService.leaveRoom(actualRoomId, targetPlayer.socketId)
-          : room;
+        let updatedRoom = room;
+        if (targetPlayer?.socketId) {
+          updatedRoom = this.roomService.leaveRoom(actualRoomId, targetPlayer.socketId) || room;
+        } else {
+          // No live socket (it died in the background): still release the seat and ownership,
+          // otherwise the player stayed a member of a room they had left.
+          const m = this.getMembership(room, userId);
+          const tempId = `http_leave_${userId}`;
+          this.roomService.registerSocket(tempId, identity, m.isJudge ? 'JUDGE' : m.isSpectator && !m.seated ? 'SPECTATOR' : 'PLAYER');
+          updatedRoom = this.roomService.leaveRoom(actualRoomId, tempId) || room;
+          this.roomService.unregisterSocket(tempId);
+        }
 
         if (leftSeat !== null && updatedRoom?.matchStatus === 'PLAYING') {
           const botSeat = updatedRoom.seats[leftSeat];

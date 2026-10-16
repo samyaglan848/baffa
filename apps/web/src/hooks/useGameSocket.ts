@@ -225,6 +225,10 @@ export function useGameSocket() {
   const hiddenAtRef = useRef<number | null>(null);
   const resyncingRef = useRef(false);
   const freshConnectionRef = useRef(false);
+  // False from returning to the tab until the server answers on the socket. Until then the socket may
+  // be dead while still reporting "connected", so moves are also sent over HTTP; otherwise a move
+  // made in those seconds was lost and the card bounced back.
+  const socketVerifiedRef = useRef(true);
   const resyncTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isResyncing, setIsResyncing] = useState(false);
   const finishResync = useCallback(() => {
@@ -347,6 +351,7 @@ export function useGameSocket() {
       }
 
       const socket = socketRef.current;
+      if (socket && awayMs > 1000) socketVerifiedRef.current = false;
       if (socket) {
         if (!socket.connected) {
           socket.connect();
@@ -360,6 +365,7 @@ export function useGameSocket() {
               socket.connect();
               return;
             }
+            socketVerifiedRef.current = true;
             if (res?.gameState) {
               const fresh = normalizeServerClock(res.gameState);
               setGameState((prev) => mergeServerGameState(prev, fresh, optimisticMoveRef.current));
@@ -474,6 +480,7 @@ export function useGameSocket() {
       setIsConnected(true);
       setSocketInstance(socket);
       freshConnectionRef.current = true;
+      socketVerifiedRef.current = true;
       if (activeRoomIdRef.current) {
         if (myRoleRef.current === 'JUDGE') {
           socket.emit(ClientEvents.JOIN_AS_JUDGE, {
@@ -674,11 +681,14 @@ export function useGameSocket() {
     });
 
     socket.on(ServerEvents.BOT_MESSAGE, (data: BotChatMessage) => {
+      if (!activeRoomIdRef.current) return; // left the room: no more table chatter or sounds
       setLatestBotMessage(data);
       setTimeout(() => setLatestBotMessage(null), 6000);
     });
 
     socket.on(ServerEvents.NOTIFICATION, (data: NotificationPayload) => {
+      // After leaving a room its notifications (and their sounds) must stop.
+      if (!activeRoomIdRef.current) return;
       console.log('[NOTIFICATION_RECEIVED_CLIENT]', data);
 
       const isPersistent =
@@ -727,6 +737,7 @@ export function useGameSocket() {
     });
 
     socket.on(ServerEvents.REFEREE_DECISION_BROADCAST, (data: RefereeDecisionBroadcastPayload) => {
+      if (!activeRoomIdRef.current) return;
       if (refereeDecisionTimerRef.current) {
         clearTimeout(refereeDecisionTimerRef.current);
       }
@@ -738,6 +749,8 @@ export function useGameSocket() {
     });
 
     socket.on(ServerEvents.REMATCH_STARTED, (data?: { roomId?: string }) => {
+      // A rematch in a room we already left must not pull us back into it.
+      if (!activeRoomIdRef.current || (data?.roomId && leftRoomIdRef.current === data.roomId)) return;
       setRejectedMove(null);
       setErrorMessage(null);
       leftRoomIdRef.current = null;
@@ -1401,7 +1414,7 @@ export function useGameSocket() {
         });
       }
 
-      if (!socketRef.current || !socketRef.current.connected) {
+      if (!socketRef.current || !socketRef.current.connected || !socketVerifiedRef.current) {
         fetch(`${apiUrl}/api/matches/play-tile`, {
           method: 'POST',
           headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),
@@ -1452,7 +1465,7 @@ export function useGameSocket() {
       });
     }
 
-    if (!socketRef.current || !socketRef.current.connected) {
+    if (!socketRef.current || !socketRef.current.connected || !socketVerifiedRef.current) {
       fetch(`${apiUrl}/api/matches/pass-turn`, {
         method: 'POST',
         headers: gameAuthHeaders({ 'Content-Type': 'application/json' }),

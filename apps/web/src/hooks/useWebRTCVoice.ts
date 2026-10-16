@@ -34,6 +34,7 @@ export function useWebRTCVoice({
 
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const remoteAudiosRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const audioContextRef = useRef<AudioContext | null>(null);
   const analysersRef = useRef<Map<string, AnalyserNode>>(new Map());
 
@@ -214,7 +215,9 @@ export function useWebRTCVoice({
         const stream = event.streams[0];
         if (stream) {
           attachAnalyser(stream, targetUserId);
+          remoteAudiosRef.current.get(targetUserId)?.pause();
           const remoteAudio = new Audio();
+          remoteAudiosRef.current.set(targetUserId, remoteAudio);
           remoteAudio.srcObject = stream;
           remoteAudio.autoplay = true;
           remoteAudio.setAttribute('playsinline', 'true');
@@ -347,6 +350,13 @@ export function useWebRTCVoice({
       // Clean up connections
       peerConnectionsRef.current.forEach((pc) => pc.close());
       peerConnectionsRef.current.clear();
+      // Silence the other players' voices too; these players were never stopped, so voices could
+      // keep playing after leaving the table.
+      remoteAudiosRef.current.forEach((a) => {
+        a.pause();
+        a.srcObject = null;
+      });
+      remoteAudiosRef.current.clear();
 
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((t) => t.stop());
