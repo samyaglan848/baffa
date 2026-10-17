@@ -54,9 +54,14 @@ export class CloudStore {
 
   /** Host part of STORE_DATABASE_URL (no user or password), to check from outside what was set. */
   static describeTarget(): string {
-    const url = CloudStore.normalizeUrl(process.env.STORE_DATABASE_URL || '');
+    const raw = (process.env.STORE_DATABASE_URL || '').trim();
+    const url = CloudStore.normalizeUrl(raw);
     if (!url) return 'not set';
-    if (!/^postgres(ql)?:\/\//i.test(url)) return 'not a postgresql:// link';
+    if (!/^postgres(ql)?:\/\//i.test(url)) {
+      // Shape only (never the content) to tell what was pasted instead of the link.
+      const scheme = raw.match(/^([a-z][a-z0-9+.-]*):\/\//i)?.[1] || 'none';
+      return `not a postgresql:// link (length ${raw.length}, starts with scheme: ${scheme}, contains neon.tech: ${/neon\.tech/i.test(raw)}, has spaces: ${/\s/.test(raw)})`;
+    }
     const m = url.match(/^postgres(?:ql)?:\/\/(?:[^@/]*@)?([^/:?]+)/i);
     return m ? m[1] : 'unreadable link';
   }
