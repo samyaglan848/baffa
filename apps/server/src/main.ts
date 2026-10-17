@@ -11,7 +11,8 @@ import { json, urlencoded } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as express from 'express';
-import { getPersistentUploadsDir } from './config/runtime';
+import { getPersistentUploadsDir, getStorageReport } from './config/runtime';
+import { PersistenceService } from './modules/persistence/persistence.service';
 
 export function getAllowedOrigins(): string[] {
   const raw = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '';
@@ -47,11 +48,16 @@ async function bootstrap() {
   // Production Health Check Endpoint
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.get('/health', (req: any, res: any) => {
+    let accounts: number | null = null;
+    try {
+      accounts = app.get(PersistenceService).getAllUsers().length;
+    } catch {}
     res.status(200).json({
       status: 'healthy',
       service: 'BAFFA Game Server',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
+      storage: { ...getStorageReport(), accounts },
     });
   });
 

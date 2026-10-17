@@ -101,6 +101,37 @@ export function getSecret(envName: 'JWT_SECRET' | 'JWT_REFRESH_SECRET'): string 
   return secret;
 }
 
+/**
+ * Facts about where data lives, for the /health check (no secrets). On Render the data folder must be
+ * on the attached disk: if it is on the same device as the system root, everything in it (accounts,
+ * matches, the login signing key) is wiped whenever the server restarts or wakes from sleep.
+ */
+export function getStorageReport() {
+  const dir = getDataDir();
+  const report: Record<string, any> = {
+    dataDir: dir,
+    dataDirFromEnv: Boolean(process.env.DATA_DIR && process.env.DATA_DIR.trim()),
+    jwtSecretSource: process.env.JWT_SECRET && process.env.JWT_SECRET.trim().length >= 16 ? 'env' : 'file',
+  };
+  try {
+    report.onSeparateDisk = fs.statSync(dir).dev !== fs.statSync(path.parse(dir).root).dev;
+  } catch {
+    report.onSeparateDisk = null;
+  }
+  for (const [key, file] of [
+    ['dbFileCreatedAt', path.join(dir, 'baffa_db.json')],
+    ['secretFileCreatedAt', path.join(dir, '.jwt_secret')],
+  ] as const) {
+    try {
+      const st = fs.statSync(file);
+      report[key] = (st.birthtime && st.birthtime.getTime() > 0 ? st.birthtime : st.ctime).toISOString();
+    } catch {
+      report[key] = null;
+    }
+  }
+  return report;
+}
+
 let cachedUploadsDir: string | null | undefined;
 
 /**
