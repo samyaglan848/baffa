@@ -122,7 +122,8 @@ export class PersistenceService implements OnModuleInit, OnApplicationShutdown {
       await this.attachCloud(store);
     } catch (err: any) {
       this.cloudStatus = 'error';
-      this.logger.error(`Permanent database unavailable, continuing with the local file only: ${err.message}`);
+      this.cloudError = CloudStore.describeError(err);
+      this.logger.error(`Permanent database unavailable, continuing with the local file only: ${this.cloudError}`);
     }
   }
 
@@ -137,8 +138,15 @@ export class PersistenceService implements OnModuleInit, OnApplicationShutdown {
   private cloudSyncRunning: Promise<void> | null = null;
   private cloudSyncAgain = false;
 
+  private cloudError: string | null = null;
+
   public getCloudStatus() {
     return this.cloudStatus;
+  }
+
+  /** Why the database is not usable (credentials removed), for the health report. */
+  public getCloudError() {
+    return this.cloudError;
   }
 
   /** Connects the permanent database: loads its accounts/matches and keeps it updated from now on. */
@@ -183,7 +191,8 @@ export class PersistenceService implements OnModuleInit, OnApplicationShutdown {
           this.cloudStatus = 'connected';
         } catch (err: any) {
           this.cloudStatus = 'error';
-          this.logger.error(`Saving to the permanent database failed (will retry on the next change): ${err.message}`);
+          this.cloudError = CloudStore.describeError(err);
+          this.logger.error(`Saving to the permanent database failed (will retry on the next change): ${this.cloudError}`);
           break;
         }
       } while (this.cloudSyncAgain);

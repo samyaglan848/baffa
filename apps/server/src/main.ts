@@ -54,6 +54,7 @@ async function bootstrap() {
       const persistence = app.get(PersistenceService);
       accounts = persistence.getAllUsers().length;
       database = persistence.getCloudStatus();
+      if (database === 'error') database = `error: ${persistence.getCloudError() || 'unknown'}`;
     } catch {}
     res.status(200).json({
       status: 'healthy',

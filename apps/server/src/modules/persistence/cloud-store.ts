@@ -20,7 +20,7 @@ export class CloudStore {
 
   /** Built from STORE_DATABASE_URL (not DATABASE_URL, which switches on the unrelated Prisma code). */
   static fromEnv(): CloudStore | null {
-    const url = (process.env.STORE_DATABASE_URL || '').trim();
+    const url = CloudStore.normalizeUrl(process.env.STORE_DATABASE_URL || '');
     if (!url) return null;
     // Loaded lazily so the server still starts where the package or the variable is missing.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -35,6 +35,25 @@ export class CloudStore {
     });
     pool.on?.('error', (err: Error) => new Logger(CloudStore.name).warn(`Database connection error: ${err.message}`));
     return new CloudStore(pool);
+  }
+
+  /**
+   * Accepts the link as people paste it from a provider: Neon's "copy" button can give
+   * `psql 'postgresql://...'`, with quotes and a `channel_binding` option the driver does not take.
+   */
+  static normalizeUrl(raw: string): string {
+    let url = raw.trim();
+    url = url.replace(/^psql\s+/i, '').trim();
+    url = url.replace(/^['"]|['"]$/g, '').trim();
+    if (!/^postgres(ql)?:\/\//i.test(url)) return url;
+    url = url.replace(/([?&])channel_binding=[^&]*(&?)/i, (_m, sep, tail) => (tail ? sep : '')).replace(/[?&]$/, '');
+    return url;
+  }
+
+  /** Error text with any credentials removed, safe to show in the health report. */
+  static describeError(err: any): string {
+    const text = String(err?.message || err || 'unknown error');
+    return text.replace(/\/\/[^\s/@]*@/g, '//***@').replace(/password[^,;]*/gi, 'password ***').slice(0, 200);
   }
 
   async init(): Promise<void> {
