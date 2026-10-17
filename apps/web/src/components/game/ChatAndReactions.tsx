@@ -77,6 +77,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
   latestBotMessage = null,
 }) => {
   const { playSound } = useGameAudio();
+  const isPhone = isMobile && !isLandscape;
   const [isOpen, setIsOpen] = useState(false);
   const [activeChats, setActiveChats] = useState<ActiveChat[]>([]);
   const [activeReactions, setActiveReactions] = useState<ActiveReaction[]>([]);
@@ -311,6 +312,24 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
     seat: number | null | undefined
   ): { containerStyle: React.CSSProperties; tailStyle?: React.CSSProperties } => {
     const rel = getRelativeSeat(seat);
+    // Phone in portrait: side players' bubbles used to sit at mid-height next to the table centre,
+    // right on top of the tiles in play. They now hug the screen edge just above the player's badge.
+    if (isPhone && (rel === 'LEFT' || rel === 'RIGHT')) {
+      const side = rel === 'LEFT' ? 'left' : 'right';
+      return {
+        containerStyle: { bottom: '56%', [side]: '4px' },
+        tailStyle: {
+          position: 'absolute',
+          bottom: '-5px',
+          [side]: '14px',
+          width: 0,
+          height: 0,
+          borderLeft: '4px solid transparent',
+          borderRight: '4px solid transparent',
+          borderTop: '5px solid var(--baffa-gold-primary)',
+        },
+      };
+    }
     switch (rel) {
       case 'BOTTOM':
         return {
@@ -632,13 +651,15 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
               style={{
                 position: 'absolute',
                 ...containerStyle,
-                padding: isLandscape ? '3px 8px' : isMobile ? '4px 10px' : '6px 14px',
-                background: 'linear-gradient(135deg, rgba(14, 26, 42, 0.98) 0%, rgba(20, 36, 58, 0.96) 100%)',
+                // Phones: small bubbles that leave the tiles visible (they covered the table before).
+                padding: isLandscape ? '2px 6px' : isMobile ? '2px 7px' : '6px 14px',
+                background: 'linear-gradient(135deg, rgba(14, 26, 42, 0.94) 0%, rgba(20, 36, 58, 0.9) 100%)',
                 border: isMobile ? '1px solid var(--baffa-gold-primary)' : '1.5px solid var(--baffa-gold-primary)',
-                borderRadius: isLandscape ? '10px' : isMobile ? '12px' : '18px',
-                boxShadow: isMobile ? '0 4px 14px rgba(0,0,0,0.7), 0 0 10px rgba(245, 158, 11, 0.3)' : '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
+                borderRadius: isMobile ? '8px' : '18px',
+                boxShadow: isMobile ? '0 3px 10px rgba(0,0,0,0.6)' : '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
                 backdropFilter: 'blur(10px)',
-                maxWidth: isLandscape ? '130px' : isMobile ? '145px' : '220px',
+                maxWidth: isLandscape ? '110px' : isMobile ? '96px' : '220px',
+                animationDuration: isMobile ? '3.2s' : undefined,
                 textAlign: 'center',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -649,12 +670,16 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
               {tailStyle && <div style={tailStyle} />}
               <span
                 style={{
-                  fontSize: isLandscape ? '0.70rem' : isMobile ? '0.74rem' : '0.88rem',
-                  fontWeight: 900,
+                  fontSize: isLandscape ? '0.6rem' : isMobile ? '0.62rem' : '0.88rem',
+                  fontWeight: isMobile ? 800 : 900,
                   color: '#fff',
                   textAlign: 'center',
                   lineHeight: isMobile ? 1.2 : 1.25,
                   wordBreak: 'break-word',
+                  // At most two lines on phones; longer banter is cut with "…".
+                  ...(isMobile
+                    ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }
+                    : {}),
                 }}
               >
                 {chat.text}
