@@ -276,6 +276,25 @@ describe('Regression: a player who was away is told what happened', () => {
   });
 });
 
+describe('Regression: restoring a backup never loses data', () => {
+  it('adds missing accounts and matches, keeps newer copies', () => {
+    const persistence = new PersistenceService();
+    const base = { id: 'user_restore_1', username: 'R1', normalizedUsername: 'r1', displayName: 'R1' } as any;
+    persistence.importBackup({ users: { user_restore_1: { ...base, city: 'old', updatedAt: '2026-01-01T00:00:00Z' } } as any });
+    // A newer copy already on the server must not be overwritten by an older backup.
+    persistence.importBackup({ users: { user_restore_1: { ...base, city: 'newer', updatedAt: '2026-06-01T00:00:00Z' } } as any });
+    const r = persistence.importBackup({
+      users: { user_restore_1: { ...base, city: 'stale', updatedAt: '2026-02-01T00:00:00Z' }, user_restore_2: { ...base, id: 'user_restore_2', updatedAt: '2026-01-01T00:00:00Z' } } as any,
+      matches: { match_restore_1: { id: 'match_restore_1' } } as any,
+    });
+    assert.strictEqual(persistence.getUserById('user_restore_1')?.city, 'newer');
+    assert.ok(persistence.getUserById('user_restore_2'));
+    assert.strictEqual(r.usersAdded, 1);
+    assert.strictEqual(r.usersUpdated, 0);
+    assert.strictEqual(r.matchesAdded, 1);
+  });
+});
+
 describe('Regression: automatic referee is announced and consistent', () => {
   it('play violation then pass violation = warning, then announced cheating penalty', () => {
     const { session, room } = makeHarness();

@@ -18,10 +18,11 @@ import { LocalProfileStorage } from './modules/profile/storage/local-profile-sto
 
 import { PersistenceModule } from './modules/persistence/persistence.module';
 import { PersistenceService } from './modules/persistence/persistence.service';
+import { AdminController } from './modules/persistence/admin.controller';
 
 @Module({
   imports: [PersistenceModule],
-  controllers: [MatchController, AuthController, ProfileController],
+  controllers: [MatchController, AuthController, ProfileController, AdminController],
   providers: [
     PrismaService,
     VerificationService,

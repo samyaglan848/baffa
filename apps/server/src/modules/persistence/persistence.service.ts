@@ -122,19 +122,8 @@ export class PersistenceService implements OnModuleInit, OnApplicationShutdown {
       if (path.resolve(file) === path.resolve(this.dbFilePath) || !fs.existsSync(file)) continue;
       try {
         const parsed: PersistedDbData = JSON.parse(fs.readFileSync(file, 'utf-8'));
-        for (const [id, user] of Object.entries(parsed.users || {})) {
-          const existing = this.usersMap.get(id);
-          if (!existing || new Date(user.updatedAt || 0).getTime() > new Date(existing.updatedAt || 0).getTime()) {
-            if (!existing) added++;
-            this.usersMap.set(id, user);
-          }
-        }
-        for (const [id, match] of Object.entries(parsed.matches || {})) {
-          if (!this.matchesMap.has(id)) {
-            this.matchesMap.set(id, match);
-            added++;
-          }
-        }
+        const r = this.mergeRecords(parsed);
+        added += r.usersAdded + r.matchesAdded;
       } catch (err: any) {
         this.logger.warn(`Could not merge legacy database ${file}: ${err.message}`);
       }
@@ -143,6 +132,40 @@ export class PersistenceService implements OnModuleInit, OnApplicationShutdown {
       this.logger.log(`Merged ${added} records from legacy database files into ${this.dbFilePath}`);
       this.saveToDiskSync();
     }
+  }
+
+  /**
+   * Adds users/matches from another copy of the database without losing anything: missing records
+   * are added, and an existing user is replaced only by a copy that was updated more recently.
+   */
+  private mergeRecords(parsed: Partial<PersistedDbData>) {
+    let usersAdded = 0;
+    let usersUpdated = 0;
+    let matchesAdded = 0;
+    for (const [id, user] of Object.entries(parsed.users || {})) {
+      if (!user || typeof user !== 'object') continue;
+      const existing = this.usersMap.get(id);
+      if (!existing || new Date(user.updatedAt || 0).getTime() > new Date(existing.updatedAt || 0).getTime()) {
+        if (existing) usersUpdated++;
+        else usersAdded++;
+        this.usersMap.set(id, user);
+      }
+    }
+    for (const [id, match] of Object.entries(parsed.matches || {})) {
+      if (match && !this.matchesMap.has(id)) {
+        this.matchesMap.set(id, match);
+        matchesAdded++;
+      }
+    }
+    return { usersAdded, usersUpdated, matchesAdded };
+  }
+
+  /** Restores a backup copy of the database (admin only, see AdminController). Saved right away. */
+  public importBackup(parsed: Partial<PersistedDbData>) {
+    const result = this.mergeRecords(parsed);
+    this.saveToDiskSync();
+    this.logger.log(`Imported backup: ${JSON.stringify(result)}; accounts now ${this.usersMap.size}`);
+    return { ...result, accounts: this.usersMap.size, matches: this.matchesMap.size };
   }
 
   private ensureDataDir(): void {
