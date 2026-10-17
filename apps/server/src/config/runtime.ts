@@ -57,6 +57,22 @@ export function getLegacyDbFiles(): string[] {
 }
 
 const secretCache = new Map<string, string>();
+const secretSource = new Map<string, 'env' | 'database' | 'file'>();
+
+/**
+ * Uses a signing secret kept in the permanent database (see CloudStore). Called on start-up before
+ * the server accepts connections, so logins keep working after restarts on hosts that wipe the disk.
+ */
+export function primeSecret(envName: 'JWT_SECRET' | 'JWT_REFRESH_SECRET', value: string) {
+  if (!value || value.length < 32) return;
+  secretCache.set(envName, value);
+  secretSource.set(envName, 'database');
+}
+
+export function hasEnvSecret(envName: 'JWT_SECRET' | 'JWT_REFRESH_SECRET'): boolean {
+  const v = process.env[envName];
+  return Boolean(v && v.trim().length >= 16);
+}
 
 /**
  * Returns a signing secret. Uses the env variable when it is set to a reasonably long value.
@@ -71,8 +87,10 @@ export function getSecret(envName: 'JWT_SECRET' | 'JWT_REFRESH_SECRET'): string 
   const fromEnv = process.env[envName];
   if (fromEnv && fromEnv.trim().length >= 16) {
     secretCache.set(envName, fromEnv.trim());
+    secretSource.set(envName, 'env');
     return fromEnv.trim();
   }
+  secretSource.set(envName, 'file');
 
   const file = path.join(getDataDir(), `.${envName.toLowerCase()}`);
   let secret = '';
@@ -111,7 +129,7 @@ export function getStorageReport() {
   const report: Record<string, any> = {
     dataDir: dir,
     dataDirFromEnv: Boolean(process.env.DATA_DIR && process.env.DATA_DIR.trim()),
-    jwtSecretSource: process.env.JWT_SECRET && process.env.JWT_SECRET.trim().length >= 16 ? 'env' : 'file',
+    jwtSecretSource: secretSource.get('JWT_SECRET') || (hasEnvSecret('JWT_SECRET') ? 'env' : 'file'),
   };
   try {
     report.onSeparateDisk = fs.statSync(dir).dev !== fs.statSync(path.parse(dir).root).dev;

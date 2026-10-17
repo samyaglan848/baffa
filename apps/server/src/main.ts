@@ -49,15 +49,18 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.get('/health', (req: any, res: any) => {
     let accounts: number | null = null;
+    let database: string = 'unknown';
     try {
-      accounts = app.get(PersistenceService).getAllUsers().length;
+      const persistence = app.get(PersistenceService);
+      accounts = persistence.getAllUsers().length;
+      database = persistence.getCloudStatus();
     } catch {}
     res.status(200).json({
       status: 'healthy',
       service: 'BAFFA Game Server',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      storage: { ...getStorageReport(), accounts },
+      storage: { ...getStorageReport(), accounts, database },
     });
   });
 

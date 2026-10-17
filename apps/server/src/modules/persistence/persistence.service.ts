@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnModuleInit, OnApplicationShutdown } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getDataDir, getLegacyDbFiles } from '../../config/runtime';
+import { getDataDir, getLegacyDbFiles, getSecret, hasEnvSecret, primeSecret } from '../../config/runtime';
+import { CloudStore, CloudTable } from './cloud-store';
 import { Gender, AccountStatus } from '@baffa/shared';
 
 export interface PersistedUser {
@@ -99,16 +100,115 @@ export class PersistenceService implements OnModuleInit, OnApplicationShutdown {
   }
 
   /** Flush pending writes when the host stops the server (e.g. a redeploy) so nothing is lost. */
-  onApplicationShutdown(): void {
+  async onApplicationShutdown(): Promise<void> {
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
       this.saveTimeout = null;
       this.saveToDiskSync();
     }
+    await this.flushCloud();
   }
 
   async onModuleInit() {
-    // Already loaded in the constructor; reloading here would discard writes made in between.
+    // The local file was already loaded in the constructor. With a permanent database configured,
+    // its contents are loaded here, before the server accepts any connection.
+    if (process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === 'test') return;
+    const store = CloudStore.fromEnv();
+    if (!store) {
+      this.logger.warn('STORE_DATABASE_URL is not set: accounts and matches only live on this server\'s disk.');
+      return;
+    }
+    try {
+      await this.attachCloud(store);
+    } catch (err: any) {
+      this.cloudStatus = 'error';
+      this.logger.error(`Permanent database unavailable, continuing with the local file only: ${err.message}`);
+    }
+  }
+
+  // ==========================================
+  // Permanent database (see CloudStore)
+  // ==========================================
+
+  private cloud: CloudStore | null = null;
+  private cloudStatus: 'off' | 'connected' | 'error' = 'off';
+  /** JSON of each record as last written to the database, to send only what changed. */
+  private cloudSynced: Record<CloudTable, Map<string, string>> = { baffa_users: new Map(), baffa_matches: new Map() };
+  private cloudSyncRunning: Promise<void> | null = null;
+  private cloudSyncAgain = false;
+
+  public getCloudStatus() {
+    return this.cloudStatus;
+  }
+
+  /** Connects the permanent database: loads its accounts/matches and keeps it updated from now on. */
+  public async attachCloud(store: CloudStore): Promise<void> {
+    await store.init();
+    const [users, matches] = await Promise.all([
+      store.loadAll<PersistedUser>('baffa_users'),
+      store.loadAll<PersistedMatch>('baffa_matches'),
+    ]);
+    // The database is the reference copy; a newer local copy (if any) still wins per record.
+    this.mergeRecords({ users, matches });
+    for (const [id, u] of Object.entries(users)) this.cloudSynced.baffa_users.set(id, JSON.stringify(u));
+    for (const [id, m] of Object.entries(matches)) this.cloudSynced.baffa_matches.set(id, JSON.stringify(m));
+
+    // Login signing keys: kept in the database so tokens stay valid after restarts.
+    for (const name of ['JWT_SECRET', 'JWT_REFRESH_SECRET'] as const) {
+      if (hasEnvSecret(name)) continue;
+      const stored = await store.ensureMeta(name, getSecret(name));
+      primeSecret(name, stored);
+    }
+
+    this.cloud = store;
+    this.cloudStatus = 'connected';
+    this.logger.log(`Permanent database connected: ${this.usersMap.size} users, ${this.matchesMap.size} matches`);
+    this.saveToDiskSync(); // writes the merged copy locally and uploads anything the database lacks
+    await this.flushCloud();
+  }
+
+  /** Sends every changed account/match to the database (one run at a time, re-run if more changed). */
+  private queueCloudSync(): void {
+    if (!this.cloud) return;
+    if (this.cloudSyncRunning) {
+      this.cloudSyncAgain = true;
+      return;
+    }
+    this.cloudSyncRunning = (async () => {
+      do {
+        this.cloudSyncAgain = false;
+        try {
+          await this.pushChanges('baffa_users', this.usersMap);
+          await this.pushChanges('baffa_matches', this.matchesMap);
+          this.cloudStatus = 'connected';
+        } catch (err: any) {
+          this.cloudStatus = 'error';
+          this.logger.error(`Saving to the permanent database failed (will retry on the next change): ${err.message}`);
+          break;
+        }
+      } while (this.cloudSyncAgain);
+    })().finally(() => {
+      this.cloudSyncRunning = null;
+    });
+  }
+
+  private async pushChanges(table: CloudTable, map: Map<string, any>): Promise<void> {
+    const synced = this.cloudSynced[table];
+    const changed: { id: string; json: string }[] = [];
+    for (const [id, record] of map) {
+      const json = JSON.stringify(record);
+      if (synced.get(id) !== json) changed.push({ id, json });
+    }
+    if (changed.length === 0) return;
+    await this.cloud!.upsertMany(table, changed);
+    for (const c of changed) synced.set(c.id, c.json);
+  }
+
+  /** Waits until everything changed so far is in the database. */
+  public async flushCloud(): Promise<void> {
+    if (!this.cloud) return;
+    if (!this.cloudSyncRunning) this.queueCloudSync();
+    while (this.cloudSyncRunning) await this.cloudSyncRunning;
   }
 
   /**
@@ -233,6 +333,7 @@ export class PersistenceService implements OnModuleInit, OnApplicationShutdown {
     } catch (err: any) {
       this.logger.error(`Failed to write permanent database to disk: ${err.message}`);
     }
+    this.queueCloudSync();
   }
 
   public scheduleDiskSave(): void {

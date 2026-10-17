@@ -276,6 +276,49 @@ describe('Regression: a player who was away is told what happened', () => {
   });
 });
 
+describe('Accounts survive a wiped server disk (permanent database)', () => {
+  it('an account saved on one server start is there on the next, even with the local file gone', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { newDb } = require('pg-mem');
+    const { Pool } = newDb().adapters.createPg();
+    const { CloudStore } = await import('../modules/persistence/cloud-store');
+    const { getDataDir } = await import('../config/runtime');
+    const fs = await import('fs');
+    const path = await import('path');
+    const pool = new Pool();
+
+    const first = new PersistenceService();
+    await first.attachCloud(new CloudStore(pool));
+    first.saveUser({ id: 'user_cloud_1', username: 'Cloud', city: 'طنطا', stats: { totalMatches: 7 } as any });
+    first.saveMatch({ id: 'match_cloud_1', participants: [{ userId: 'user_cloud_1' }], finishedAt: new Date().toISOString() } as any);
+    first.saveToDiskSync();
+    await first.flushCloud();
+
+    // Free hosting wiped the disk while the server slept.
+    fs.rmSync(path.join(getDataDir(), 'baffa_db.json'), { force: true });
+
+    const second = new PersistenceService();
+    assert.strictEqual(second.getUserById('user_cloud_1'), undefined, 'nothing on disk any more');
+    await second.attachCloud(new CloudStore(pool));
+    assert.strictEqual(second.getUserById('user_cloud_1')?.city, 'طنطا');
+    assert.strictEqual(second.getUserById('user_cloud_1')?.stats.totalMatches, 7);
+    assert.ok(second.getMatchById('match_cloud_1'));
+  });
+
+  it('the login signing key is kept in the database, so tokens stay valid after a restart', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { newDb } = require('pg-mem');
+    const { Pool } = newDb().adapters.createPg();
+    const { CloudStore } = await import('../modules/persistence/cloud-store');
+    const store = new CloudStore(new Pool());
+    await store.init();
+    const kept = await store.ensureMeta('JWT_SECRET', 'a'.repeat(64));
+    const again = await store.ensureMeta('JWT_SECRET', 'b'.repeat(64)); // a later start must not replace it
+    assert.strictEqual(kept, 'a'.repeat(64));
+    assert.strictEqual(again, 'a'.repeat(64));
+  });
+});
+
 describe('Regression: restoring a backup never loses data', () => {
   it('adds missing accounts and matches, keeps newer copies', () => {
     const persistence = new PersistenceService();
