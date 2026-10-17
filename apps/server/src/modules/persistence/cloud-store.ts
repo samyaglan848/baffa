@@ -43,11 +43,22 @@ export class CloudStore {
    */
   static normalizeUrl(raw: string): string {
     let url = raw.trim();
-    url = url.replace(/^psql\s+/i, '').trim();
-    url = url.replace(/^['"]|['"]$/g, '').trim();
-    if (!/^postgres(ql)?:\/\//i.test(url)) return url;
+    if (!url) return '';
+    // Take the postgres link out of whatever was pasted around it (`DATABASE_URL=...`, `psql '...'`, quotes).
+    const found = url.match(/postgres(?:ql)?:\/\/[^\s'"`]+/i);
+    if (!found) return url;
+    url = found[0];
     url = url.replace(/([?&])channel_binding=[^&]*(&?)/i, (_m, sep, tail) => (tail ? sep : '')).replace(/[?&]$/, '');
     return url;
+  }
+
+  /** Host part of STORE_DATABASE_URL (no user or password), to check from outside what was set. */
+  static describeTarget(): string {
+    const url = CloudStore.normalizeUrl(process.env.STORE_DATABASE_URL || '');
+    if (!url) return 'not set';
+    if (!/^postgres(ql)?:\/\//i.test(url)) return 'not a postgresql:// link';
+    const m = url.match(/^postgres(?:ql)?:\/\/(?:[^@/]*@)?([^/:?]+)/i);
+    return m ? m[1] : 'unreadable link';
   }
 
   /** Error text with any credentials removed, safe to show in the health report. */

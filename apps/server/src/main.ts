@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import * as express from 'express';
 import { getPersistentUploadsDir, getStorageReport } from './config/runtime';
 import { PersistenceService } from './modules/persistence/persistence.service';
+import { CloudStore } from './modules/persistence/cloud-store';
 
 export function getAllowedOrigins(): string[] {
   const raw = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '';
@@ -54,7 +55,7 @@ async function bootstrap() {
       const persistence = app.get(PersistenceService);
       accounts = persistence.getAllUsers().length;
       database = persistence.getCloudStatus();
-      if (database === 'error') database = `error: ${persistence.getCloudError() || 'unknown'}`;
+      if (database === 'error') database = `error: ${persistence.getCloudError() || 'unknown'} (host: ${CloudStore.describeTarget()})`;
     } catch {}
     res.status(200).json({
       status: 'healthy',
