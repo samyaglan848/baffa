@@ -605,7 +605,10 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     // Clean up voice peer
-    this.voiceService.removeSocket(client.id);
+    const removedVoice = this.voiceService.removeSocket(client.id);
+    if (removedVoice) {
+      this.broadcastVoicePeers(removedVoice.roomId);
+    }
 
     // Reconnect race: when a player's connection drops, the browser usually reconnects with a new
     // socket *before* the server notices the old one is gone. Without this check the late
@@ -1093,6 +1096,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       if (room.settings.voiceEnabled) {
         this.voiceService.joinVoice(room.id, user.id, client.id, initialRole);
+        this.broadcastVoicePeers(room.id);
       }
 
       this.logger.log(`Room created: ${room.id} (${room.code}) by ${user.username} with role ${initialRole}`);
@@ -1145,6 +1149,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       if (updatedRoom.settings.voiceEnabled) {
         this.voiceService.joinVoice(room.id, user.id, client.id, 'PLAYER');
+        this.broadcastVoicePeers(room.id);
       }
 
       // A player coming back into a running match (after pressing "leave", or a new player taking a
@@ -1217,6 +1222,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       if (updatedRoom.settings.voiceEnabled) {
         this.voiceService.joinVoice(room.id, user.id, client.id, 'JUDGE');
+        this.broadcastVoicePeers(room.id);
       }
 
       this.server.to(room.id).emit(ServerEvents.ROOM_SYNC, { room: updatedRoom });
@@ -1257,6 +1263,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       if (updatedRoom.settings.voiceEnabled) {
         this.voiceService.joinVoice(room.id, user.id, client.id, 'SPECTATOR');
+        this.broadcastVoicePeers(room.id);
       }
 
       this.server.to(room.id).emit(ServerEvents.ROOM_SYNC, { room: updatedRoom });
@@ -1327,7 +1334,12 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       this.broadcastNotificationToRoom(actualRoomId, leaveNotif);
       this.logger.log(`[LEAVE_ROOM] broadcasted leave for ${leftPlayerUsername} in room ${actualRoomId}`);
 
-      this.voiceService.removeSocket(client.id);
+      const removedVoiceOnLeave = this.voiceService.removeSocket(client.id);
+      if (removedVoiceOnLeave) {
+        this.broadcastVoicePeers(removedVoiceOnLeave.roomId);
+      } else {
+        this.broadcastVoicePeers(actualRoomId);
+      }
 
       const socketsInRoom = this.server.sockets.adapter.rooms.get(actualRoomId)?.size || 0;
       const socketsInCode = (room.code ? this.server.sockets.adapter.rooms.get(room.code)?.size : 0) || 0;
@@ -2440,6 +2452,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
   }
 
+  private broadcastVoicePeers(roomId: string) {
+    try {
+      const peers = this.voiceService.getPeers(roomId);
+      this.server.to(roomId).emit(ServerEvents.VOICE_PEERS_SYNC, { peers });
+    } catch {
+      // Ignore
+    }
+  }
+
   @SubscribeMessage(ClientEvents.VOICE_MUTE)
   handleVoiceMute(
     @ConnectedSocket() client: Socket,
@@ -2450,8 +2471,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (!room.settings.voiceEnabled) return;
 
       this.voiceService.setMute(payload.roomId, player.userId, !!payload.isMuted);
-      const peers = this.voiceService.getPeers(payload.roomId);
-      this.server.to(payload.roomId).emit(ServerEvents.VOICE_PEERS_SYNC, { peers });
+      this.broadcastVoicePeers(payload.roomId);
     } catch {
       // Ignore
     }

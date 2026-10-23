@@ -103,293 +103,433 @@ const GENERAL_FALLBACK_QUOTES: Record<BotChatTrigger, string[]> = {
 
 const BOT_QUOTES: Partial<Record<BotChatTrigger, Partial<Record<BotId, string[]>>>> = {
   ROUND_WIN: {
-    EL_SAMY: [
-      'قولتلك بلاش تلعب مع المعلمين يا كابتن 😎',
-      'إيه الشغل التعبان ده؟ روح نام يا بني 😂',
-      'حاولت بس العين متعلاش عن الحاجب يا سيدي 😏',
-      'كسبناكم من غير ما نعرق حتى 🔥',
-    ],
     EL_RAYEQ: [
       'الدنيا رايقة والباكورة في الجيب ☕😎',
-      'بالراحة على نفسك يا خصمي خدلك لمون دافي 🍋😂',
+      'بالراحة على نفسك يا خصمي.. خدلك لمون دافي 🍋😂',
       'قولتلك من الأول مش قدنا بس مسمعتش الكلام ☕',
-    ],
-    RAQAM_WAHED: [
-      'رقم واحد دايماً في مكانه.. وسع للبطل 👑',
-      'ده لعب عيال يا جدعان، فين المنافسة الحقيقية؟ 🏆',
-      'اللعبة دي في جيبي من أول دور قولتلك 😎',
-    ],
-    EL_TITO: [
-      'ولعت يا رجالة وشيطناكم خلاص 🔥😂',
-      'شيل يا معلم.. ألف سلامة عليك 💥',
-      'مين اللي كان بيقول هيكسب؟ وريني نفسك كده 😂',
+      'كسبنا بروقان ومن غير ما نعرق حتى ☕👌',
     ],
     EL_QETT: [
       'عضيتك من غير ما تحس يا مسكين 😼',
       'كنت مستنيك تلعب دي عشان أخلص عليك 😂',
-      'الفار دخل المصيدة يا حلو 😼👌',
+      'الفار دخل المصيدة يا حلو.. ألف سلامة 😼👌',
+      'المخالب نزلت في وقتها والجولة طارت 😼💥',
+    ],
+    EL_TITO: [
+      'ولعت يا رجالة وشيطناكم خلاص! 🔥😂',
+      'شيل يا معلم.. مفيش رحمة في اللعبة دي 💥🔥',
+      'مين اللي كان بيقول هيكسب؟ وريني نفسك كده 😂🔥',
+      'ضربة قاضية في الجون وبونط مولع 🔥🏆',
+    ],
+    RAQAM_WAHED: [
+      'رقم واحد دايماً في مكانه.. وسع للبطل 👑',
+      'ده لعب عيال يا جدعان، فين المنافسة الحقيقية؟ 🏆',
+      'اللعبة دي في جيبي من أول دور قولتلك 😎👑',
+      'الأستاذ أستاذ والتلاميذ يتعلموا 👑👌',
     ],
     EL_HEMA: [
       'الدومينو علم وأنت ساقط فيه بامتياز 🧠😂',
       'الحسابات عندي دقيقة بالمللي، مفيش هزار 📐😎',
-      'دي مش محتاجة تفكير دي محتاجة معجزة عشان تكسبني 😂',
+      'المعادلة قفلت والنتيجة كانت محسومة رياضياً 🧠',
+      'احتمال فوزك كان 0% من البداية أصلاً 📐',
     ],
     EL_HOBA: [
       'أسرع مكسب في التاريخ ⚡.. هوبا وطارت 🚀',
-      'ملحقتش تركز حتى ولقيت نفسك خسران 😂',
+      'ملحقتش تركز حتى ولقيت نفسك خسران 😂⚡',
+      'سرعة الصاروخ متسيبش وراها أثر 🚀😎',
+      'هوبا وجت في المقص.. عدي غيرك بقى ⚡',
+    ],
+    EL_SAMY: [
+      'قولتلك بلاش تلعب مع المعلمين يا كابتن 😎',
+      'حاولت بس العين متعلاش عن الحاجب يا سيدي 😏',
+      'الرمية دي متطلعش إلا من معلم عتيق 👌☕',
+      'الدومينو أصول مش فهلوة.. شيل بقى بروقان 🎲👑',
     ],
   },
+
+  ROUND_WIN_HIGH_POINTS: {
+    EL_RAYEQ: [
+      'بونط كبير ورايق زي ما الكتاب بيقول ☕😎',
+      'شيل النقط دي ومعاها فنجان شاي بالنعناع ☕👌',
+    ],
+    EL_QETT: [
+      'عضة بونط كبير مش هتنسوها طول الماتش 😼🔥',
+      'النقط دي وجعتكم صح؟ القط مش بيرحم 😼',
+    ],
+    EL_TITO: [
+      'شيل يا وحش.. بونط تقيل يشيط اللي ما يشتال! 🔥💥',
+      'فرقعنا السكور في وشكم.. ولعت ناار 🔥😂',
+    ],
+    RAQAM_WAHED: [
+      'سكور تاريخي من رقم واحد.. اتعلموا بقى 👑🏆',
+      'ضربة موجعة ورقم واحد بيعلم عليكم بالثقيل 👑',
+    ],
+    EL_HEMA: [
+      'الفرق الرقمي في البونط ده غير قابل للتعويض إحصائياً 🧠😎',
+      'منحنى النقط انحدر في اتجاهكم بطريقة كارثية 📐😂',
+    ],
+    EL_HOBA: [
+      'هوبا وطيرنا بالبونط في السحاب.. طلقة ⚡🚀',
+      'سكور صاروخي في ثانية.. هوبا يا رجالة ⚡🔥',
+    ],
+    EL_SAMY: [
+      'بونط تقيل يشيل اللي ما يشتال يا مساكين 😂🔥',
+      'فوز عريض يرجعكم تلعبوا كوتشينة أحسن 😎🎲',
+    ],
+  },
+
   ROUND_LOSS: {
+    EL_RAYEQ: [
+      'هو أنت بتلعب معانا ولا مع الخصم يا نجم؟ 🤨☕',
+      'رايق بس زميلي ده هيجيبلي جلطة ببروده 😂',
+      'ضيعت البونط بمزاجك يا زميلي.. عاش والله 👏☕',
+    ],
+    EL_QETT: [
+      'زميلي غفلني ودبسني في الحيطة 😼🤦‍♂️',
+      'الخيانة جاية من التيم بتاعي مش من الخصم 😂😼',
+      'الكمين باظ بسبب اللعب العشوائي ده 😼',
+    ],
+    EL_TITO: [
+      'إيه التوهان ده يا زميلي؟ سخنت على الفاضي! 🔥🤦‍♂️',
+      'ضيعتنا يا كابتن بحركتك العبقرية دي! هديت المعبد 🔥😂',
+      'ده لعب بارد وأنا مابحبش البرود في اللعب 🔥',
+    ],
+    RAQAM_WAHED: [
+      'أنا شايل الماتش لوحدي وحضرتك نايم في العسل! 👑🤦‍♂️',
+      'العيب مش عليا.. العيب على اللي حطك معايا في تيم 👑😂',
+      'لو كنت بلعب ضد نفسي كنت كسبت أسهل من كده! 👑',
+    ],
+    EL_HEMA: [
+      'النظرية باظت بسبب العشوائية بتاعتك يا زميلي 🧠🤦‍♂️',
+      'ده لعب ملوش أي علاقة بالمنطق أو الإحصاء نهائي! 📐😂',
+      'بوظت المعادلة بقرار غريب جداً 🧠',
+    ],
+    EL_HOBA: [
+      'أنا طرت لوحدي وأنت وقفت الماتش في المطار ⚡🤦‍♂️',
+      'إيه البطة اللي بلعب معاها دي.. اللعب مات ⚡😂',
+      'كنت طالع طلقة وأنت دوست فرامل يد ⚡',
+    ],
     EL_SAMY: [
       'أنا بلعب مع فردة تعبانة وضيعتني يا زميلي! 🤦‍♂️',
       'عامل فيها حريف وجايبنا ورا يا عم فلان! 😂',
       'منك لله يا زميلي.. ده لعب ده؟ ضيعت مجهودي! 🤦‍♂️',
       'يا ريتني كنت بلعب مع روبوت غسالة مش معاك 🤖😂',
     ],
+  },
+
+  GAME_LOCKED: {
     EL_RAYEQ: [
-      'هو أنت بتلعب معانا ولا مع الخصم يا نجم؟ 🤨☕',
-      'رايق بس زميلي ده هيجيبلي جلطة ببروده 😂',
-      'ضيعت البونط بمزاجك يا زميلي.. عاش والله 👏😂',
-    ],
-    RAQAM_WAHED: [
-      'أنا شايل الماتش لوحدي وحضرتك نايم في العسل! 🤦‍♂️',
-      'العيب مش عليا.. العيب على اللي حطك معايا في تيم 👑😂',
-      'لو كنت بلعب ضد نفسي كنت كسبت أسهل من كده! 😂',
-    ],
-    EL_TITO: [
-      'إيه التوهان ده يا زميلي؟ سخنت على الفاضي! 🔥🤦‍♂️',
-      'ضيعتنا يا كابتن بحركتك العبقرية دي 😂',
+      'قفلنا الدور ونعد على مهلنا بروقان ☕🔒',
+      'سدّة رايقة وخيرها في غيرها لو خسرنا 😂☕',
     ],
     EL_QETT: [
-      'زميلي غفلني ودبسني في الحيطة 😼🤦‍♂️',
-      'الخيانة جاية من التيم بتاعي مش من الخصم 😂',
+      'مصيدة القفلة اشتغلت بنجاح.. مفيش مخرج 😼🔒',
+      'قفلنا الجحر على الفار.. اتفرج بقى 😼',
+    ],
+    EL_TITO: [
+      'قفلناها وشيطنا الورق بالضبة والمفتاح! 🔥🔒',
+      'سدّة نااار ومين اللي هيشيل البلاوي دي؟ 💥🔥',
+    ],
+    RAQAM_WAHED: [
+      'قفلتها بإيدي عشان أحسمها بالنقط.. تخطيط المعلم 👑🔒',
+      'السدّة دي فخ معمول لحضراتكم مخصوص 🏆',
     ],
     EL_HEMA: [
-      'النظرية باظت بسبب العشوائية بتاعتك يا زميلي 🧠🤦‍♂️',
-      'ده لعب ملوش أي علاقة بالمنطق نهائي! 😂',
+      'سدّة بحسابات رياضية دقيقة لصالحنا 🧠🔒',
+      'القفلة دي تطبيق عملي لقانون انحسار الاحتمالات 📐😎',
     ],
     EL_HOBA: [
-      'أنا طرت لوحدي وأنت وقفت الماتش في المطار ⚡🤦‍♂️',
-      'إيه البطة اللي بلعب معاها دي 😂',
+      'هوبا وقفلناها في ثانية.. مفيش مهرب ⚡🔒',
+      'سدّة سريعة خاطفة شلت الحركة تماماً 🚀🔒',
+    ],
+    EL_SAMY: [
+      'سدّة وقفلناها.. عد ورقك وركز في النقط يا كابتن 🔒😎',
+      'القفلة دي معمولة بمعلمة قديمة.. مين معاه بونط؟ 🎲🔒',
     ],
   },
+
   OPPONENT_PASS: {
-    EL_SAMY: [
-      'عدّي يا معلم.. مالكش في اللعبة دي 😏',
-      'زنقتك في زاوية ضيقة صح؟ فوت وانت ساكت 😂',
-      'قول فوت بالراحة عشان صوتك ميعلاش 😂',
-      'الزنقة وحشة.. خليك قاعد اتفرج 😎',
-    ],
     EL_RAYEQ: [
       'فوت براحتك يا باشا القهوة لسه سخنة ☕😂',
-      'الباب مقفول بالضبة والمفتاح، ريح شوية 🔒😏',
+      'الباب مقفول بالضبة والمفتاح، ريح شوية 🔒☕',
+    ],
+    EL_QETT: [
+      'اتزنقت في الخية بتاعتي يا ناصح؟ 😼👌',
+      'ملقتش كارت؟ يا عيني معلش متعيطش 😂😼',
+    ],
+    EL_TITO: [
+      'زنقة كلاب دي ولا إيه؟ فوت يلااا 🔥😂',
+      'شيط يا كابتن مالكش أي مخرج خلاص 💥🔥',
     ],
     RAQAM_WAHED: [
       'متفكرش كتير.. فوت يا كابتن دي أصول اللعبة 👑',
-      'قول فوت وأنت باصص في الأرض يا شاطر 😎',
-    ],
-    EL_TITO: [
-      'زنقة الكلاب دي ولا إيه؟ فوت يلا 🔥😂',
-      'شيط يا كابتن مالكش مخرج 💥',
-    ],
-    EL_QETT: [
-      'اتزنقت في الخية بتاعتي يا ناصح 😼👌',
-      'ملقتش كارت؟ يا عيني معلش 😂',
+      'قول فوت وأنت باصص في الأرض يا شاطر 😎👑',
     ],
     EL_HEMA: [
       'مسألة رياضية مقفولة.. فوت بقانون الطبيعة 🧠😂',
       'مفيش احتمالات خلاص، الصفر مكتوبلك 📐',
     ],
     EL_HOBA: [
-      'عطلتك في محطة القطر.. فوت بسرعة عدي غيرك ⚡😂',
-      'زنقة سريعة متوجعش متقلقش 😂',
+      'عطلتك في محطة القطر.. عدي غيرك بسرعة ⚡😂',
+      'زنقة سريعة متوجعش.. متقلقش هوبا ⚡',
+    ],
+    EL_SAMY: [
+      'عدّي يا معلم.. مالكش في اللعبة دي 😏',
+      'زنقتك في زاوية ضيقة صح؟ فوت وانت ساكت 😂',
+      'قول فوت بالراحة عشان صوتك ميعلاش 😂',
     ],
   },
+
   PASS: {
+    EL_RAYEQ: [
+      'فوت بمزاجي.. بنريح ونشرب شاي ☕😎',
+      'الدنيا فري، فوت الجولة دي ولنا عودة 😂☕',
+    ],
+    EL_QETT: [
+      'فوت.. بس القط مش بيسيب حقه 😼',
+      'كمين ده ولا ورق؟ فوت يا عم هنرجعلك 😼',
+    ],
+    EL_TITO: [
+      'فوت يا حظ.. ورق ناشف زي الحجر! 🔥🎲',
+      'راجعلك الدور الجاي وهفرقعها في وشكم 💥🔥',
+    ],
+    RAQAM_WAHED: [
+      'فوت.. بس افتكروا إني سايبكم تفرحوا شوية 👑',
+      'فوت مؤقت، الأسد بيريح بس مابيموتش 😎👑',
+    ],
+    EL_HEMA: [
+      'فوت.. حسابات الورق محتاجة إعادة صياغة 🧠',
+      'المتغيرات مش مساعدة.. فوت مؤقت 📐',
+    ],
+    EL_HOBA: [
+      'فوت في ثانية.. مفيش وقت نضيعه ⚡',
+      'فوت وهوبا في الجولة الجاية واكلكم ⚡🚀',
+    ],
     EL_SAMY: [
       'فوت.. ما أنا بلعب مع فردة تعبانة مسوداها عليا! 🤦‍♂️',
       'أنا بفوت عشان زميلي مقفلها في وشي مش أكتر 😂',
       'فوت يا عم.. إيه الورق الناشف ده! 🎲',
-      'هفوت الدور ده بس راجعلكم أظبطكم 😏',
-    ],
-    EL_RAYEQ: [
-      'فوت بمزاجي.. بنريح ونشرب شاي ☕😎',
-      'الدنيا فري، فوت الجولة دي ولنا عودة 😂',
-    ],
-    RAQAM_WAHED: [
-      'فوت.. بس افتكروا إني سايبكم تفرحوا شوية 👑',
-      'فوت مؤقت، الأسد بيريح بس مابيموتش 😎',
-    ],
-    EL_TITO: [
-      'فوت يا حظ.. ورق ناشف زي الحجر 🎲🔥',
-      'راجعلك الدور الجاي وهفرقعها في وشكم 💥',
-    ],
-    EL_QETT: [
-      'فوت.. بس القط مش بيسيب حقه 😼',
-      'كمين ده ولا ورق؟ فوت يا عم 😂',
-    ],
-    EL_HEMA: [
-      'فوت.. حسابات الورق محتاجة إعادة صياغة 🧠',
-      'الاحتمال الوحيد إني أفوت مؤقتاً 😂',
-    ],
-    EL_HOBA: [
-      'فوت في ثانية.. مفيش وقت نضيعه ⚡',
-      'فوت وهوبا في الجولة الجاية واكلكم 😂',
     ],
   },
+
   PLAY: {
-    EL_SAMY: [
-      'خد دي وماتعيطش 🔥',
-      'ركز يا بني بلاش سرحان 😎',
-      'الدوش ده معمول للي يفهم فيه 🎲',
-      'شايفك وأنت محتار يا خصمي 😂',
-      'اللعب الحلو دايماً عند أصحابه 👌',
-      'أتقل تاخد حاجة نضيفة 😎',
-    ],
     EL_RAYEQ: [
       'كلو رايق يا باشا.. العب بروقان ☕',
-      'حبة حبة واللعب يحلى 😎',
+      'حبة حبة واللعب يحلى بروقان 😎☕',
       'رمية معلم في وقتها تمام 👌',
-    ],
-    RAQAM_WAHED: [
-      'رقم واحد بيلعب وأنتوا تتفرجوا 👑',
-      'أنا بنزل الكارت وبقفل الدور في دماغي خلاص 😎',
-      'اللعب ده ليفل وحش متقارنش نفسك بيا 🏆',
-    ],
-    EL_TITO: [
-      'نولعها بقى ولا إيه؟ خد دي 🔥',
-      'الضربة القاضية في الطريق 💥',
     ],
     EL_QETT: [
       'ضربة تحت الحزام بمزاااج 😼👌',
-      'فكر بقى هتعمل إيه بعد الكارت ده 😂',
+      'فكر بقى هتعمل إيه بعد الكارت ده 😂😼',
+      'خربوش صغير هيوجعك كمان شوية 😼',
+    ],
+    EL_TITO: [
+      'نولعها بقى ولا إيه؟ خد دي 🔥',
+      'الضربة القاضية في الطريق.. سخن اللعب 💥🔥',
+      'وريني هترد بإيه يا كابتن 🔥',
+    ],
+    RAQAM_WAHED: [
+      'رقم واحد بيلعب وأنتوا تتفرجوا وتتعلموا 👑',
+      'أنا بنزل الكارت وبقفل الدور في دماغي خلاص 😎👑',
+      'اللعب ده ليفل وحش متقارنش نفسك بيا 🏆',
     ],
     EL_HEMA: [
       'حركة محسوبة بدقة فيزيائية 🧠😎',
-      'الورقة دي هتغير مجرى التاريخ في الماتش 😂',
+      'الورقة دي هتغير مجرى التكتيك في الماتش 📐',
+      'خطوة شطرنجية في لعبة دومينو 🧠',
     ],
     EL_HOBA: [
       'على السريع ومن غير تفكير.. هوبا ⚡',
-      'السرعة في اللعب دي لعبتي 🚀',
+      'السرعة في اللعب دي لعبتي المفضلة 🚀⚡',
+      'كارت صاروخي ميستناش ⚡',
+    ],
+    EL_SAMY: [
+      'خد دي وماتعيطش 🔥',
+      'ركز يا بني بلاش سرحان.. المعلم بيلعب 😎',
+      'أتقل تاخد حاجة نضيفة.. أصول الكار 👌☕',
     ],
   },
+
   OPENING_66: {
-    EL_SAMY: [
-      'الدوش ستات بيفتح الماتش للكبار بس 🔥',
-      'أول خطوة في طريق البونط.. دوش يا معلم 😎',
-      'الدوش ده معمول للي يفهم فيه 🎲👌',
-    ],
-    RAQAM_WAHED: [
-      'رقم واحد يبدأ بالدوش والباقي يسكت 👑',
-      'دي ضربة البداية والباقي تفاصيل 🏆',
-    ],
     EL_RAYEQ: [
       'دوش رايق على الصبح مع فنجان قهوة ☕😎',
-      'بداية حلوة والدور ماشي هادي ☕',
-    ],
-    EL_TITO: [
-      'نولع الماتش من أولها بالدوش 🔥💥',
-      'ستات يا رجالة وبداية نارية ⚡',
+      'بداية هادية وبكرة تروق وتحلى ☕',
     ],
     EL_QETT: [
       'القط فتح بالدوش واللعب سخن 😼👌',
+      'ستات تفتح النفس على نصب الكماين 😼',
+    ],
+    EL_TITO: [
+      'نولع الماتش من أولها بالدوش! 🔥💥',
+      'ستات يا رجالة وبداية نارية ملهاش حل ⚡🔥',
+    ],
+    RAQAM_WAHED: [
+      'رقم واحد يبدأ بالدوش والباقي يسكت ويتفرج 👑',
+      'دي ضربة البداية والباقي تفاصيل محسومة 🏆👑',
     ],
     EL_HEMA: [
       'الدوش ده نقطة ارتكاز نظرية الماتش 🧠📐',
+      'أقوى بداية إحصائية في الدومينو 🧠',
     ],
     EL_HOBA: [
       'دوش في ثانية وهوبا طايرين ⚡🚀',
+      'ضربة البداية الصاروخية.. يلا بينا ⚡',
+    ],
+    EL_SAMY: [
+      'الدوش ستات بيفتح الماتش للكبار بس 🔥',
+      'أول خطوة في طريق البونط.. دوش يا معلم 😎👌',
     ],
   },
+
   PLAY_DOUBLE: {
-    EL_SAMY: [
-      'بلاطة تسد عين الشمس في وقتها تمام 😎🔥',
-      'البلاطة دي معمولة للي يقدرها 👌🎲',
-      'خد البلاطة دي وركز في اللي جاي 😏',
-    ],
-    RAQAM_WAHED: [
-      'البلاطة دي عشان تعرفوا مين رقم واحد 👑',
-      'ضربة بلاطة بمقام ماتش كامل 🏆',
-    ],
     EL_RAYEQ: [
       'بلاطة بروقان ومن غير حرق دم ☕😎',
-      'نزلت البلاطة ومستني فنجان الشاي 👌',
-    ],
-    EL_TITO: [
-      'خد البلاطة دي وسخن اللعب 🔥',
-      'بلاطة في الجون ومحدش هيلحقها 💥',
+      'نزلت البلاطة ومستني فنجان الشاي 👌☕',
     ],
     EL_QETT: [
       'بلاطة قفلتها عليكم بمزاااج 😼👌',
       'كمين بلاطات والقط مش بيرحم 😼',
     ],
+    EL_TITO: [
+      'خد البلاطة دي وسخن اللعب نااار 🔥',
+      'بلاطة في الجون ومحدش هيلحقها 💥🔥',
+    ],
+    RAQAM_WAHED: [
+      'البلاطة دي عشان تعرفوا مين رقم واحد 👑',
+      'ضربة بلاطة بمقام ماتش كامل 🏆👑',
+    ],
     EL_HEMA: [
       'بلاطة محسوبة هندسياً لقفل المسارات 🧠📐',
-      'حركة بلاطة استراتيجية 100% 🧠',
+      'تثبيت استراتيجي لمحاور اللعب 🧠',
     ],
     EL_HOBA: [
       'بلاطة على السريع وهوبا في مكانها ⚡',
-      'سرعة وبلاطة ومفيش وقت نضيعه 🚀',
+      'سرعة وبلاطة ومفيش وقت نضيعه 🚀⚡',
+    ],
+    EL_SAMY: [
+      'بلاطة تسد عين الشمس في وقتها تمام 😎🔥',
+      'البلاطة دي معمولة للي يقدرها 👌🎲',
     ],
   },
-  GAME_LOCKED: {
-    EL_SAMY: [
-      'سدّة وقفلناها.. عد ورقك وركز في النقط يا كابتن 🔒😎',
-      'القفلة دي معمولة بمعلمة.. مين معاه بونط؟ 🎲',
-    ],
-    RAQAM_WAHED: [
-      'قفلتها بإيدي عشان أحسمها بالنقط 👑🔒',
-      'السدّة دي فخ معمول لحضراتكم 🏆',
-    ],
+
+  MATCH_WIN: {
     EL_RAYEQ: [
-      'قفلنا الدور ونعد على مهلنا بروقان ☕🔒',
-      'سدّة رايقة وخيرها في غيرها لو خسرنا 😂',
-    ],
-    EL_TITO: [
-      'قفلناها وشيطنا الورق 🔥🔒',
-      'سدّة نااار ومين اللي هيشيل؟ 💥',
+      'الماتش خلص بروقان تام.. مين هيعزمنا ع المشاريب؟ ☕😎',
+      'مبروك لينا وهاردلك.. أهم حاجة الروح الرياضية ☕❤️',
     ],
     EL_QETT: [
-      'مصيدة القفلة اشتغلت بنجاح 😼🔒',
-    ],
-    EL_HEMA: [
-      'سدّة بحسابات رياضية دقيقة لصالحنا 🧠🔒',
-    ],
-    EL_HOBA: [
-      'هوبا وقفلناها في ثانية ⚡🔒',
-    ],
-  },
-  ROUND_WIN_HIGH_POINTS: {
-    EL_SAMY: [
-      'بونط تقيل يشيل اللي ما يشتال يا مساكين 😂🔥',
-      'فوز عريض يرجعكم تلعبوا كوتشينة أحسن 😎',
-    ],
-    RAQAM_WAHED: [
-      'سكور تاريخي من رقم واحد.. اتعلموا بقى 👑🏆',
-      'ضربة موجعة وماتش بيقفل خلاص 😎',
-    ],
-    EL_RAYEQ: [
-      'بونط كبير ورايق زي ما الكتاب بيقول ☕😎',
+      'القط التهم الماتش كله من غير ما يسيب حتة 😼🏆',
+      'كده قفلنا الحساب رسمي.. نتقابل في الماتش الجاي 😼',
     ],
     EL_TITO: [
-      'شيل النقط دي وألف سلامة عليك يا خصمي 🔥😂',
+      'حرقنا الماتش وفزنا بالضربة القاضية! 🔥🏆',
+      'كده خلصنا الحساب وشيطناكم خلاص.. ألف مبروك لينا 🔥',
     ],
-    EL_QETT: [
-      'عضة بونط كبير مش هتنسوها 😼🔥',
+    RAQAM_WAHED: [
+      'الماتش خلص ورقم واحد توج نفسه ملك الطاولة 👑🏆',
+      'البطولة دي مكانها الطبيعي عندي.. وسع للمعلم 👑',
     ],
     EL_HEMA: [
-      'الفرق الرقمي في البونط ده غير قابل للتعويض 🧠😎',
+      'المباراة انتهت بالتطابق التام مع التوقعات الرياضية 🧠🏆',
+      'المنطق انتصر كالعادة.. هاردلك للمنافس 🧠',
     ],
     EL_HOBA: [
-      'هوبا وطيرنا بالبونط في السحاب ⚡🚀',
+      'ماتش صاروخي طار في ثواني لصالحنا! ⚡🚀🏆',
+      'هوبا وفوز مستحق في لمح البصر ⚡😎',
+    ],
+    EL_SAMY: [
+      'الماتش خلص والحريف بان.. ألف مبروك لينا وهاردلك ليكم 🏆👑',
+      'كده خلصنا الحساب وقفلنا الدكانة.. روحوا استريحوا بقى 😎🔥',
     ],
   },
+
+  MATCH_LOSS: {
+    EL_RAYEQ: [
+      'يلا خيرها في غيرها.. أهم حاجة إننا قعدنا روقنا شوية ☕😂',
+      'الماتش راح بس القهوة كانت حلوة والله ☕',
+    ],
+    EL_QETT: [
+      'الخسارة دي مش عادية.. القط هيرجع بمخالب أحد 😼👊',
+      'حظكم كان عالي الدور ده بس لينا جولة تانية 😼',
+    ],
+    EL_TITO: [
+      'الماتش فلت مننا في ثانية بس ولعناها برضه! 🔥🤦‍♂️',
+      'هنعوضها في أقرب وقت وهنفرقعها في وشكم 💥🔥',
+    ],
+    RAQAM_WAHED: [
+      'الماتش ده ميتحسبش.. التيم اللي معايا جابني ورا 👑🤦‍♂️',
+      'رقم واحد مش بيخسر.. دي مجرد كبوة جواد مؤقتة 👑',
+    ],
+    EL_HEMA: [
+      'فيه أخطاء فردية باظت بسببها الحسبة كلها 🧠🤦‍♂️',
+      'إحصائياً كان ممكن نكسب لولا الانحراف العشوائي ده 📐',
+    ],
+    EL_HOBA: [
+      'السرعة خانتنا في آخر لفة.. هوبا وتعويض الماتش الجاي ⚡🤦‍♂️',
+      'كبوة سريعة وهنطير تاني في الماتش اللي بعده 🚀',
+    ],
+    EL_SAMY: [
+      'الماتش راح في داهية بسبب التكتيك العبقري بتاع زميلي 🤦‍♂️😂',
+      'خيرها في غيرها.. بس محتاجين نغير الفريق كله بصراحة 💔😂',
+    ],
+  },
+
+  PARTNER_CHEER: [
+    {
+      EL_RAYEQ: [
+        'عاش يا شريكي.. رمية رايقة وهادية زي الفل ☕👌',
+        'تسلم إيدك يا زميلي.. كده تمام قوي ☕😎',
+      ],
+      EL_QETT: [
+        'عاش يا شريكي.. المخالب طلعت في وقتها الصح 😼👌',
+        'كمين مشترك ولا أروع يا كوتش 😼🔥',
+      ],
+      EL_TITO: [
+        'هو ده الشغل المولع يا زميلي! عاش البطل 🔥💥',
+        'نار يا حبيبي نار.. كمل هجوم ومتخافش 🔥👌',
+      ],
+      RAQAM_WAHED: [
+        'عاش يا زميلي.. طول ما أنت بتلعب مع رقم واحد متقلقش 👑',
+        'رمية ممتازة.. ماشي على خطتي تمام 👑👌',
+      ],
+      EL_HEMA: [
+        'توافق تكتيكي ممتاز يا زميلي.. الحسبة ظبطت 🧠📐',
+        'الرمية دي رفعت احتمال فوزنا بنسبة 25% 🧠👌',
+      ],
+      EL_HOBA: [
+        'هوبا وجت في الجون يا شريكي! عاش السريع ⚡🚀',
+        'رمية صاروخية كملت سرعتي تمام ⚡👌',
+      ],
+      EL_SAMY: [
+        'عاش يا زميلي والله، رمية معلم أصيل 👌☕',
+        'هو ده اللعب الصح يا شريكي، ماشي على الأصول تمام 😎',
+      ],
+    } as any,
+  ][0],
+};
+
+// Probability gates to eliminate message spam ("أفورة الرسايل")
+const TRIGGER_PROBABILITIES: Record<BotChatTrigger, number> = {
+  PLAY: 0.16, // Only 16% on normal plays
+  PLAY_DOUBLE: 0.35, // 35% on slamming doubles
+  OPENING_66: 0.65, // 65% on the iconic 6-6 start
+  GAME_LOCKED: 0.75, // 75% on game locks
+  PASS: 0.28, // 28% on passing
+  OPPONENT_PASS: 0.25, // 25% on opponent pass
+  ROUND_WIN: 0.75, // 75% on round wins
+  ROUND_WIN_HIGH_POINTS: 0.85, // 85% on huge points
+  ROUND_LOSS: 0.60, // 60% on round loss
+  MATCH_WIN: 0.85, // 85% on match win
+  MATCH_LOSS: 0.70, // 70% on match loss
+  PARTNER_CHEER: 0.35, // 35% on cheering partner
 };
 
 @Injectable()
 export class BotService {
   private readonly logger = new Logger(BotService.name);
   private lastChatTimestamps: Map<string, number> = new Map(); // roomId_botId -> timestamp
+  private roomLastChatTimestamps: Map<string, number> = new Map(); // roomId -> timestamp
+  private lastQuotes: Map<string, string> = new Map();
 
   /**
    * Extensible context evaluator that determines if a move qualifies for a specialized dialogue trigger.
@@ -418,7 +558,7 @@ export class BotService {
   }
 
   /**
-   * Evaluates and selects a legal move for an Egyptian AI Bot based on personality and difficulty tier.
+   * Evaluates and selects a legal move for an Egyptian AI Bot based on its UNIQUE personality and thinking style.
    * STRICT ANTI-CHEAT RULE: Bot NEVER accesses hidden opponent cards.
    */
   public decideMove(
@@ -433,8 +573,8 @@ export class BotService {
       return { action: 'PASS', chatMessage: chat };
     }
 
-    const profile = OFFICIAL_BAFFA_BOTS[botId] || OFFICIAL_BAFFA_BOTS.EL_SAMY;
-    const chosenMove = this.selectMoveByDifficulty(legalMoves, profile.difficulty, engine, seat);
+    const validBotId: BotId = (botId && OFFICIAL_BAFFA_BOTS[botId]) ? botId : 'EL_SAMY';
+    const chosenMove = this.selectMoveByPersonality(legalMoves, validBotId, engine, seat);
     const preferredEnd = chosenMove.validEnds[0] || 'LEFT';
 
     // Contextual evaluation for special play triggers (Opening [6|6], Doubles, etc.)
@@ -446,7 +586,7 @@ export class BotService {
     const context: BotReactionContext = { tile: chosenMove.tile, isDouble, isOpening66 };
     const contextualTrigger = this.evaluateContextualTrigger(engine, seat, 'PLAY', context);
 
-    const chat = this.generateSocialReaction(engine, seat, botId, contextualTrigger, context);
+    const chat = this.generateSocialReaction(engine, seat, validBotId, contextualTrigger, context);
 
     return {
       action: 'PLAY',
@@ -456,57 +596,288 @@ export class BotService {
     };
   }
 
-  private selectMoveByDifficulty(
+  /**
+   * Dispatches move selection to the specialized thinking logic of each Egyptian bot.
+   */
+  private selectMoveByPersonality(
     moves: LegalMove[],
-    difficulty: BotDifficulty,
+    botId: BotId,
     engine: DominoGameEngine,
     seat: PlayerSeat
   ): LegalMove {
-    // 1. Weak Tier (الرايق): Intentionally makes imperfect or random choices
-    if (difficulty === 'WEAK') {
-      if (Math.random() < 0.4) {
-        // Pick random legal move
-        return moves[Math.floor(Math.random() * moves.length)];
-      }
-      // Or lowest pip tile (counter-intuitive for Egyptian dominoes)
-      return [...moves].sort((a, b) => (a.tile[0] + a.tile[1]) - (b.tile[0] + b.tile[1]))[0];
+    switch (botId) {
+      case 'EL_RAYEQ':
+        return this.moveStrategyElRayeq(moves);
+      case 'EL_QETT':
+        return this.moveStrategyElQett(moves, engine, seat);
+      case 'EL_TITO':
+        return this.moveStrategyElTito(moves);
+      case 'RAQAM_WAHED':
+        return this.moveStrategyRaqamWahed(moves, engine, seat);
+      case 'EL_HEMA':
+        return this.moveStrategyElHema(moves, engine, seat);
+      case 'EL_HOBA':
+        return this.moveStrategyElHoba(moves, engine, seat);
+      case 'EL_SAMY':
+      default:
+        return this.moveStrategyElSamy(moves, engine, seat);
     }
+  }
 
-    // 2. Medium Tier (القط, التيتو): Prefers doubles or highest pips
-    if (difficulty === 'MEDIUM') {
-      return [...moves].sort((a, b) => {
-        const pipA = a.tile[0] + a.tile[1];
-        const pipB = b.tile[0] + b.tile[1];
-        const doubleA = a.tile[0] === a.tile[1] ? 3 : 0;
-        const doubleB = b.tile[0] === b.tile[1] ? 3 : 0;
-        return (pipB + doubleB) - (pipA + doubleA);
-      })[0];
+  /**
+   * 1. الرايق (EL_RAYEQ) — Laid back, makes mistakes or plays random tiles, avoids stress.
+   */
+  private moveStrategyElRayeq(moves: LegalMove[]): LegalMove {
+    // 35% chance to make a carefree, completely random play
+    if (Math.random() < 0.35) {
+      return moves[Math.floor(Math.random() * moves.length)];
     }
+    // Otherwise picks lowest pip tile (relaxed play, unconcerned with heavy points in hand)
+    return [...moves].sort((a, b) => (a.tile[0] + a.tile[1]) - (b.tile[0] + b.tile[1]))[0];
+  }
 
-    // 3. Pro Tier (رقم واحد في العزبة, الهيما, الهوبا): High pip reduction & double traps
-    if (difficulty === 'PRO') {
-      return [...moves].sort((a, b) => {
-        const pipA = a.tile[0] + a.tile[1];
-        const pipB = b.tile[0] + b.tile[1];
-        const doubleA = a.tile[0] === a.tile[1] ? 5 : 0;
-        const doubleB = b.tile[0] === b.tile[1] ? 5 : 0;
-        return (pipB + doubleB) - (pipA + doubleA);
-      })[0];
-    }
+  /**
+   * 2. القط (EL_QETT) — Sneaky Ambusher: monopolizes suits, sets traps to starve opponents.
+   */
+  private moveStrategyElQett(
+    moves: LegalMove[],
+    engine: DominoGameEngine,
+    seat: PlayerSeat
+  ): LegalMove {
+    const rawHands = engine.getRawHands();
+    const ownHand = rawHands[seat] || [];
 
-    // 4. Expert Tier (السامي): Teammate-aware strategy + maximum tactical value
-    // Prioritizes heavy pips, maintains open suits for partner, and minimizes opponent options
+    // Count suit frequencies in own hand
+    const suitCounts: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    ownHand.forEach((t) => {
+      suitCounts[t[0]] = (suitCounts[t[0]] || 0) + 1;
+      suitCounts[t[1]] = (suitCounts[t[1]] || 0) + 1;
+    });
+
+    const chain = engine.getChain();
+    const currentLeft = chain.getLeftEnd();
+    const currentRight = chain.getRightEnd();
+
+    // Score moves: prefer moves that leave an end where El Qett holds 2+ other tiles (trapping opponents)
     return [...moves].sort((a, b) => {
-      const pipA = a.tile[0] + a.tile[1];
-      const pipB = b.tile[0] + b.tile[1];
-      const doubleA = a.tile[0] === a.tile[1] ? 6 : 0;
-      const doubleB = b.tile[0] === b.tile[1] ? 6 : 0;
-      return (pipB + doubleB) - (pipA + doubleA);
+      const getSuitDominance = (move: LegalMove): number => {
+        let score = (move.tile[0] + move.tile[1]) * 0.8;
+        if (move.tile[0] === move.tile[1]) score += 4; // bonus for doubles in ambush
+
+        // For each valid placement end, determine the newly exposed number
+        for (const end of move.validEnds) {
+          const connectingEndVal = end === 'LEFT' ? currentLeft : currentRight;
+          const exposedNum = move.tile[0] === connectingEndVal ? move.tile[1] : move.tile[0];
+          const remainingOfSuit = (suitCounts[exposedNum] || 1) - 1;
+          score += remainingOfSuit * 5; // heavy bonus for monopolizing open ends
+        }
+        return score;
+      };
+
+      return getSuitDominance(b) - getSuitDominance(a);
     })[0];
   }
 
   /**
-   * Generates playful Egyptian social banter with personality and context-aware triggers.
+   * 3. التيتو (EL_TITO) — Fiery, aggressive street player: slams doubles, dumps heavy points ASAP.
+   */
+  private moveStrategyElTito(moves: LegalMove[]): LegalMove {
+    return [...moves].sort((a, b) => {
+      const pipA = a.tile[0] + a.tile[1];
+      const pipB = b.tile[0] + b.tile[1];
+      const doubleBonusA = a.tile[0] === a.tile[1] ? 10 : 0;
+      const doubleBonusB = b.tile[0] === b.tile[1] ? 10 : 0;
+      return (pipB * 1.5 + doubleBonusB) - (pipA * 1.5 + doubleBonusA);
+    })[0];
+  }
+
+  /**
+   * 4. رقم واحد في العزبة (RAQAM_WAHED) — The Dominant Boss: maximizes self-playability on subsequent turns.
+   */
+  private moveStrategyRaqamWahed(
+    moves: LegalMove[],
+    engine: DominoGameEngine,
+    seat: PlayerSeat
+  ): LegalMove {
+    const rawHands = engine.getRawHands();
+    const ownHand = rawHands[seat] || [];
+    const chain = engine.getChain();
+    const left = chain.getLeftEnd();
+    const right = chain.getRightEnd();
+
+    return [...moves].sort((a, b) => {
+      const evaluateSelfControl = (m: LegalMove): number => {
+        const remaining = ownHand.filter(
+          (t) => !(t[0] === m.tile[0] && t[1] === m.tile[1])
+        );
+
+        let playableCount = 0;
+        for (const end of m.validEnds) {
+          const connectingVal = end === 'LEFT' ? left : right;
+          const otherEndVal = end === 'LEFT' ? right : left;
+          const newExposedVal = m.tile[0] === connectingVal ? m.tile[1] : m.tile[0];
+
+          // Count how many remaining tiles can connect to the future board ends
+          const matches = remaining.filter(
+            (t) =>
+              t[0] === newExposedVal ||
+              t[1] === newExposedVal ||
+              t[0] === otherEndVal ||
+              t[1] === otherEndVal
+          ).length;
+          playableCount = Math.max(playableCount, matches);
+        }
+
+        const pips = m.tile[0] + m.tile[1];
+        const isDouble = m.tile[0] === m.tile[1] ? 4 : 0;
+        return playableCount * 5 + pips + isDouble;
+      };
+
+      return evaluateSelfControl(b) - evaluateSelfControl(a);
+    })[0];
+  }
+
+  /**
+   * 5. الهيما (EL_HEMA) — The Math Professor: calculates blocked-game lockouts (السدّة) and pip reduction.
+   */
+  private moveStrategyElHema(
+    moves: LegalMove[],
+    engine: DominoGameEngine,
+    seat: PlayerSeat
+  ): LegalMove {
+    const rawHands = engine.getRawHands();
+    const ownHand = rawHands[seat] || [];
+    const ownTotalPips = ownHand.reduce((acc, t) => acc + t[0] + t[1], 0);
+
+    const chain = engine.getChain();
+    const left = chain.getLeftEnd();
+    const right = chain.getRightEnd();
+
+    return [...moves].sort((a, b) => {
+      const evaluateMath = (m: LegalMove): number => {
+        const pips = m.tile[0] + m.tile[1];
+        let score = pips * 1.8;
+
+        // Check if move would equalize the two ends (prerequisite for a blocked game / سدّة)
+        for (const end of m.validEnds) {
+          const connectingVal = end === 'LEFT' ? left : right;
+          const untouchedVal = end === 'LEFT' ? right : left;
+          const exposedVal = m.tile[0] === connectingVal ? m.tile[1] : m.tile[0];
+
+          if (exposedVal === untouchedVal && !chain.isEmpty()) {
+            // If El Hema has low pips (e.g. <= 14), a lock is mathematically favourable!
+            if (ownTotalPips <= 14) {
+              score += 25;
+            } else if (ownTotalPips >= 20) {
+              score -= 25; // Dangerous to lock if holding heavy pips
+            }
+          }
+        }
+
+        if (m.tile[0] === m.tile[1]) score += 3;
+        return score;
+      };
+
+      return evaluateMath(b) - evaluateMath(a);
+    })[0];
+  }
+
+  /**
+   * 6. الهوبا (EL_HOBA) — Speedster: maximizes hand suit diversity and unpredictable rapid tempo.
+   */
+  private moveStrategyElHoba(
+    moves: LegalMove[],
+    engine: DominoGameEngine,
+    seat: PlayerSeat
+  ): LegalMove {
+    const rawHands = engine.getRawHands();
+    const ownHand = rawHands[seat] || [];
+
+    return [...moves].sort((a, b) => {
+      const evaluateAgility = (m: LegalMove): number => {
+        const remaining = ownHand.filter(
+          (t) => !(t[0] === m.tile[0] && t[1] === m.tile[1])
+        );
+
+        // Count unique pip values left in hand (diversity = flexibility)
+        const uniquePips = new Set<number>();
+        remaining.forEach((t) => {
+          uniquePips.add(t[0]);
+          uniquePips.add(t[1]);
+        });
+
+        const diversityScore = uniquePips.size * 6;
+        const pips = m.tile[0] + m.tile[1];
+        const doubleScore = m.tile[0] === m.tile[1] ? 3 : 0;
+
+        return diversityScore + pips + doubleScore;
+      };
+
+      return evaluateAgility(b) - evaluateAgility(a);
+    })[0];
+  }
+
+  /**
+   * 7. السامي (EL_SAMY) — The Egyptian Grandmaster: deep partner synergy, tracks opponent passes, masters domino etiquette.
+   */
+  private moveStrategyElSamy(
+    moves: LegalMove[],
+    engine: DominoGameEngine,
+    seat: PlayerSeat
+  ): LegalMove {
+    const rawHands = engine.getRawHands();
+    const ownHand = rawHands[seat] || [];
+    const partnerSeat = ((seat + 2) % 4) as PlayerSeat;
+
+    const chain = engine.getChain();
+    const left = chain.getLeftEnd();
+    const right = chain.getRightEnd();
+    const placedTiles = chain.getState().tiles;
+
+    // Check last tile played by partner to respect/preserve partner's introduced suit
+    let partnerFavoredSuit: number | null = null;
+    for (let i = placedTiles.length - 1; i >= 0; i--) {
+      if (placedTiles[i].seat === partnerSeat) {
+        partnerFavoredSuit = placedTiles[i].tile[0];
+        break;
+      }
+    }
+
+    return [...moves].sort((a, b) => {
+      const evaluateMastery = (m: LegalMove): number => {
+        const pips = m.tile[0] + m.tile[1];
+        let score = pips * 1.5;
+
+        if (m.tile[0] === m.tile[1]) score += 5; // Strategic double
+
+        for (const end of m.validEnds) {
+          const connectingVal = end === 'LEFT' ? left : right;
+          const untouchedVal = end === 'LEFT' ? right : left;
+          const exposedVal = m.tile[0] === connectingVal ? m.tile[1] : m.tile[0];
+
+          // Partner synergy: Don't cut off partner's suit if avoidable
+          if (partnerFavoredSuit !== null && untouchedVal === partnerFavoredSuit) {
+            score += 10;
+          }
+
+          // Self continuity: Can El Samy continue on the new exposed end?
+          const canContinue = ownHand.some(
+            (t) =>
+              !(t[0] === m.tile[0] && t[1] === m.tile[1]) &&
+              (t[0] === exposedVal || t[1] === exposedVal)
+          );
+          if (canContinue) score += 6;
+        }
+
+        return score;
+      };
+
+      return evaluateMastery(b) - evaluateMastery(a);
+    })[0];
+  }
+
+  /**
+   * Generates playful Egyptian social banter with strict anti-spam throttle and distinct bot voices.
    */
   public generateSocialReaction(
     engine: DominoGameEngine,
@@ -519,9 +890,29 @@ export class BotService {
     const profile = OFFICIAL_BAFFA_BOTS[validBotId];
     if (!profile) return undefined;
 
-    const key = `${engine.getRoomId()}_${validBotId}`;
+    const roomId = engine.getRoomId();
+    const botKey = `${roomId}_${validBotId}`;
     const now = Date.now();
 
+    // 1. Room-wide Chatter Governor: Minimum 6.5 seconds between ANY bot messages in the room
+    const lastRoomChat = this.roomLastChatTimestamps.get(roomId) || 0;
+    if (now - lastRoomChat < 6500) {
+      return undefined;
+    }
+
+    // 2. Per-Bot Cooldown: A bot won't chat more than once every 16 seconds
+    const lastBotChat = this.lastChatTimestamps.get(botKey) || 0;
+    if (now - lastBotChat < 16000) {
+      return undefined;
+    }
+
+    // 3. Probability Gate to eliminate message spam ("أفورة الرسايل")
+    const probability = TRIGGER_PROBABILITIES[trigger] ?? 0.25;
+    if (Math.random() > probability) {
+      return undefined;
+    }
+
+    // 4. Select tailored Egyptian quotes pool
     const botPool = BOT_QUOTES[trigger]?.[validBotId] || [];
     const fallbackPool = GENERAL_FALLBACK_QUOTES[trigger] || [];
     const combinedQuotes = botPool.length > 0 ? botPool : fallbackPool;
@@ -530,17 +921,17 @@ export class BotService {
 
     // Pick quote, rotating away from immediate previous quote if possible
     let text = combinedQuotes[Math.floor(Math.random() * combinedQuotes.length)];
-    if (combinedQuotes.length > 1 && (this as any)._lastQuotes?.get(key) === text) {
+    const lastUsed = this.lastQuotes.get(botKey);
+    if (combinedQuotes.length > 1 && lastUsed === text) {
       const remaining = combinedQuotes.filter((q) => q !== text);
       if (remaining.length > 0) {
         text = remaining[Math.floor(Math.random() * remaining.length)];
       }
     }
-    if (!(this as any)._lastQuotes) {
-      (this as any)._lastQuotes = new Map<string, string>();
-    }
-    (this as any)._lastQuotes.set(key, text);
-    this.lastChatTimestamps.set(key, now);
+
+    this.lastQuotes.set(botKey, text);
+    this.lastChatTimestamps.set(botKey, now);
+    this.roomLastChatTimestamps.set(roomId, now);
 
     return {
       botId: validBotId,

@@ -1714,17 +1714,18 @@ export const GameTable: React.FC<GameTableProps> = ({
         </div>
       )}
 
-      {/* Official Floating Referee Decision Notification Banner (Auto-dismisses in 3 seconds) */}
+      {/* Compact Floating Referee Decision Notification Banner (Non-intrusive & Mobile-optimized) */}
       {latestRefereeDecision && (
         <div
           style={{
             position: 'fixed',
-            top: '18px',
+            top: isLandscape ? '6px' : isMobile ? '8px' : '14px',
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 10005,
-            width: '92%',
-            maxWidth: '540px',
+            width: isLandscape ? '94%' : isMobile ? '94%' : 'auto',
+            minWidth: isMobile ? 'unset' : '340px',
+            maxWidth: isLandscape ? '340px' : isMobile ? 'min(94vw, 360px)' : '420px',
             pointerEvents: 'none',
           }}
         >
@@ -1739,9 +1740,9 @@ export const GameTable: React.FC<GameTableProps> = ({
             const themeColor = isRed
               ? '#ef4444'
               : isYellow
-              ? 'var(--baffa-gold-primary)'
+              ? '#fbbf24'
               : isVoid
-              ? 'var(--baffa-cyan-primary)'
+              ? '#06b6d4'
               : isTime
               ? '#22c55e'
               : isMute
@@ -1749,16 +1750,16 @@ export const GameTable: React.FC<GameTableProps> = ({
               : '#a855f7';
 
             const themeGlow = isRed
-              ? 'rgba(239, 68, 68, 0.5)'
+              ? 'rgba(239, 68, 68, 0.4)'
               : isYellow
-              ? 'rgba(245, 158, 11, 0.5)'
+              ? 'rgba(245, 158, 11, 0.4)'
               : isVoid
-              ? 'rgba(6, 182, 212, 0.5)'
+              ? 'rgba(6, 182, 212, 0.4)'
               : isTime
-              ? 'rgba(34, 197, 94, 0.5)'
+              ? 'rgba(34, 197, 94, 0.4)'
               : isMute
-              ? 'rgba(249, 115, 22, 0.5)'
-              : 'rgba(168, 85, 247, 0.5)';
+              ? 'rgba(249, 115, 22, 0.4)'
+              : 'rgba(168, 85, 247, 0.4)';
 
             const badgeEmoji = isRed
               ? '🟥'
@@ -1772,135 +1773,104 @@ export const GameTable: React.FC<GameTableProps> = ({
               ? '🔇'
               : '⚖️';
 
+            const targetName = latestRefereeDecision.targetPlayerName || 'اللاعب';
+            const reasonText =
+              latestRefereeDecision.reason ||
+              latestRefereeDecision.arabicMessage ||
+              (isYellow ? 'إنذار رسمي من الحكم' : 'قرار تحكيمي');
+
             return (
               <div
                 className="animate-referee-toast arabic-font"
                 style={{
                   pointerEvents: 'auto',
-                  backgroundColor: '#0a101f',
-                  border: `2px solid ${themeColor}`,
-                  borderRadius: isMobile ? '12px' : '18px',
-                  boxShadow: `0 20px 50px rgba(0, 0, 0, 0.98), 0 0 30px ${themeGlow}`,
+                  backgroundColor: 'rgba(10, 16, 28, 0.96)',
+                  backdropFilter: 'blur(16px)',
+                  border: `1.5px solid ${themeColor}`,
+                  borderRadius: isMobile ? '12px' : '14px',
+                  boxShadow: `0 10px 30px rgba(0, 0, 0, 0.85), 0 0 16px ${themeGlow}`,
                   direction: 'rtl',
                   color: '#fff',
                   overflow: 'hidden',
                   position: 'relative',
-                  padding: isMobile ? '8px 12px 6px' : '14px 18px 12px',
-                  maxWidth: isMobile ? '92vw' : '480px',
+                  padding: isLandscape ? '4px 8px 6px' : isMobile ? '6px 10px 8px' : '8px 14px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? '8px' : '10px',
                 }}
               >
-                {/* Header Row: Emoji Badge, Decision Title & Close */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '4px' : '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px' }}>
-                    <div
-                      style={{
-                        width: isMobile ? '28px' : '38px',
-                        height: isMobile ? '28px' : '38px',
-                        borderRadius: isMobile ? '8px' : '12px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                        border: `1.5px solid ${themeColor}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: isMobile ? '1.0rem' : '1.4rem',
-                        boxShadow: `0 0 14px ${themeGlow}`,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {badgeEmoji}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: isMobile ? '0.64rem' : '0.72rem', fontWeight: 900, color: themeColor }}>
-                          ⚖️ قرار تحكيمي رسمي ({latestRefereeDecision.judgeName || 'الحكم'})
-                        </span>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '1px 5px',
-                            borderRadius: '4px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            fontSize: isMobile ? '0.58rem' : '0.65rem',
-                            fontWeight: 800,
-                            color: '#94a3b8',
-                          }}
-                        >
-                          6 ثوانٍ ⏱️
-                        </span>
-                      </div>
-                      <div style={{ fontSize: isMobile ? '0.86rem' : '1.15rem', fontWeight: 900, color: '#fff', lineHeight: 1.2 }}>
-                        {latestRefereeDecision.title}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={onDismissRefereeDecision}
-                    style={{
-                      width: isMobile ? '22px' : '28px',
-                      height: isMobile ? '22px' : '28px',
-                      borderRadius: '50%',
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      color: '#94a3b8',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      fontSize: isMobile ? '0.72rem' : '0.85rem',
-                      transition: 'all 0.2s ease',
-                    }}
-                    title="إغلاق التنبيه"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Details Card: Target & Reason */}
+                {/* Glowing Badge Emoji */}
                 <div
                   style={{
-                    backgroundColor: '#111827',
-                    borderRadius: isMobile ? '8px' : '12px',
-                    border: '1.5px solid rgba(255, 255, 255, 0.15)',
-                    padding: isMobile ? '5px 8px' : '8px 12px',
+                    width: isLandscape ? '24px' : isMobile ? '28px' : '34px',
+                    height: isLandscape ? '24px' : isMobile ? '28px' : '34px',
+                    borderRadius: isMobile ? '8px' : '10px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    border: `1px solid ${themeColor}`,
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: isMobile ? '3px' : '6px',
-                    marginBottom: isMobile ? '4px' : '8px',
-                    fontSize: isMobile ? '0.74rem' : '0.85rem',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: isLandscape ? '0.85rem' : isMobile ? '0.95rem' : '1.15rem',
+                    boxShadow: `0 0 10px ${themeGlow}`,
+                    flexShrink: 0,
                   }}
                 >
-                  {/* Target Player / Team */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ color: 'var(--baffa-text-muted)', fontWeight: 700 }}>🎯 ضـد:</span>
-                    <span style={{ fontWeight: 900, color: '#fde68a' }}>
-                      {latestRefereeDecision.targetPlayerName || 'جميع اللاعبين'}
-                      {latestRefereeDecision.targetSeat !== undefined ? ` (مقعد ${latestRefereeDecision.targetSeat + 1})` : ''}
-                      {latestRefereeDecision.targetTeam ? ` • فريق ${latestRefereeDecision.targetTeam}` : ''}
+                  {badgeEmoji}
+                </div>
+
+                {/* Content: Title + Target Name + Reason */}
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: isLandscape ? '0.72rem' : isMobile ? '0.78rem' : '0.86rem',
+                        fontWeight: 900,
+                        color: themeColor,
+                      }}
+                    >
+                      {latestRefereeDecision.title}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: isLandscape ? '0.68rem' : isMobile ? '0.74rem' : '0.82rem',
+                        fontWeight: 800,
+                        color: '#f8fafc',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      • {targetName}
                     </span>
                   </div>
 
-                  {/* Reason */}
-                  {(latestRefereeDecision.reason || latestRefereeDecision.arabicMessage) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ color: 'var(--baffa-text-muted)', fontWeight: 700 }}>⚠️ السبب:</span>
-                      <span style={{ fontWeight: 800, color: '#fff' }}>
-                        {latestRefereeDecision.reason || latestRefereeDecision.arabicMessage}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Optional Arabic Message if distinct */}
-                  {latestRefereeDecision.arabicMessage && latestRefereeDecision.arabicMessage !== latestRefereeDecision.reason && (
-                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.78rem', color: 'rgba(255, 255, 255, 0.75)', lineHeight: 1.3 }}>
-                      {latestRefereeDecision.arabicMessage}
-                    </div>
-                  )}
+                  <div
+                    style={{
+                      fontSize: isLandscape ? '0.62rem' : isMobile ? '0.66rem' : '0.72rem',
+                      color: 'rgba(255, 255, 255, 0.75)',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      lineHeight: 1.2,
+                    }}
+                    title={reasonText}
+                  >
+                    {reasonText}
+                  </div>
                 </div>
 
-                {/* Action button if round is finished */}
-                {gameState.status === 'ROUND_FINISHED' && (
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: isMobile ? '4px' : '8px' }}>
+                {/* Right Actions: Next Round button (if round ended) & Quick Dismiss */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                  {gameState.status === 'ROUND_FINISHED' && (
                     <button
                       onClick={() => {
                         onDismissRefereeDecision?.();
@@ -1909,25 +1879,50 @@ export const GameTable: React.FC<GameTableProps> = ({
                       disabled={nextRoundPending}
                       className="baffa-btn-primary"
                       style={{
-                        padding: isMobile ? '4px 12px' : '6px 16px',
-                        fontSize: isMobile ? '0.74rem' : '0.82rem',
+                        padding: isLandscape ? '2px 6px' : isMobile ? '3px 8px' : '4px 10px',
+                        fontSize: isLandscape ? '0.62rem' : isMobile ? '0.66rem' : '0.72rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
+                        gap: '3px',
+                        borderRadius: '6px',
                       }}
                     >
-                      <Zap size={14} />
-                      <span className="arabic-font">بدء الجولة التالية فوراً ⚡</span>
+                      <Zap size={11} />
+                      <span className="arabic-font">التالي ⚡</span>
                     </button>
-                  </div>
-                )}
+                  )}
 
-                {/* 6-Second Animated Countdown Progress Bar */}
+                  <button
+                    onClick={onDismissRefereeDecision}
+                    style={{
+                      width: isLandscape ? '18px' : isMobile ? '20px' : '24px',
+                      height: isLandscape ? '18px' : isMobile ? '20px' : '24px',
+                      borderRadius: '50%',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#94a3b8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      fontSize: isLandscape ? '0.6rem' : isMobile ? '0.65rem' : '0.75rem',
+                      transition: 'all 0.15s ease',
+                      flexShrink: 0,
+                    }}
+                    title="إغلاق التنبيه"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* 6-Second Animated Countdown Progress Bar at Bottom Edge */}
                 <div
                   style={{
-                    width: '100%',
-                    height: '4px',
-                    borderRadius: '2px',
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '2px',
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     overflow: 'hidden',
                   }}
@@ -1937,8 +1932,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                     style={{
                       height: '100%',
                       backgroundColor: themeColor,
-                      boxShadow: `0 0 8px ${themeColor}`,
-                      borderRadius: '2px',
+                      boxShadow: `0 0 6px ${themeColor}`,
                     }}
                   />
                 </div>

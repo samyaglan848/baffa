@@ -105,7 +105,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
     setActiveChats((prev) => {
       if (prev.some((c) => c.id === id)) return prev;
       return [
-        ...prev,
+        ...prev.slice(-1),
         {
           id,
           userId: `bot_${seat ?? 0}`,
@@ -119,7 +119,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
     playSound('pop');
     setTimeout(() => {
       setActiveChats((prev) => prev.filter((c) => c.id !== id));
-    }, 4600);
+    }, 3800);
   }, [latestBotMessage, players, playSound]);
 
   // Relative seat calculation for visual positioning on the felt table
@@ -166,11 +166,11 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
           ? Number(senderPlayer.seat)
           : null;
 
-      setActiveChats((prev) => [...prev, { id, userId: payload.userId, senderName, text, seat, createdAt: payload.timestamp }]);
+      setActiveChats((prev) => [...prev.slice(-1), { id, userId: payload.userId, senderName, text, seat, createdAt: payload.timestamp }]);
       playSound('pop');
       setTimeout(() => {
         setActiveChats((prev) => prev.filter((c) => c.id !== id));
-      }, 4600);
+      }, 3800);
     };
 
     const onReaction = (payload: EmoteReactionBroadcastPayload) => {
@@ -192,13 +192,13 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
           : null;
 
       setActiveReactions((prev) => [
-        ...prev,
+        ...prev.slice(-2),
         { id, userId: payload.userId, senderName, emoji: payload.emoji, seat, createdAt: payload.timestamp },
       ]);
       playSound('pop');
       setTimeout(() => {
         setActiveReactions((prev) => prev.filter((r) => r.id !== id));
-      }, 4600);
+      }, 3800);
     };
 
     const onBotMessage = (payload: BotChatMessage) => {
@@ -220,7 +220,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
       setActiveChats((prev) => {
         if (prev.some((c) => c.id === id)) return prev;
         return [
-          ...prev,
+          ...prev.slice(-1),
           {
             id,
             userId: `bot_${seat ?? 0}`,
@@ -234,7 +234,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
       playSound('pop');
       setTimeout(() => {
         setActiveChats((prev) => prev.filter((c) => c.id !== id));
-      }, 4600);
+      }, 3800);
     };
 
     socket.on(ServerEvents.BOT_MESSAGE, onBotMessage);
@@ -266,11 +266,11 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
     const seat = mySeat !== null && mySeat !== undefined ? Number(mySeat) : myPlayer ? Number(myPlayer.seat) : 0;
 
     // Instant optimistic display on local screen
-    setActiveChats((prev) => [...prev, { id, userId: myUserId, senderName, text, seat, createdAt: timestamp }]);
+    setActiveChats((prev) => [...prev.slice(-1), { id, userId: myUserId, senderName, text, seat, createdAt: timestamp }]);
     playSound('pop');
     setTimeout(() => {
       setActiveChats((prev) => prev.filter((c) => c.id !== id));
-    }, 4600);
+    }, 3800);
 
     if (socket) {
       socket.emit(ClientEvents.QUICK_CHAT, { roomId, messageId: text });
@@ -652,13 +652,13 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
                 position: 'absolute',
                 ...containerStyle,
                 // Phones: small bubbles that leave the tiles visible (they covered the table before).
-                padding: isLandscape ? '2px 6px' : isMobile ? '2px 7px' : '6px 14px',
+                padding: isLandscape ? '3px 8px' : isMobile ? '3px 8px' : '6px 14px',
                 background: 'linear-gradient(135deg, rgba(14, 26, 42, 0.94) 0%, rgba(20, 36, 58, 0.9) 100%)',
                 border: isMobile ? '1px solid var(--baffa-gold-primary)' : '1.5px solid var(--baffa-gold-primary)',
-                borderRadius: isMobile ? '8px' : '18px',
-                boxShadow: isMobile ? '0 3px 10px rgba(0,0,0,0.6)' : '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
+                borderRadius: isMobile ? '10px' : '18px',
+                boxShadow: isMobile ? '0 4px 12px rgba(0,0,0,0.65)' : '0 8px 30px rgba(0,0,0,0.85), 0 0 15px rgba(245, 158, 11, 0.4)',
                 backdropFilter: 'blur(10px)',
-                maxWidth: isLandscape ? '110px' : isMobile ? '96px' : '220px',
+                maxWidth: isLandscape ? '130px' : isMobile ? '135px' : '230px',
                 animationDuration: isMobile ? '3.2s' : undefined,
                 textAlign: 'center',
                 display: 'inline-flex',
@@ -670,11 +670,11 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
               {tailStyle && <div style={tailStyle} />}
               <span
                 style={{
-                  fontSize: isLandscape ? '0.6rem' : isMobile ? '0.62rem' : '0.88rem',
+                  fontSize: isLandscape ? '0.64rem' : isMobile ? '0.68rem' : '0.88rem',
                   fontWeight: isMobile ? 800 : 900,
                   color: '#fff',
                   textAlign: 'center',
-                  lineHeight: isMobile ? 1.2 : 1.25,
+                  lineHeight: isMobile ? 1.25 : 1.3,
                   wordBreak: 'break-word',
                   // At most two lines on phones; longer banter is cut with "…".
                   ...(isMobile
