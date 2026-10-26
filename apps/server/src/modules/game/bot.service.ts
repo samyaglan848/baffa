@@ -12,6 +12,7 @@ import {
   PlayerSeat,
 } from '@baffa/shared';
 import { DominoGameEngine } from '@baffa/engine';
+import { SmartBotBrain } from './smart-bot-brain';
 
 export interface BotDecision {
   action: 'PLAY' | 'PASS';
@@ -508,6 +509,106 @@ const BOT_QUOTES: Partial<Record<BotChatTrigger, Partial<Record<BotId, string[]>
   ][0],
 };
 
+
+// ═══════════════════════════════════════════════════════════════════
+// البوتات الذكية: الهيما · الهوبا · رقم واحد في العذبة
+// نفس نظام التفكير (SmartBotBrain) وكل واحد ليه كلامه.
+// الكلام على حسب الموقف بس، وهاديين: فين وفين لما يتكلموا.
+// ═══════════════════════════════════════════════════════════════════
+type SmartBotId = 'EL_HEMA' | 'EL_HOBA' | 'RAQAM_WAHED';
+const SMART_BOTS: ReadonlySet<BotId> = new Set<BotId>(['EL_HEMA', 'EL_HOBA', 'RAQAM_WAHED']);
+
+type SmartSituation =
+  | 'MY_DOOR'          // لعب باب لزميله
+  | 'PASS'             // فوّت
+  | 'OPP_PASS'         // الخصم اللي بعده فوّت
+  | 'PARTNER_DOOR'     // زميله لعبله باب
+  | 'PARTNER_MISTAKE'  // زميله غلط
+  | 'LOCK'             // قفل
+  | 'WIN'              // كسب
+  | 'LOSS';            // خسر
+
+const SMART_QUOTES: Record<SmartSituation, Record<SmartBotId, string[]>> = {
+  MY_DOOR: {
+    EL_HEMA: ['مسا مني ليك', 'لكش يطمر فيك', 'خد عشان انت طفس'],
+    EL_HOBA: ['المفروض دي ليك', 'خد يعم', 'خد يزميلي'],
+    RAQAM_WAHED: ['خد يعم العب لوحدك', 'انا عايزك تبهدلهم'],
+  },
+  PASS: {
+    EL_HEMA: ['فوت يعم منا بلعب مع خدادية', 'معييش يعم'],
+    EL_HOBA: ['يحرق دم دا ورق', 'فوت', 'فوت منا بلعب لوحدي'],
+    RAQAM_WAHED: ['قاعد', 'فوت منا بلعب مع فردة', 'ابو ال يلعب معاك ياخي'],
+  },
+  OPP_PASS: {
+    EL_HEMA: ['لو مزعلك اقوم امشي'],
+    EL_HOBA: ['هو انا كل ما العب تفوت', 'شوف ال ورايا بعمل فيه ايه'],
+    RAQAM_WAHED: ['العبلك لعبة غيرها طيب', 'حد يشيله من هنا يبني'],
+  },
+  PARTNER_DOOR: {
+    EL_HEMA: ['اسطورة يجدعان'],
+    EL_HOBA: ['مش طبيعي الواد دا'],
+    RAQAM_WAHED: ['انت منجد يبني', 'الراجل دا انتو ظلمينه'],
+  },
+  PARTNER_MISTAKE: {
+    EL_HEMA: ['يعم ركز يعم'],
+    EL_HOBA: ['يعم غور فداهية'],
+    RAQAM_WAHED: ['والله انت مليك فيها'],
+  },
+  LOCK: {
+    EL_HEMA: ['قفلة'],
+    EL_HOBA: ['قفلة'],
+    RAQAM_WAHED: ['قفلة'],
+  },
+  WIN: {
+    EL_HEMA: ['يلا سلموا علي بعض'],
+    EL_HOBA: ['يلا يا فردة انت وهو'],
+    RAQAM_WAHED: ['طب متلعبوا بل او اساتك'],
+  },
+  LOSS: {
+    EL_HEMA: ['الورق زفت يعم'],
+    EL_HOBA: ['مش عارف منجسه كده ليه'],
+    RAQAM_WAHED: ['انا مش فايق والله مكسل احسب اصلا'],
+  },
+};
+
+/** احتمال إن البوت يتكلم في الموقف (القفلة والكسب والخسارة دايمًا) */
+const SMART_PROBABILITIES: Record<SmartSituation, number> = {
+  MY_DOOR: 0.35,
+  PASS: 0.25,
+  OPP_PASS: 0.25,
+  PARTNER_DOOR: 0.4,
+  PARTNER_MISTAKE: 0.45,
+  LOCK: 1,
+  WIN: 1,
+  LOSS: 1,
+};
+const SMART_MUST_SAY: ReadonlySet<SmartSituation> = new Set<SmartSituation>(['LOCK', 'WIN', 'LOSS']);
+/** بعد أي رسالة في الأوضة: البوت الذكي يستنى 20 ثانية قبل ما يتكلم (إلا القفلة/الكسب/الخسارة) */
+const SMART_ROOM_GAP_MS = 20000;
+/** حتى القفلة/الكسب/الخسارة: مفيش رسالتين ورا بعض في أقل من 4 ثواني (بوت واحد بس يتكلم) */
+const SMART_MUST_SAY_GAP_MS = 4000;
+const SMART_PER_BOT_GAP_MS = 20000;
+
+const TRIGGER_TO_SMART: Partial<Record<BotChatTrigger, SmartSituation>> = {
+  OPPONENT_PASS: 'OPP_PASS',
+  ROUND_WIN: 'WIN',
+  ROUND_WIN_HIGH_POINTS: 'WIN',
+  MATCH_WIN: 'WIN',
+  ROUND_LOSS: 'LOSS',
+  MATCH_LOSS: 'LOSS',
+};
+
+const SMART_TO_TRIGGER: Record<SmartSituation, BotChatTrigger> = {
+  MY_DOOR: 'PLAY',
+  PASS: 'PASS',
+  OPP_PASS: 'OPPONENT_PASS',
+  PARTNER_DOOR: 'PARTNER_CHEER',
+  PARTNER_MISTAKE: 'PLAY',
+  LOCK: 'GAME_LOCKED',
+  WIN: 'ROUND_WIN',
+  LOSS: 'ROUND_LOSS',
+};
+
 // Probability gates to eliminate message spam ("أفورة الرسايل")
 const TRIGGER_PROBABILITIES: Record<BotChatTrigger, number> = {
   PLAY: 0.16, // Only 16% on normal plays
@@ -568,6 +669,10 @@ export class BotService {
   ): BotDecision {
     const legalMoves = engine.getLegalMovesForSeat(seat);
 
+    if (botId && SMART_BOTS.has(botId) && OFFICIAL_BAFFA_BOTS[botId]) {
+      return this.decideSmartMove(engine, seat, botId as SmartBotId, legalMoves);
+    }
+
     if (legalMoves.length === 0) {
       const chat = this.generateSocialReaction(engine, seat, botId, 'PASS');
       return { action: 'PASS', chatMessage: chat };
@@ -613,11 +718,9 @@ export class BotService {
       case 'EL_TITO':
         return this.moveStrategyElTito(moves);
       case 'RAQAM_WAHED':
-        return this.moveStrategyRaqamWahed(moves, engine, seat);
       case 'EL_HEMA':
-        return this.moveStrategyElHema(moves, engine, seat);
       case 'EL_HOBA':
-        return this.moveStrategyElHoba(moves, engine, seat);
+        return new SmartBotBrain(engine, seat).decide(moves).move;
       case 'EL_SAMY':
       default:
         return this.moveStrategyElSamy(moves, engine, seat);
@@ -692,132 +795,6 @@ export class BotService {
   }
 
   /**
-   * 4. رقم واحد في العزبة (RAQAM_WAHED) — The Dominant Boss: maximizes self-playability on subsequent turns.
-   */
-  private moveStrategyRaqamWahed(
-    moves: LegalMove[],
-    engine: DominoGameEngine,
-    seat: PlayerSeat
-  ): LegalMove {
-    const rawHands = engine.getRawHands();
-    const ownHand = rawHands[seat] || [];
-    const chain = engine.getChain();
-    const left = chain.getLeftEnd();
-    const right = chain.getRightEnd();
-
-    return [...moves].sort((a, b) => {
-      const evaluateSelfControl = (m: LegalMove): number => {
-        const remaining = ownHand.filter(
-          (t) => !(t[0] === m.tile[0] && t[1] === m.tile[1])
-        );
-
-        let playableCount = 0;
-        for (const end of m.validEnds) {
-          const connectingVal = end === 'LEFT' ? left : right;
-          const otherEndVal = end === 'LEFT' ? right : left;
-          const newExposedVal = m.tile[0] === connectingVal ? m.tile[1] : m.tile[0];
-
-          // Count how many remaining tiles can connect to the future board ends
-          const matches = remaining.filter(
-            (t) =>
-              t[0] === newExposedVal ||
-              t[1] === newExposedVal ||
-              t[0] === otherEndVal ||
-              t[1] === otherEndVal
-          ).length;
-          playableCount = Math.max(playableCount, matches);
-        }
-
-        const pips = m.tile[0] + m.tile[1];
-        const isDouble = m.tile[0] === m.tile[1] ? 4 : 0;
-        return playableCount * 5 + pips + isDouble;
-      };
-
-      return evaluateSelfControl(b) - evaluateSelfControl(a);
-    })[0];
-  }
-
-  /**
-   * 5. الهيما (EL_HEMA) — The Math Professor: calculates blocked-game lockouts (السدّة) and pip reduction.
-   */
-  private moveStrategyElHema(
-    moves: LegalMove[],
-    engine: DominoGameEngine,
-    seat: PlayerSeat
-  ): LegalMove {
-    const rawHands = engine.getRawHands();
-    const ownHand = rawHands[seat] || [];
-    const ownTotalPips = ownHand.reduce((acc, t) => acc + t[0] + t[1], 0);
-
-    const chain = engine.getChain();
-    const left = chain.getLeftEnd();
-    const right = chain.getRightEnd();
-
-    return [...moves].sort((a, b) => {
-      const evaluateMath = (m: LegalMove): number => {
-        const pips = m.tile[0] + m.tile[1];
-        let score = pips * 1.8;
-
-        // Check if move would equalize the two ends (prerequisite for a blocked game / سدّة)
-        for (const end of m.validEnds) {
-          const connectingVal = end === 'LEFT' ? left : right;
-          const untouchedVal = end === 'LEFT' ? right : left;
-          const exposedVal = m.tile[0] === connectingVal ? m.tile[1] : m.tile[0];
-
-          if (exposedVal === untouchedVal && !chain.isEmpty()) {
-            // If El Hema has low pips (e.g. <= 14), a lock is mathematically favourable!
-            if (ownTotalPips <= 14) {
-              score += 25;
-            } else if (ownTotalPips >= 20) {
-              score -= 25; // Dangerous to lock if holding heavy pips
-            }
-          }
-        }
-
-        if (m.tile[0] === m.tile[1]) score += 3;
-        return score;
-      };
-
-      return evaluateMath(b) - evaluateMath(a);
-    })[0];
-  }
-
-  /**
-   * 6. الهوبا (EL_HOBA) — Speedster: maximizes hand suit diversity and unpredictable rapid tempo.
-   */
-  private moveStrategyElHoba(
-    moves: LegalMove[],
-    engine: DominoGameEngine,
-    seat: PlayerSeat
-  ): LegalMove {
-    const rawHands = engine.getRawHands();
-    const ownHand = rawHands[seat] || [];
-
-    return [...moves].sort((a, b) => {
-      const evaluateAgility = (m: LegalMove): number => {
-        const remaining = ownHand.filter(
-          (t) => !(t[0] === m.tile[0] && t[1] === m.tile[1])
-        );
-
-        // Count unique pip values left in hand (diversity = flexibility)
-        const uniquePips = new Set<number>();
-        remaining.forEach((t) => {
-          uniquePips.add(t[0]);
-          uniquePips.add(t[1]);
-        });
-
-        const diversityScore = uniquePips.size * 6;
-        const pips = m.tile[0] + m.tile[1];
-        const doubleScore = m.tile[0] === m.tile[1] ? 3 : 0;
-
-        return diversityScore + pips + doubleScore;
-      };
-
-      return evaluateAgility(b) - evaluateAgility(a);
-    })[0];
-  }
-
-  /**
    * 7. السامي (EL_SAMY) — The Egyptian Grandmaster: deep partner synergy, tracks opponent passes, masters domino etiquette.
    */
   private moveStrategyElSamy(
@@ -877,6 +854,128 @@ export class BotService {
   }
 
   /**
+   * الهيما · الهوبا · رقم واحد في العذبة: نفس العقل، والكلام على حسب الموقف.
+   */
+  private decideSmartMove(
+    engine: DominoGameEngine,
+    seat: PlayerSeat,
+    botId: SmartBotId,
+    legalMoves: LegalMove[]
+  ): BotDecision {
+    let brain: SmartBotBrain | null = null;
+    try {
+      brain = new SmartBotBrain(engine, seat);
+    } catch (err: any) {
+      this.logger.warn(`SmartBotBrain init failed for ${botId}: ${err?.message}`);
+    }
+
+    if (legalMoves.length === 0) {
+      let situation: SmartSituation = 'PASS';
+      try {
+        if (brain && brain.passInfo().partnerMistake) situation = 'PARTNER_MISTAKE';
+      } catch {}
+      return { action: 'PASS', chatMessage: this.generateSmartReaction(engine, seat, botId, situation) };
+    }
+
+    if (!brain) {
+      const fb = legalMoves[0];
+      return { action: 'PLAY', tile: fb.tile, end: fb.validEnds[0] || 'LEFT' };
+    }
+
+    const d = brain.decide(legalMoves);
+    let chatMessage: BotChatMessage | undefined;
+    // أول الجيم: محدش بيتكلم
+    if (!d.isOpening) {
+      if (d.isLock) chatMessage = this.generateSmartReaction(engine, seat, botId, 'LOCK');
+      else if (d.isDoorForPartner) chatMessage = this.generateSmartReaction(engine, seat, botId, 'MY_DOOR');
+      else if (d.partnerGaveDoor) chatMessage = this.generateSmartReaction(engine, seat, botId, 'PARTNER_DOOR');
+    }
+
+    return {
+      action: 'PLAY',
+      tile: d.move.tile,
+      end: d.move.validEnds.includes(d.end) ? d.end : (d.move.validEnds[0] || 'LEFT'),
+      chatMessage,
+    };
+  }
+
+  /** تحويل الأحداث الخارجية (فوّت الخصم، كسب، خسارة) لكلام البوتات الذكية */
+  private smartReactionFromTrigger(
+    engine: DominoGameEngine,
+    seat: PlayerSeat,
+    botId: SmartBotId,
+    trigger: BotChatTrigger
+  ): BotChatMessage | undefined {
+    let situation = TRIGGER_TO_SMART[trigger];
+
+    if (trigger === 'GAME_LOCKED') {
+      // نهاية دور مقفول: الكلام على حسب مين كسب
+      const result = engine.getSanitizedState(null)?.lastRoundResult;
+      if (!result) return undefined;
+      const myTeam = seat % 2 === 0 ? 1 : 2;
+      situation = result.winnerTeam === myTeam ? 'WIN' : 'LOSS';
+    }
+
+    if (situation === 'OPP_PASS') {
+      // بس لما اللي بيفوت هو الخصم اللي بيلعب بعده على طول
+      const passer = ((seat + 1) % 4) as PlayerSeat;
+      const current = engine.getCurrentTurnSeat();
+      const players = (engine as any).players as { lastAction?: string }[] | undefined;
+      const aboutToPass = current === passer && engine.getLegalMovesForSeat(passer).length === 0;
+      const justPassed = ((current + 3) % 4) === passer && players?.[passer]?.lastAction === 'PASS';
+      if (engine.getStatus() !== 'PLAYING' || !(aboutToPass || justPassed)) return undefined;
+    }
+
+    if (!situation) return undefined;
+    return this.generateSmartReaction(engine, seat, botId, situation);
+  }
+
+  /** رسالة واحدة بس في الأوضة في نفس الوقت، وهاديين، ومن غير تكرار */
+  private generateSmartReaction(
+    engine: DominoGameEngine,
+    seat: PlayerSeat,
+    botId: SmartBotId,
+    situation: SmartSituation
+  ): BotChatMessage | undefined {
+    const profile = OFFICIAL_BAFFA_BOTS[botId];
+    if (!profile) return undefined;
+
+    const roomId = engine.getRoomId();
+    const botKey = `${roomId}_${botId}`;
+    const now = Date.now();
+    const mustSay = SMART_MUST_SAY.has(situation);
+
+    const lastRoomChat = this.roomLastChatTimestamps.get(roomId) || 0;
+    if (now - lastRoomChat < (mustSay ? SMART_MUST_SAY_GAP_MS : SMART_ROOM_GAP_MS)) return undefined;
+
+    if (!mustSay) {
+      const lastBotChat = this.lastChatTimestamps.get(botKey) || 0;
+      if (now - lastBotChat < SMART_PER_BOT_GAP_MS) return undefined;
+      if (Math.random() > SMART_PROBABILITIES[situation]) return undefined;
+    }
+
+    const pool = SMART_QUOTES[situation][botId];
+    if (!pool || pool.length === 0) return undefined;
+
+    const lastUsed = this.lastQuotes.get(botKey);
+    const options = pool.length > 1 ? pool.filter((q) => q !== lastUsed) : pool;
+    const text = options[Math.floor(Math.random() * options.length)];
+
+    this.lastQuotes.set(botKey, text);
+    this.lastChatTimestamps.set(botKey, now);
+    this.roomLastChatTimestamps.set(roomId, now);
+
+    return {
+      botId,
+      botName: profile.arabicName,
+      seat,
+      text,
+      trigger: SMART_TO_TRIGGER[situation],
+      timestamp: now,
+    };
+  }
+
+  /**
    * Generates playful Egyptian social banter with strict anti-spam throttle and distinct bot voices.
    */
   public generateSocialReaction(
@@ -889,6 +988,10 @@ export class BotService {
     const validBotId: BotId = (botId && OFFICIAL_BAFFA_BOTS[botId]) ? botId : 'EL_SAMY';
     const profile = OFFICIAL_BAFFA_BOTS[validBotId];
     if (!profile) return undefined;
+
+    if (SMART_BOTS.has(validBotId)) {
+      return this.smartReactionFromTrigger(engine, seat, validBotId as SmartBotId, trigger);
+    }
 
     const roomId = engine.getRoomId();
     const botKey = `${roomId}_${validBotId}`;
