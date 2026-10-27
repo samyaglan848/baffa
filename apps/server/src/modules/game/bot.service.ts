@@ -814,7 +814,7 @@ export class BotService {
     // Check last tile played by partner to respect/preserve partner's introduced suit
     let partnerFavoredSuit: number | null = null;
     for (let i = placedTiles.length - 1; i >= 0; i--) {
-      if (placedTiles[i].seat === partnerSeat) {
+      if (placedTiles[i].playedBySeat === partnerSeat) {
         partnerFavoredSuit = placedTiles[i].tile[0];
         break;
       }
