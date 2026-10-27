@@ -4,6 +4,7 @@ import {
   DisconnectGraceInfo,
   JudgeInfo,
   MatchStatus,
+  OFFICIAL_BAFFA_BOTS,
   PlayerSeat,
   PresenceStatus,
   RoomDetails,
@@ -601,7 +602,12 @@ export class RoomService {
           seat.playerId === user.id;
 
         if (noOtherHumans || isVacatingUser || !seat.occupied) {
-          const botConfig = defaultBots[idx % defaultBots.length];
+          const existingBot = seat.isBot && seat.botId && OFFICIAL_BAFFA_BOTS[seat.botId]
+            ? OFFICIAL_BAFFA_BOTS[seat.botId]
+            : null;
+          const botConfig = existingBot
+            ? { name: existingBot.arabicName, botId: existingBot.id, avatar: existingBot.avatar }
+            : defaultBots[idx % defaultBots.length];
           room.seats[idx] = {
             seat: idx as PlayerSeat,
             team: (idx === 0 || idx === 2 ? 1 : 2) as TeamId,
@@ -688,7 +694,12 @@ export class RoomService {
         seat.playerId === user.id;
 
       if (noOtherHumans || !seat.occupied || isVacatingUser) {
-        const botConfig = defaultBots[idx % defaultBots.length];
+        const existingBot = seat.isBot && seat.botId && OFFICIAL_BAFFA_BOTS[seat.botId]
+          ? OFFICIAL_BAFFA_BOTS[seat.botId]
+          : null;
+        const botConfig = existingBot
+          ? { name: existingBot.arabicName, botId: existingBot.id, avatar: existingBot.avatar }
+          : defaultBots[idx % defaultBots.length];
         room.seats[idx] = {
           seat: idx as PlayerSeat,
           team: (idx === 0 || idx === 2 ? 1 : 2) as TeamId,
@@ -945,21 +956,27 @@ export class RoomService {
 
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('Room not found');
-    if (room.currentAdminId !== adminId) throw new Error('Only room admin can toggle bots');
+    const isAuthorized =
+      room.currentAdminId === adminId ||
+      room.originalAdminId === adminId ||
+      room.ownerId === adminId;
+    if (!isAuthorized) throw new Error('Only room admin can toggle bots');
     if (room.matchStatus !== 'LOBBY') throw new Error('Cannot toggle bots while match is in progress');
 
     const seatObj = room.seats[seat];
     if (enable) {
-      const selectedId = botId || 'EL_SAMY';
+      const selectedId = (botId && OFFICIAL_BAFFA_BOTS[botId]) ? botId : 'EL_SAMY';
+      const botProfile = OFFICIAL_BAFFA_BOTS[selectedId];
       seatObj.occupied = true;
       seatObj.playerId = `bot_${seat}`;
-      seatObj.username = selectedId;
-      seatObj.avatar = `bot-${selectedId.toLowerCase()}`;
+      seatObj.username = botProfile ? botProfile.arabicName : selectedId;
+      seatObj.avatar = botProfile ? botProfile.avatar : `bot-${selectedId.toLowerCase()}`;
       seatObj.isBot = true;
       seatObj.botId = selectedId;
       seatObj.isReady = true;
       seatObj.isConnected = true;
       seatObj.presence = 'ONLINE';
+      seatObj.isTemporarilyBotControlled = false;
     } else {
       seatObj.occupied = false;
       seatObj.playerId = null;
@@ -970,6 +987,7 @@ export class RoomService {
       seatObj.isReady = false;
       seatObj.isConnected = false;
       seatObj.presence = 'ONLINE';
+      seatObj.isTemporarilyBotControlled = false;
     }
 
     return room;

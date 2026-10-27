@@ -1830,14 +1830,23 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (!payload || !Number.isInteger(payload.seat) || payload.seat < 0 || payload.seat > 3) {
         throw new Error('Invalid seat index: seat must be 0, 1, 2, or 3');
       }
-      const { player, room } = this.validateCallerInRoom(client, payload.roomId);
-      if (room.currentAdminId !== player.userId) {
+      const { player, room } = this.validateCallerInRoom(client, payload?.roomId, (payload as any)?.user);
+      const userAuth = this.resolveUser(client, (payload as any)?.user);
+      const isAdmin =
+        room.currentAdminId === player.userId ||
+        room.currentAdminId === userAuth.id ||
+        room.originalAdminId === player.userId ||
+        room.originalAdminId === userAuth.id ||
+        room.ownerId === player.userId ||
+        room.ownerId === userAuth.id;
+      if (!isAdmin) {
         throw new Error('Unauthorized: Only room admin can toggle bots');
       }
 
+      const adminId = room.currentAdminId || userAuth.id || player.userId;
       const updatedRoom = this.roomService.toggleBot(
         room.id,
-        player.userId,
+        adminId,
         payload.seat,
         payload.enable,
         payload.botId

@@ -7,6 +7,7 @@ import {
   DominoTile,
   MatchResult,
   NotificationPayload,
+  OFFICIAL_BAFFA_BOTS,
   PlayerSeat,
   RefereeDecisionBroadcastPayload,
   RoundResult,
@@ -158,9 +159,20 @@ export class GameSessionService {
 
       // Only fill with a bot if the seat is EMPTY, already a bot, or occupied by a referee/spectator!
       if (!isRealHumanSeated) {
-        const botConfig = defaultBots[idx % defaultBots.length];
+        // PRESERVE user's selected bot if this seat was already configured with a bot!
+        const existingBotId = seat.isBot && seat.botId && OFFICIAL_BAFFA_BOTS[seat.botId]
+          ? seat.botId
+          : undefined;
+        const botConfig = existingBotId && OFFICIAL_BAFFA_BOTS[existingBotId]
+          ? {
+              name: OFFICIAL_BAFFA_BOTS[existingBotId].arabicName,
+              botId: OFFICIAL_BAFFA_BOTS[existingBotId].id,
+              avatar: OFFICIAL_BAFFA_BOTS[existingBotId].avatar,
+            }
+          : defaultBots[idx % defaultBots.length];
+
         seat.occupied = true;
-        seat.playerId = `bot_${seat.seat}`;
+        seat.playerId = seat.playerId && seat.playerId.startsWith('bot_') ? seat.playerId : `bot_${seat.seat}`;
         seat.username = botConfig.name;
         seat.avatar = botConfig.avatar;
         seat.isBot = true;
@@ -333,9 +345,11 @@ export class GameSessionService {
         seat.avatar = botConfig.avatar;
         seat.isBot = true;
         seat.botId = botConfig.botId;
-        seat.isReady = true;
-        seat.isConnected = true;
         seat.presence = 'ONLINE';
+      } else if (seat.isBot && seat.botId && OFFICIAL_BAFFA_BOTS[seat.botId]) {
+        const b = OFFICIAL_BAFFA_BOTS[seat.botId];
+        seat.username = b.arabicName;
+        seat.avatar = b.avatar;
       }
       seat.isReady = true;
       seat.isConnected = true;

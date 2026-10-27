@@ -1333,22 +1333,30 @@ export function useGameSocket() {
             isReactionsMuted: false,
             isVoiceMuted: false,
           }))
-        : room.seats.map((s) => ({
-            seat: s.seat,
-            team: s.team,
-            playerId: s.playerId || `bot_${s.seat}`,
-            username: s.username || `Player ${s.seat + 1}`,
-            avatar: s.avatar || `avatar-${s.seat + 1}`,
-            isBot: s.isBot,
-            botId: s.botId,
-            isConnected: true,
-            isReady: true,
-            hiddenTilesCount: 7,
-            warnings: 0,
-            isChatMuted: false,
-            isReactionsMuted: false,
-            isVoiceMuted: false,
-          }));
+        : room.seats.map((s, idx) => {
+            const isBotSeat = Boolean(s.isBot);
+            const botProfile = s.botId ? OFFICIAL_BAFFA_BOTS[s.botId] : undefined;
+            const botName = botProfile?.arabicName || s.username || defaultBots[idx]?.name || `بوت ${idx + 1}`;
+            const botAvatar = botProfile?.avatar || s.avatar || defaultBots[idx]?.avatar || 'bot-rayeq';
+            const botId = s.botId || (isBotSeat ? (defaultBots[idx]?.botId as BotId) : undefined);
+
+            return {
+              seat: s.seat,
+              team: s.team,
+              playerId: s.playerId || `bot_${s.seat}`,
+              username: isBotSeat ? botName : (s.username || `Player ${s.seat + 1}`),
+              avatar: isBotSeat ? botAvatar : (s.avatar || `avatar-${s.seat + 1}`),
+              isBot: isBotSeat,
+              botId,
+              isConnected: true,
+              isReady: true,
+              hiddenTilesCount: 7,
+              warnings: 0,
+              isChatMuted: false,
+              isReactionsMuted: false,
+              isVoiceMuted: false,
+            };
+          });
 
       return {
         matchId: `match_${targetRoomId}_${Date.now()}`,
