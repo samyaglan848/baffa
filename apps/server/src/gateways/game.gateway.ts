@@ -102,6 +102,11 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private readonly awayViolationTimers = new Map<string, NodeJS.Timeout>(); // `${roomId}_${userId}`
   private readonly awayStrikes = new Map<string, number>(); // `${roomId}_${matchId}_${userId}`
 
+  /** فردي و"بدون حكم": الخروج من الشاشة بيظهر كعلامة فوق الاسم بس، من غير رسالة تنبيه نزاهة. */
+  private isQuietAwayRoom(room: Parameters<typeof RoomService.isSoloRoom>[0] & Parameters<typeof RoomService.refereeModeOf>[0]): boolean {
+    return RoomService.isSoloRoom(room) && RoomService.refereeModeOf(room) === 'NONE';
+  }
+
   private scheduleAwayViolation(roomId: string, userId: string, graceMs: number = GameGateway.AWAY_GRACE_MS) {
     const room = this.findRoom(roomId);
     if (!room || room.matchStatus !== 'PLAYING' || !RoomService.serverJudges(room)) return;
@@ -1446,7 +1451,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           username,
           persistent: true,
         };
-        this.broadcastNotificationToRoom(roomId, notif);
+        // فردي بدون حكم: مفيش داعي لتنبيه النزاهة، والعلامة الصغيرة فوق الاسم كفاية (presence = AWAY).
+        if (!this.isQuietAwayRoom(room)) this.broadcastNotificationToRoom(roomId, notif);
 
         const seatObj = RoomService.liveSeats(room).find((s) => s.playerId === userId && !s.isBot);
         if (seatObj) {
@@ -1553,7 +1559,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           username,
           persistent: true,
         };
-        this.broadcastNotificationToRoom(roomId, notif);
+        // فردي بدون حكم: مفيش داعي لتنبيه النزاهة، والعلامة الصغيرة فوق الاسم كفاية (presence = AWAY).
+        if (!this.isQuietAwayRoom(room)) this.broadcastNotificationToRoom(roomId, notif);
 
         const seatObj = RoomService.liveSeats(room).find((s) => s.playerId === userId && !s.isBot);
         if (seatObj) {

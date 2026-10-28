@@ -217,6 +217,33 @@ body.reduced-motion *,
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.7), 0 0 16px rgba(245, 158, 11, 0.35);
 }
 
+/* فردي: a drawn tile flies face-down from the pile to the player who drew it */
+@keyframes boneyard-draw {
+  0% {
+    transform: translate(-50%, -50%) translate3d(0, 0, 0) scale(1) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(-50%, -50%) translate3d(calc(var(--draw-dx) * 0.55), calc(var(--draw-dy) * 0.55 - 34px), 0) scale(1.18) rotate(-10deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate3d(var(--draw-dx), var(--draw-dy), 0) scale(1) rotate(var(--draw-rot, 90deg));
+    opacity: 1;
+  }
+}
+
+.animate-boneyard-draw {
+  animation-name: boneyard-draw;
+  animation-timing-function: cubic-bezier(0.25, 0.85, 0.35, 1);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6));
+}
+
 /* Card Dealing Animations from Table Center */
 @keyframes deal-to-bottom {
   0% {

@@ -270,22 +270,62 @@ export const GameTable: React.FC<GameTableProps> = ({
   const mySeat = isObserver ? null : gameState.mySeat;
   // فردي (1 vs 1): the opponent sits on top, and there is a draw pile.
   const isSolo = gameState.gameMode === 'SOLO';
-  const [drawToast, setDrawToast] = useState<string | null>(null);
+  // فردي: drawn tiles fly face-down from the pile beside the table to the player who drew them.
+  const [drawAnim, setDrawAnim] = useState<{
+    key: number;
+    seat: number;
+    count: number;
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+    stagger: number;
+    fly: number;
+  } | null>(null);
+  const [drawDeparted, setDrawDeparted] = useState(0); // tiles that already left the pile
+  const [drawLanded, setDrawLanded] = useState(0); // tiles that already reached the player
   const lastDrawAt = gameState.lastDraw?.at;
   useEffect(() => {
     const d = gameState.lastDraw;
-    if (!isSolo || !d) return;
+    if (!isSolo || !d || d.count <= 0) return;
     const now = gameState.serverTime || Date.now();
-    if (now - d.at > 4000) return; // an old draw (e.g. after reconnecting): don't announce it again
-    const who =
-      mySeat !== null && Number(d.seat) === Number(mySeat)
-        ? 'إنت'
-        : (gameState.players || []).find((p) => p && Number(p.seat) === Number(d.seat))?.username || 'الخصم';
-    setDrawToast(`${who} سحب ${d.count} ${d.count === 1 ? 'كارت' : 'كروت'}`);
-    const t = setTimeout(() => setDrawToast(null), 2500);
-    return () => clearTimeout(t);
+    if (now - d.at > 4000) return; // an old draw (e.g. after reconnecting): don't replay it
+    const isMeDrawing = mySeat !== null && Number(d.seat) === Number(mySeat);
+    const pileEl = document.querySelector('[data-boneyard="true"]') as HTMLElement | null;
+    const targetEl = document.querySelector(
+      isMeDrawing ? '[data-hand-row="me"]' : `[data-hidden-seat="${d.seat}"]`
+    ) as HTMLElement | null;
+    const pr = pileEl?.getBoundingClientRect();
+    const tr = targetEl?.getBoundingClientRect();
+    if (!pr || !tr) return;
+    // New tiles join the end of the hand: on the left in RTL, on the right in LTR.
+    const rtl = getComputedStyle(targetEl as HTMLElement).direction === 'rtl';
+    const toX = isMeDrawing ? (rtl ? tr.left + 24 : tr.right - 24) : tr.left + tr.width / 2;
+    const stagger = d.count > 5 ? 140 : 220;
+    const fly = 750;
+    setDrawAnim({
+      key: d.at,
+      seat: Number(d.seat),
+      count: d.count,
+      from: { x: pr.left + pr.width / 2, y: pr.top + pr.height / 2 },
+      to: { x: toX, y: tr.top + tr.height / 2 },
+      stagger,
+      fly,
+    });
+    setDrawDeparted(0);
+    setDrawLanded(0);
+    try { playSound('tile'); } catch {}
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 0; i < d.count; i++) {
+      timers.push(setTimeout(() => setDrawDeparted(i + 1), i * stagger));
+      timers.push(setTimeout(() => setDrawLanded(i + 1), i * stagger + fly));
+    }
+    timers.push(setTimeout(() => setDrawAnim(null), (d.count - 1) * stagger + fly + 60));
+    return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastDrawAt]);
+  /** Tiles drawn but still flying: they stay in the pile / out of the hand until they land. */
+  const drawStillInPile = drawAnim ? Math.max(0, drawAnim.count - drawDeparted) : 0;
+  const drawNotLandedFor = (seat: number) =>
+    drawAnim && drawAnim.seat === Number(seat) ? Math.max(0, drawAnim.count - drawLanded) : 0;
   // While the board is being refreshed after a tab switch, it is not treated as our turn yet, so no
   // tile (or automatic pass) is sent based on an outdated board.
   const isMyTurn = !isObserver && !isResyncing && mySeat !== null && Number(gameState.currentTurnSeat) === Number(mySeat) && gameState.status === 'PLAYING';
@@ -1680,8 +1720,13 @@ export const GameTable: React.FC<GameTableProps> = ({
     }
 
     // Normal play: show face-down tiles with staggered dealing animations from table center
-    const tileCount = Math.max(0, Math.min(7, Number(player.hiddenTilesCount) || 0));
-    if (tileCount === 0) return null;
+    // (فردي: the hand can grow past 7 after drawing; tiles still flying in are not counted yet)
+    const tileCount = Math.max(
+      0,
+      Math.min(isSolo ? 21 : 7, (Number(player.hiddenTilesCount) || 0) - drawNotLandedFor(playerSeatNum))
+    );
+    if (tileCount === 0) return <div data-hidden-seat={playerSeatNum} style={{ minWidth: '8px', minHeight: '8px' }} />;
+    const crowded = orientation === 'row' && tileCount > 9;
 
     const dealAnimClass = isDealingRound
       ? relSeat === 'TOP'
@@ -1694,10 +1739,10 @@ export const GameTable: React.FC<GameTableProps> = ({
       : '';
 
     return (
-      <div style={{
+      <div data-hidden-seat={playerSeatNum} style={{
         display: 'flex',
         flexDirection: orientation,
-        gap: orientation === 'column' ? 0 : (isLandscape ? '2px' : isMobile ? '2px' : '4px'),
+        gap: orientation === 'column' || crowded ? 0 : (isLandscape ? '2px' : isMobile ? '2px' : '4px'),
         flexShrink: 0,
       }}>
         {Array.from({ length: tileCount }).map((_, idx) => (
@@ -1707,6 +1752,7 @@ export const GameTable: React.FC<GameTableProps> = ({
             style={{
               animationDelay: isDealingRound ? `${idx * 90}ms` : undefined,
               marginTop: orientation === 'column' && idx > 0 ? (isLandscape ? '-22px' : isMobile ? '-18px' : '-8px') : undefined,
+              marginInlineStart: crowded && idx > 0 ? (isMobile ? '-10px' : '-12px') : undefined,
               flexShrink: 0,
             }}
           >
@@ -1722,8 +1768,58 @@ export const GameTable: React.FC<GameTableProps> = ({
     );
   };
 
+  // فردي: the draw pile, face-down tiles stacked beside the table (visible to both players).
+  const renderBoneyard = () => {
+    const shown = Math.max(0, (gameState.boneyardCount ?? 0) + drawStillInPile);
+    const tileSize = isLandscape ? 'xs' : isMobile ? 'xs' : 'sm';
+    const overlap = isLandscape ? '-18px' : isMobile ? '-13px' : '-8px';
+    const perCol = 7;
+    const cols = Math.ceil(shown / perCol);
+    return (
+      <div
+        data-boneyard="true"
+        style={{ display: 'flex', gap: isMobile ? '2px' : '4px', alignItems: 'center', minWidth: '8px', minHeight: '8px', flexShrink: 0 }}
+        title="السحب"
+      >
+        {Array.from({ length: cols }).map((_, c) => {
+          const n = Math.max(0, Math.min(perCol, shown - c * perCol));
+          return (
+            <div key={c} style={{ display: 'flex', flexDirection: 'column' }}>
+              {Array.from({ length: n }).map((__, i) => (
+                <div key={i} style={{ marginTop: i > 0 ? overlap : undefined, flexShrink: 0 }}>
+                  <DominoTile tile={[0, 0]} isFaceDown={true} size={tileSize} isVertical={false} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxHeight: '100dvh', width: '100vw', maxWidth: '100vw', backgroundColor: '#090d13', overflow: 'hidden', position: 'relative' }}>
+      {drawAnim && (
+        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 80 }}>
+          {Array.from({ length: drawAnim.count }).map((_, i) => (
+            <div
+              key={`${drawAnim.key}-${i}`}
+              className="animate-boneyard-draw"
+              style={{
+                position: 'absolute',
+                left: drawAnim.from.x,
+                top: drawAnim.from.y,
+                '--draw-dx': `${drawAnim.to.x - drawAnim.from.x}px`,
+                '--draw-dy': `${drawAnim.to.y - drawAnim.from.y}px`,
+                animationDelay: `${i * drawAnim.stagger}ms`,
+                animationDuration: `${drawAnim.fly}ms`,
+              } as React.CSSProperties}
+            >
+              <DominoTile tile={[0, 0]} isFaceDown={true} size={isLandscape ? 'xs' : isMobile ? 'xs' : 'sm'} isVertical={false} />
+            </div>
+          ))}
+        </div>
+      )}
       {isJudge && (
         <div style={{ zIndex: 40, width: '100%', padding: '2px 8px 0', display: 'flex', justifyContent: 'center' }}>
           <RefereeControlHub
@@ -2169,55 +2265,6 @@ export const GameTable: React.FC<GameTableProps> = ({
         boxSizing: 'border-box',
       }}>
         
-        {/* فردي: draw pile count + "X سحب N كروت" */}
-        {isSolo && gameState.status === 'PLAYING' && (
-          <div
-            className="arabic-font"
-            style={{
-              position: 'absolute',
-              top: isMobile ? 4 : 8,
-              left: isMobile ? 6 : 10,
-              zIndex: 30,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              gap: '4px',
-              pointerEvents: 'none',
-            }}
-          >
-            <div
-              style={{
-                padding: isMobile ? '2px 8px' : '4px 12px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(12, 38, 30, 0.92)',
-                border: '1px solid var(--baffa-gold-primary)',
-                color: 'var(--baffa-gold-primary)',
-                fontWeight: 800,
-                fontSize: isMobile ? '0.72rem' : '0.85rem',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-              }}
-            >
-              🂠 السحب: {gameState.boneyardCount ?? 0}
-            </div>
-            {drawToast && (
-              <div
-                className="animate-fade-in"
-                style={{
-                  padding: isMobile ? '2px 8px' : '4px 12px',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(245, 158, 11, 0.95)',
-                  color: '#080d1a',
-                  fontWeight: 900,
-                  fontSize: isMobile ? '0.72rem' : '0.85rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-                }}
-              >
-                {drawToast}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Badges OUTSIDE the table - for Desktop only */}
         {!isMobile && !isLandscape && (
           <>
@@ -2314,7 +2361,9 @@ export const GameTable: React.FC<GameTableProps> = ({
             </div>
             <div style={{ gridColumn: '3 / 4', gridRow: '2', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '100%', overflow: 'visible' }}>
               {/* In RTL, gridColumn 3 is visually on the LEFT. The Left opponent should sit here. */}
-              {(isMobile || isLandscape) ? (
+              {isSolo ? (
+                renderBoneyard()
+              ) : (isMobile || isLandscape) ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: isMobile ? '2px' : '4px', flexShrink: 0 }}>
                   {renderBadgeOnly(
                     relativePlayers.LEFT,
@@ -2358,7 +2407,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                     maxWidth: '100%',
                     overflowX: isMobile ? 'auto' : 'visible',
                     padding: isLandscape ? '2px 0' : '4px 2px',
-                  }}>
+                  }} data-hand-row="me">
                     {isMyTurn && !isRoundOver && (
                       <div
                         style={{
@@ -2433,6 +2482,9 @@ export const GameTable: React.FC<GameTableProps> = ({
                         ? 'sm'
                         : 'md';
 
+                      // فردي: tiles still flying in from the pile appear when they land
+                      const notLanded = mySeat !== null ? drawNotLandedFor(mySeatNum) : 0;
+                      const hiddenFromIndex = myTilesToRender.length - notLanded;
                       return myTilesToRender.map((tile, index) => {
                         const isPlayable = isMyTurn && !isRoundOver && !!myLegalMoves.find(m => (m.tile[0] === tile[0] && m.tile[1] === tile[1]) || (m.tile[0] === tile[1] && m.tile[1] === tile[0]));
                         const isSelected = selectedTileIndex === index;
@@ -2485,7 +2537,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                               touchAction: 'none',
                               userSelect: 'none',
                               cursor: isPlayable ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
-                              opacity: isBeingDragged ? 0.25 : 1,
+                              opacity: index >= hiddenFromIndex ? 0 : isBeingDragged ? 0.25 : 1,
                               '--fly-x': `${vector?.x ?? (window.innerWidth * 0.7 - 200)}px`,
                               '--fly-y': `${vector?.y ?? -350}px`,
                               '--fly-delay': `${staggerDelay}ms`,

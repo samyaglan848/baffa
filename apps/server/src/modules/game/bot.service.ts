@@ -614,6 +614,41 @@ const SMART_PROBABILITIES: Record<SmartSituation, number> = {
   LOSS: 1,
   BAD_HAND: 0.5,
 };
+/**
+ * فردي (1 ضد 1): مفيش زميل ولا فريق خصم، فالبوتات بتقول بس الجمل البسيطة اللي ملهاش علاقة
+ * بالزوجي (مفيهاش زميل أو فردة أو كلام بصيغة الجمع لفريق).
+ */
+const SOLO_OK_LINES: ReadonlySet<string> = new Set<string>([
+  // يفوت
+  'معييش يعم',
+  'يحرق دم دا ورق',
+  'فوت',
+  'قاعد',
+  'فوت يعم',
+  // الخصم يفوت
+  'لو مزعلك اقوم امشي',
+  'هو انا كل ما العب تفوت',
+  'العبلك لعبة غيرها طيب',
+  'حد يشيله من هنا يبني',
+  'اقعد ياض',
+  'ظلمت نفسك انت بقعدتك ورايا',
+  // يقفل
+  'قفلة',
+  // يخسر
+  'الورق زفت يعم',
+  'مش عارف منجسه كده ليه',
+  'انا مش فايق والله مكسل احسب اصلا',
+  // حظه وحش
+  'هو جيم شمال من اوله',
+]);
+
+/** الكلام القديم (القط وغيره): أي جملة فيها زميل أو فريق أو جمع مبتتقالش في الفردي */
+const TEAM_TALK = /زميل|فرد[ةهي]|شريك|تيم|خدادية|لوحدي|معايا|معاك|معانا|قصادي|سلموا|انتو|إنتو|أنتوا|انت وهو|حضراتكم|يا رجالة|يا جدعان|فريق|مساكين|التلاميذ|بتعنا|تبعنا|مشترك|البطة|عشوائي|دوست|ضد نفسي|بارد|بقرار|للكبار|هنرجع|بنريح/;
+/** صيغة الجمع: "إحنا" (كسبنا، قفلناها) أو "إنتو" (وشكم، اتعلموا) */
+const PLURAL_TALK = /[\u0600-\u06FF](نا|ناه|ناها|ناكم|كم|وا|وها)(?=[\s.!؟?،,…]|$)/;
+/** في الفردي الكلام القديم ده كله لوم للزميل، فالبوت بيسكت */
+const SOLO_SILENT_TRIGGERS: ReadonlySet<BotChatTrigger> = new Set<BotChatTrigger>(['ROUND_LOSS', 'MATCH_LOSS', 'PARTNER_CHEER']);
+
 const SMART_MUST_SAY: ReadonlySet<SmartSituation> = new Set<SmartSituation>(['LOCK', 'WIN', 'LOSS']);
 /** بعد أي رسالة في الأوضة: البوت الذكي يستنى 5 ثواني قبل ما يتكلم (إلا القفلة/الكسب/الخسارة) */
 const SMART_ROOM_GAP_MS = 5000;
@@ -1012,7 +1047,9 @@ export class BotService {
       if (Math.random() > SMART_PROBABILITIES[situation]) return undefined;
     }
 
-    const pool = SMART_QUOTES[situation][SPEECH_AS[botId]];
+    let pool = SMART_QUOTES[situation][SPEECH_AS[botId]];
+    // فردي: الجمل اللي فيها زميل أو فريق مبتتقالش
+    if (engine.isSolo?.()) pool = (pool || []).filter((q) => SOLO_OK_LINES.has(q));
     if (!pool || pool.length === 0) return undefined;
 
     const lastUsed = this.lastQuotes.get(botKey);
@@ -1076,7 +1113,13 @@ export class BotService {
     // 4. Select tailored Egyptian quotes pool
     const botPool = BOT_QUOTES[trigger]?.[validBotId] || [];
     const fallbackPool = GENERAL_FALLBACK_QUOTES[trigger] || [];
-    const combinedQuotes = botPool.length > 0 ? botPool : fallbackPool;
+    let combinedQuotes = botPool.length > 0 ? botPool : fallbackPool;
+    // فردي: الجمل اللي فيها زميل أو فريق أو جمع مبتتقالش
+    if (engine.isSolo?.()) {
+      const soloSafe = (list: string[]) => list.filter((q) => !TEAM_TALK.test(q) && !PLURAL_TALK.test(q));
+      combinedQuotes = soloSafe(botPool).length > 0 ? soloSafe(botPool) : soloSafe(fallbackPool);
+      if (SOLO_SILENT_TRIGGERS.has(trigger)) combinedQuotes = [];
+    }
 
     if (combinedQuotes.length === 0) return undefined;
 
