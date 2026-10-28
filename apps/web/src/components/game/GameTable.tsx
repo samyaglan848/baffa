@@ -262,10 +262,30 @@ export const GameTable: React.FC<GameTableProps> = ({
     (gameState.myRole === 'SPECTATOR' ||
       myRole === 'SPECTATOR' ||
       Boolean(room?.spectator && room.spectator.userId === currentUserId));
-  const isAllBots = Boolean(room?.seats && room.seats.length === 4 && room.seats.every((s) => s.isBot));
+  // Seats that are part of the table (SOLO rooms switch seats 2 and 3 off).
+  const liveRoomSeats = (room?.seats || []).filter((s: any) => !s.disabled);
+  const isAllBots = Boolean(liveRoomSeats.length > 0 && liveRoomSeats.every((s) => s.isBot));
   const isObserver = (isJudge || isSpectator || isAllBots) && gameState.mySeat === null;
   const effectiveRole = isJudge ? 'JUDGE' : isSpectator ? 'SPECTATOR' : myRole;
   const mySeat = isObserver ? null : gameState.mySeat;
+  // فردي (1 vs 1): the opponent sits on top, and there is a draw pile.
+  const isSolo = gameState.gameMode === 'SOLO';
+  const [drawToast, setDrawToast] = useState<string | null>(null);
+  const lastDrawAt = gameState.lastDraw?.at;
+  useEffect(() => {
+    const d = gameState.lastDraw;
+    if (!isSolo || !d) return;
+    const now = gameState.serverTime || Date.now();
+    if (now - d.at > 4000) return; // an old draw (e.g. after reconnecting): don't announce it again
+    const who =
+      mySeat !== null && Number(d.seat) === Number(mySeat)
+        ? 'إنت'
+        : (gameState.players || []).find((p) => p && Number(p.seat) === Number(d.seat))?.username || 'الخصم';
+    setDrawToast(`${who} سحب ${d.count} ${d.count === 1 ? 'كارت' : 'كروت'}`);
+    const t = setTimeout(() => setDrawToast(null), 2500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastDrawAt]);
   // While the board is being refreshed after a tab switch, it is not treated as our turn yet, so no
   // tile (or automatic pass) is sent based on an outdated board.
   const isMyTurn = !isObserver && !isResyncing && mySeat !== null && Number(gameState.currentTurnSeat) === Number(mySeat) && gameState.status === 'PLAYING';
@@ -973,12 +993,15 @@ export const GameTable: React.FC<GameTableProps> = ({
       }
 
       // Two valid ends: pick the one closest to drop release!
-      const boardCenterX = boardRect.left + boardRect.width / 2;
-      const boardCenterY = boardRect.top + boardRect.height / 2;
+      // The board content is shifted by (-boardCenterX, -boardCenterY) to keep the chain centered,
+      // so that shift has to be added back when converting the screen point to board coordinates
+      // (without it, a lopsided chain sent the tile to the opposite end).
+      const rectCenterX = boardRect.left + boardRect.width / 2;
+      const rectCenterY = boardRect.top + boardRect.height / 2;
       const scale = fitScale > 0 ? fitScale : 1;
 
-      const dropBoardX = (dropX - boardCenterX) / scale;
-      const dropBoardY = (dropY - boardCenterY) / scale;
+      const dropBoardX = (dropX - rectCenterX) / scale + boardCenterX;
+      const dropBoardY = (dropY - rectCenterY) / scale + boardCenterY;
 
       const distToRight = Math.hypot(
         dropBoardX - openEnds.RIGHT.x,
@@ -1010,10 +1033,11 @@ export const GameTable: React.FC<GameTableProps> = ({
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerCancel);
     };
-  }, [fitScale, gameState.chain.tiles.length, handleTileClick, onPlayTile, openEnds, playSound, triggerInvalid]);
+  }, [fitScale, boardCenterX, boardCenterY, gameState.chain.tiles.length, handleTileClick, onPlayTile, openEnds, playSound, triggerInvalid]);
 
   const getRelativeSeat = (targetSeat: number) => {
     const base = mySeat !== null ? mySeat : 0;
+    if (isSolo) return Number(targetSeat) === Number(base) ? 'BOTTOM' : 'TOP';
     const diff = (targetSeat - base + 4) % 4;
     switch(diff) {
       case 0: return 'BOTTOM'; // Me
@@ -1037,6 +1061,11 @@ export const GameTable: React.FC<GameTableProps> = ({
   };
 
   const getTeamLabel = (teamId: 1 | 2): string => {
+    if (isSolo) {
+      // In فردي each "team" is one player: show their name.
+      const p = (gameState.players || []).find((pl) => pl && Number(pl.seat) === (teamId === 1 ? 0 : 1));
+      if (p?.username) return p.username;
+    }
     const customName = teamId === 1
       ? (room?.settings as any)?.team1Name || (room as any)?.team1Name || (gameState as any)?.team1Name
       : (room?.settings as any)?.team2Name || (room as any)?.team2Name || (gameState as any)?.team2Name;
@@ -2059,7 +2088,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           ) : (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: isLandscape ? '3px' : '5px' }}>
-                <span className="arabic-font" style={{ fontSize: isLandscape ? '0.65rem' : '0.72rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>فريقك</span>
+                <span className="arabic-font" style={{ fontSize: isLandscape ? '0.65rem' : '0.72rem', fontWeight: 800, color: 'var(--baffa-text-muted)' }}>{isSolo ? 'إنت' : 'فريقك'}</span>
                 <span style={{ fontSize: isLandscape ? '0.9rem' : '1.05rem', fontWeight: 900, color: 'var(--baffa-team1-color)' }}>{myTeamScore}</span>
               </div>
               <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900, fontSize: isLandscape ? '0.75rem' : '0.85rem' }}>:</span>
@@ -2140,6 +2169,55 @@ export const GameTable: React.FC<GameTableProps> = ({
         boxSizing: 'border-box',
       }}>
         
+        {/* فردي: draw pile count + "X سحب N كروت" */}
+        {isSolo && gameState.status === 'PLAYING' && (
+          <div
+            className="arabic-font"
+            style={{
+              position: 'absolute',
+              top: isMobile ? 4 : 8,
+              left: isMobile ? 6 : 10,
+              zIndex: 30,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: '4px',
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                padding: isMobile ? '2px 8px' : '4px 12px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(12, 38, 30, 0.92)',
+                border: '1px solid var(--baffa-gold-primary)',
+                color: 'var(--baffa-gold-primary)',
+                fontWeight: 800,
+                fontSize: isMobile ? '0.72rem' : '0.85rem',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+              }}
+            >
+              🂠 السحب: {gameState.boneyardCount ?? 0}
+            </div>
+            {drawToast && (
+              <div
+                className="animate-fade-in"
+                style={{
+                  padding: isMobile ? '2px 8px' : '4px 12px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(245, 158, 11, 0.95)',
+                  color: '#080d1a',
+                  fontWeight: 900,
+                  fontSize: isMobile ? '0.72rem' : '0.85rem',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                }}
+              >
+                {drawToast}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Badges OUTSIDE the table - for Desktop only */}
         {!isMobile && !isLandscape && (
           <>
@@ -2148,7 +2226,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 relativePlayers.TOP,
                 isObserver
                   ? getTeamLabel(relativePlayers.TOP?.team ?? 1)
-                  : (mySeat !== null ? 'زميلك' : getTeamLabel(relativePlayers.TOP?.team ?? 1)),
+                  : (mySeat !== null ? (isSolo ? 'خصمك' : 'زميلك') : getTeamLabel(relativePlayers.TOP?.team ?? 1)),
                 'row',
                 'TOP'
               )}
@@ -2208,7 +2286,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                     relativePlayers.TOP,
                     isObserver
                       ? getTeamLabel(relativePlayers.TOP?.team ?? 1)
-                      : (mySeat !== null ? 'زميلك' : getTeamLabel(relativePlayers.TOP?.team ?? 1)),
+                      : (mySeat !== null ? (isSolo ? 'خصمك' : 'زميلك') : getTeamLabel(relativePlayers.TOP?.team ?? 1)),
                     'row',
                     'TOP'
                   )}
@@ -2272,8 +2350,9 @@ export const GameTable: React.FC<GameTableProps> = ({
                   <div style={{ 
                     display: 'flex', 
                     gap: isLandscape ? '3px' : isMobile ? '4px' : '8px', 
-                    flexWrap: 'nowrap', 
-                    justifyContent: 'center', 
+                    // فردي: the hand can grow past 7 tiles after drawing (wrap on desktop, scroll on phones)
+                    flexWrap: isSolo && !isMobile ? 'wrap' : 'nowrap', 
+                    justifyContent: isSolo && isMobile && gameState.myHand.length > 7 ? 'flex-start' : 'center', 
                     position: 'relative', 
                     zIndex: 35,
                     maxWidth: '100%',

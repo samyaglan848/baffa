@@ -14,7 +14,8 @@ interface HomeScreenProps {
   onJoinRoom: (code: string) => void;
   onJoinAsJudge: (code: string) => void;
   onJoinAsSpectator: (code: string) => void;
-  onQuickPlay: () => void;
+  /** maxPlayers: 4 = زوجي (2 ضد 2), 2 = فردي (1 ضد 1) */
+  onQuickPlay: (maxPlayers?: 2 | 4) => void;
   onAuthSuccess: (user: CurrentUser, token: string) => void;
 }
 
@@ -29,7 +30,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   // "Create room" goes straight to the lobby. The old settings window before it asked for the same
   // things the lobby already has (name, role, points, turn time, chat), so players saw two lobbies.
-  const handleCreateRoom = () => {
+  const handleCreateRoom = (maxPlayers: 2 | 4 = 4) => {
     onCreateRoom(
       `بَفّة ${currentUser.username}`,
       {
@@ -41,10 +42,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         voiceEnabled: true,
         quickChatEnabled: true,
         reactionsEnabled: true,
-        maxPlayers: 4,
+        maxPlayers,
       },
       'PLAYER'
     );
+  };
+  // Quick play and create room first ask: فردي or زوجي?
+  const [modePickerFor, setModePickerFor] = useState<'QUICK' | 'CREATE' | null>(null);
+  const handlePickMode = (maxPlayers: 2 | 4) => {
+    const target = modePickerFor;
+    setModePickerFor(null);
+    if (target === 'QUICK') onQuickPlay(maxPlayers);
+    else if (target === 'CREATE') handleCreateRoom(maxPlayers);
   };
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
@@ -206,7 +215,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       >
         {/* 1. Quick Play (Primary Golden CTA) */}
         <div
-          onClick={onQuickPlay}
+          onClick={() => setModePickerFor('QUICK')}
           className="baffa-card"
           style={{
             padding: isMobile ? '18px 16px' : '30px 24px',
@@ -275,13 +284,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             Quick Play with Bots
           </span>
           <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: 'var(--baffa-text-secondary)', marginTop: isMobile ? '6px' : '10px', lineHeight: 1.5 }}>
-            ابدأ ماتش 2v2 فوراً مع أذكى البوتات المصرية (السامي، القط، رقم واحد في العزبة) بروح القهوة.
+            ابدأ ماتش فوراً، زوجي (2 ضد 2) أو فردي (1 ضد 1)، مع أذكى البوتات المصرية بروح القهوة.
           </p>
         </div>
 
         {/* 2. Create Room (Neon Cyan Card) */}
         <div
-          onClick={handleCreateRoom}
+          onClick={() => setModePickerFor('CREATE')}
           className="baffa-card"
           style={{
             padding: isMobile ? '18px 16px' : '30px 24px',
@@ -494,6 +503,77 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         onClose={() => setShowAuthModal(false)}
         onSuccess={onAuthSuccess}
       />
+
+      {/* Game mode picker: فردي or زوجي (quick play + create room) */}
+      {modePickerFor && (
+        <div
+          onClick={() => setModePickerFor(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            backgroundColor: 'rgba(2, 6, 23, 0.78)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="baffa-card arabic-font"
+            style={{
+              width: '100%',
+              maxWidth: '440px',
+              padding: isMobile ? '18px 16px' : '26px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              border: '1px solid var(--baffa-gold-primary)',
+              position: 'relative',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setModePickerFor(null)}
+              aria-label="إغلاق"
+              style={{ position: 'absolute', top: 10, left: 10, background: 'none', border: 'none', color: 'var(--baffa-text-muted)', cursor: 'pointer' }}
+            >
+              <X size={18} />
+            </button>
+            <h3 style={{ margin: 0, fontSize: isMobile ? '1.15rem' : '1.35rem', fontWeight: 900, color: 'var(--baffa-gold-hover)', textAlign: 'center' }}>
+              {modePickerFor === 'QUICK' ? 'لعب سريع: تلعب إزاي؟' : 'إنشاء غرفة: تلعب إزاي؟'}
+            </h3>
+            {([
+              { value: 4, title: '👥 زوجي', sub: '2 ضد 2، كل واحد 7 كروت وبتلعب مع زميل' },
+              { value: 2, title: '👤 فردي', sub: '1 ضد 1، كل واحد 7 كروت والباقي سحب' },
+            ] as { value: 2 | 4; title: string; sub: string }[]).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => handlePickMode(opt.value)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: isMobile ? '14px 12px' : '18px 16px',
+                  borderRadius: 'var(--baffa-radius-md)',
+                  backgroundColor: 'var(--baffa-bg-elevated)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <span style={{ fontSize: isMobile ? '1.1rem' : '1.25rem', fontWeight: 900, color: 'var(--baffa-gold-primary)' }}>{opt.title}</span>
+                <span style={{ fontSize: isMobile ? '0.8rem' : '0.88rem', color: 'var(--baffa-text-secondary)' }}>{opt.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Rules Modal */}
       {showRulesModal && (

@@ -5,6 +5,7 @@ import {
   ChainEnd,
   CheatingEvent,
   DominoTile,
+  GameMode,
   LegalMove,
   MatchResult,
   MatchStatus,
@@ -46,6 +47,8 @@ export interface GameEngineOptions {
     isReady: boolean;
   }[];
   rng?: () => number;
+  /** TEAMS (default) = 2 vs 2. SOLO = 1 vs 1 on seats 0 and 1 with a draw pile. */
+  gameMode?: GameMode;
 }
 
 export class DominoGameEngine {
@@ -71,6 +74,12 @@ export class DominoGameEngine {
   private rng: () => number;
   private playerWarnings = new Map<PlayerSeat, number>();
   public latestBotMessage: BotChatMessage | null = null;
+  private gameMode: GameMode = 'TEAMS';
+  /** SOLO: tiles left to draw (hidden from everyone). */
+  private boneyard: DominoTile[] = [];
+  /** SOLO first round: the starter must open with this tile (their biggest double / heaviest tile). */
+  private requiredOpeningTile: DominoTile | null = null;
+  private lastDraw: { seat: PlayerSeat; count: number; at: number } | null = null;
 
   constructor(options: GameEngineOptions) {
     this.matchId = options.matchId;
@@ -80,6 +89,7 @@ export class DominoGameEngine {
     this.turnStartTime = Date.now();
     this.chain = new DominoChainManager();
     this.rng = options.rng || Math.random;
+    this.gameMode = options.gameMode === 'SOLO' ? 'SOLO' : 'TEAMS';
 
     ([0, 1, 2, 3] as PlayerSeat[]).forEach((s) => this.playerWarnings.set(s, 0));
 
@@ -143,6 +153,102 @@ export class DominoGameEngine {
     return this.sequenceNumber;
   }
 
+  public getGameMode(): GameMode {
+    return this.gameMode;
+  }
+
+  public isSolo(): boolean {
+    return this.gameMode === 'SOLO';
+  }
+
+  /** SOLO: how many tiles are still in the draw pile. */
+  public getBoneyardCount(): number {
+    return this.boneyard.length;
+  }
+
+  /** Next seat to play: 0→1→2→3 in TEAMS, 0↔1 in SOLO. */
+  private nextTurnSeat(seat: PlayerSeat): PlayerSeat {
+    if (this.gameMode === 'SOLO') return (seat === 0 ? 1 : 0) as PlayerSeat;
+    return getNextSeat(seat);
+  }
+
+  /** Seats that hold cards this match. */
+  private activeSeatCount(): number {
+    return this.gameMode === 'SOLO' ? 2 : 4;
+  }
+
+  /** Shuffles and deals a fresh round, and decides who starts. */
+  private dealFreshHands(): void {
+    const deck = generateDeck();
+    const shuffled = shuffleDeck(deck, this.rng);
+    this.lastDraw = null;
+    this.requiredOpeningTile = null;
+
+    if (this.gameMode === 'SOLO') {
+      this.hands = [shuffled.slice(0, 7), shuffled.slice(7, 14), [], []];
+      this.boneyard = shuffled.slice(14);
+    } else {
+      this.hands = dealHands(shuffled);
+      this.boneyard = [];
+    }
+
+    this.players.forEach((p) => {
+      p.hiddenTilesCount = this.hands[p.seat] ? this.hands[p.seat].length : 0;
+      delete p.lastAction;
+    });
+
+    const prevWinnerSeat = this.lastRoundResult?.finishingSeat ?? null;
+    if (this.gameMode === 'SOLO') {
+      if (this.roundNumber === 1 || prevWinnerSeat === null || prevWinnerSeat > 1) {
+        // Biggest double starts with it; with no doubles, the heaviest tile.
+        let best: { seat: PlayerSeat; tile: DominoTile; rank: number } | null = null;
+        for (const seat of [0, 1] as PlayerSeat[]) {
+          for (const t of this.hands[seat]) {
+            const rank = t[0] === t[1] ? 100 + t[0] : (t[0] + t[1]) * 2 + Math.max(t[0], t[1]) / 10;
+            if (!best || rank > best.rank) best = { seat, tile: t, rank };
+          }
+        }
+        this.starterSeat = best ? best.seat : 0;
+        this.requiredOpeningTile = best ? best.tile : null;
+      } else {
+        this.starterSeat = prevWinnerSeat as PlayerSeat;
+      }
+    } else {
+      this.starterSeat = determineStartingSeat(this.hands, this.roundNumber, prevWinnerSeat);
+    }
+    this.currentTurnSeat = this.starterSeat;
+    this.turnStartTime = Date.now();
+  }
+
+  /**
+   * SOLO: a player with nothing to play draws from the pile automatically until they can play
+   * (or the pile runs out). Only when the pile is empty can they pass.
+   */
+  private autoDrawForCurrentTurn(): void {
+    if (this.gameMode !== 'SOLO' || this.status !== 'PLAYING') return;
+    const seat = this.currentTurnSeat;
+    // Locked board (no tile left anywhere fits either end): drawing can't help, and the draw pile
+    // must not end up in someone's hand where it would be counted.
+    const l = this.chain.getLeftEnd();
+    const r = this.chain.getRightEnd();
+    if (l !== null && r !== null) {
+      const fits = (t: DominoTile) => t[0] === l || t[1] === l || t[0] === r || t[1] === r;
+      const anyFit = this.boneyard.some(fits) || this.hands.some((h) => h.some(fits));
+      if (!anyFit) return;
+    }
+    let drawn = 0;
+    while (this.boneyard.length > 0 && this.getLegalMovesForSeat(seat).length === 0) {
+      const tile = this.boneyard.pop()!;
+      this.hands[seat].push(tile);
+      drawn++;
+    }
+    if (drawn > 0) {
+      if (this.players[seat]) this.players[seat].hiddenTilesCount = this.hands[seat].length;
+      this.lastDraw = { seat, count: drawn, at: Date.now() };
+      this.sequenceNumber++;
+    }
+  }
+
   public getRawHands(): DominoTile[][] {
     return this.hands.map((h) => [...h]);
   }
@@ -200,28 +306,8 @@ export class DominoGameEngine {
       p.warnings = 0;
     });
 
-    // Generate, shuffle, and deal full 28 tiles
-    const deck = generateDeck();
-    const shuffled = shuffleDeck(deck, this.rng);
-    const dealtHands = dealHands(shuffled);
-
-    this.hands = dealtHands;
-
-    // Update player hidden tile counts
-    this.players.forEach((p) => {
-      p.hiddenTilesCount = this.hands[p.seat].length;
-      delete p.lastAction;
-    });
-
-    // Determine starter
-    const prevWinnerSeat = this.lastRoundResult?.finishingSeat ?? null;
-    this.starterSeat = determineStartingSeat(
-      this.hands,
-      this.roundNumber,
-      prevWinnerSeat
-    );
-    this.currentTurnSeat = this.starterSeat;
-    this.turnStartTime = Date.now();
+    // Generate, shuffle, deal (4×7 in TEAMS, 2×7 + 14 to draw in SOLO) and pick the starter
+    this.dealFreshHands();
 
     this.status = 'PLAYING';
   }
@@ -234,6 +320,12 @@ export class DominoGameEngine {
       return [];
     }
     const hand = this.hands[seat] || [];
+    if (this.gameMode === 'SOLO' && this.chain.isEmpty()) {
+      // Any tile may open, unless this round's starter must open with a specific tile.
+      const all = getLegalMovesForHand(hand, this.chain, 2);
+      const req = this.requiredOpeningTile;
+      return req ? all.filter((m) => areTilesEqual(m.tile, req)) : all;
+    }
     return getLegalMovesForHand(hand, this.chain, this.roundNumber);
   }
 
@@ -293,7 +385,15 @@ export class DominoGameEngine {
     const validEnds = this.chain.getValidEnds(actualTile);
 
     if (this.chain.isEmpty()) {
-      if (this.roundNumber === 1 && (actualTile[0] !== 6 || actualTile[1] !== 6)) {
+      if (this.gameMode === 'SOLO') {
+        const req = this.requiredOpeningTile;
+        if (req && !areTilesEqual(actualTile, req)) {
+          return {
+            success: false,
+            error: `Opening move MUST be [${req[0]}|${req[1]}]`,
+          };
+        }
+      } else if (this.roundNumber === 1 && (actualTile[0] !== 6 || actualTile[1] !== 6)) {
         return {
           success: false,
           error: 'Round 1 opening move MUST be 6|6',
@@ -360,9 +460,10 @@ export class DominoGameEngine {
       }
     }
 
-    // Advance Turn Counter-Clockwise
-    this.currentTurnSeat = getNextSeat(this.currentTurnSeat);
+    // Advance Turn Counter-Clockwise (0↔1 in SOLO)
+    this.currentTurnSeat = this.nextTurnSeat(this.currentTurnSeat);
     this.turnStartTime = Date.now();
+    this.autoDrawForCurrentTurn();
 
     return {
       success: true,
@@ -407,7 +508,7 @@ export class DominoGameEngine {
     this.consecutivePassCount++;
     this.sequenceNumber++;
 
-    if (this.consecutivePassCount >= 4) {
+    if (this.consecutivePassCount >= this.activeSeatCount()) {
       const resolution = resolveBlockedRound(
         this.hands,
         this.roundNumber,
@@ -441,8 +542,9 @@ export class DominoGameEngine {
       }
     }
 
-    this.currentTurnSeat = getNextSeat(this.currentTurnSeat);
+    this.currentTurnSeat = this.nextTurnSeat(this.currentTurnSeat);
     this.turnStartTime = Date.now();
+    this.autoDrawForCurrentTurn();
 
     return {
       success: true,
@@ -618,23 +720,7 @@ export class DominoGameEngine {
       p.warnings = 0;
     });
 
-    const deck = generateDeck();
-    const shuffled = shuffleDeck(deck, this.rng);
-    this.hands = dealHands(shuffled);
-
-    this.players.forEach((p) => {
-      p.hiddenTilesCount = this.hands[p.seat].length;
-      delete p.lastAction;
-    });
-
-    const prevWinnerSeat = this.lastRoundResult?.finishingSeat ?? null;
-    this.starterSeat = determineStartingSeat(
-      this.hands,
-      this.roundNumber,
-      prevWinnerSeat
-    );
-    this.currentTurnSeat = this.starterSeat;
-    this.turnStartTime = Date.now();
+    this.dealFreshHands();
     this.status = 'PLAYING';
 
     return { success: true };
@@ -788,6 +874,9 @@ export class DominoGameEngine {
       turnTimeLimit: this.turnTimeLimit,
       turnStartTime: this.turnStartTime,
       serverTime: Date.now(),
+      gameMode: this.gameMode,
+      boneyardCount: this.gameMode === 'SOLO' ? this.boneyard.length : 0,
+      lastDraw: this.lastDraw,
     };
   }
 }

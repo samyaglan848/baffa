@@ -294,13 +294,13 @@ export default function App() {
     );
   }
 
-  const handleQuickPlay = () => {
+  const handleQuickPlay = (maxPlayers: 2 | 4 = 4) => {
     createRoom(
       'لعب سريع (بَفّة قهوة)',
       {
         targetScore: 101,
         fillWithBots: true,
-        maxPlayers: 4,
+        maxPlayers,
         allowJudge: true,
         allowSpectator: true,
         voiceEnabled: true,

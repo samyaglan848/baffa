@@ -91,11 +91,28 @@ export class SmartBotBrain {
   private readonly right: Pip | null;
   private readonly lastPlacementSeat: PlayerSeat | null;
 
+  /** فردي: 1 ضد 1 وفيه كروت للسحب */
+  private readonly solo: boolean;
+  /** عدد الكروت اللي لسه في السحب (فردي بس) */
+  private readonly pileSize: number;
+  /** احتمال إن الكارت ده لسه في السحب */
+  private readonly pileProb = new Map<number, number>();
+
   constructor(private readonly engine: DominoGameEngine, seat: PlayerSeat) {
     this.me = seat;
-    this.partner = nextSeat(seat, 2);
-    this.oppNext = nextSeat(seat, 1);
-    this.oppPrev = nextSeat(seat, 3);
+    this.solo = typeof engine.isSolo === 'function' && engine.isSolo();
+    this.pileSize = this.solo && typeof engine.getBoneyardCount === 'function' ? engine.getBoneyardCount() : 0;
+    if (this.solo) {
+      // في الفردي مفيش زميل: الخصم هو اللي بعدي، والكرسيين التانيين فاضيين
+      const other = (seat === 0 ? 1 : 0) as PlayerSeat;
+      this.oppNext = other;
+      this.partner = nextSeat(seat, 2);
+      this.oppPrev = ([0, 1, 2, 3] as PlayerSeat[]).find((s) => s !== seat && s !== other && s !== this.partner)!;
+    } else {
+      this.partner = nextSeat(seat, 2);
+      this.oppNext = nextSeat(seat, 1);
+      this.oppPrev = nextSeat(seat, 3);
+    }
 
     const raw = engine.getRawHands();
     this.hand = [...(raw[seat] || [])];
@@ -202,13 +219,15 @@ export class SmartBotBrain {
         }
         this.prob[s].set(key(t), w);
       }
+      // السحب (فردي): أي كارت ممكن يكون فيه
+      if (this.pileSize > 0) this.pileProb.set(key(t), 1);
     }
 
-    // Iterative proportional fitting: كل كارت مجموعه 1، وكل لاعب مجموعه = عدد كروته
+    // Iterative proportional fitting: كل كارت مجموعه 1، وكل لاعب مجموعه = عدد كروته (والسحب = عدده)
     for (let iter = 0; iter < 12; iter++) {
       for (const t of this.unseen) {
         const k = key(t);
-        let sum = 0;
+        let sum = this.pileProb.get(k) || 0;
         for (const s of others) sum += this.prob[s].get(k) || 0;
         if (sum <= 0) {
           // معلومات متناقضة، نوزّع بالتساوي على اللي لسه معاهم كروت
@@ -217,6 +236,18 @@ export class SmartBotBrain {
           continue;
         }
         for (const s of others) this.prob[s].set(k, (this.prob[s].get(k) || 0) / sum);
+        if (this.pileSize > 0) this.pileProb.set(k, (this.pileProb.get(k) || 0) / sum);
+      }
+      if (this.pileSize > 0) {
+        let pileSum = 0;
+        for (const t of this.unseen) pileSum += this.pileProb.get(key(t)) || 0;
+        if (pileSum > 0) {
+          const f = this.pileSize / pileSum;
+          for (const t of this.unseen) {
+            const k = key(t);
+            this.pileProb.set(k, Math.min(1, (this.pileProb.get(k) || 0) * f));
+          }
+        }
       }
       for (const s of others) {
         let rowSum = 0;
@@ -452,7 +483,7 @@ export class SmartBotBrain {
       const world = this.sampleWorld();
       if (!world) break;
       for (let i = 0; i < scored.length; i++) {
-        totals[i] += this.playout(world, scored[i].move.tile, scored[i].end);
+        totals[i] += this.playout(world.hands, world.pile, scored[i].move.tile, scored[i].end);
       }
       samples++;
     }
@@ -477,14 +508,16 @@ export class SmartBotBrain {
   }
 
   /** بيوزّع الكروت المخفية على الباقيين توزيعة ممكنة (حسب الاحتمالات اللي حسبها) */
-  private sampleWorld(): DominoTile[][] | null {
+  private sampleWorld(): { hands: DominoTile[][]; pile: DominoTile[] } | null {
+    const PILE = 4; // "مكان" السحب
     const others = [this.oppNext, this.partner, this.oppPrev];
+    const holders = this.pileSize > 0 ? [...others, PILE] : others;
     for (let attempt = 0; attempt < 30; attempt++) {
       const respectVoids = attempt < 25;
       const useWeights = attempt < 15;
-      const hands: DominoTile[][] = [[], [], [], []];
+      const hands: DominoTile[][] = [[], [], [], [], []];
       hands[this.me] = [...this.hand];
-      const cap = [0, 0, 0, 0];
+      const cap = [0, 0, 0, 0, this.pileSize];
       for (const s of others) cap[s] = this.handSizes[s];
 
       // الكروت الأصعب (اللي ليها أماكن أقل) الأول
@@ -493,8 +526,10 @@ export class SmartBotBrain {
 
       let ok = true;
       for (const t of tiles) {
-        const cands = others.filter(
-          (s) => cap[s] > 0 && (!respectVoids || (!this.memory[s].voids.has(t[0]) && !this.memory[s].voids.has(t[1])))
+        const cands = holders.filter(
+          (s) =>
+            cap[s] > 0 &&
+            (s === PILE || !respectVoids || (!this.memory[s].voids.has(t[0]) && !this.memory[s].voids.has(t[1])))
         );
         if (cands.length === 0) {
           ok = false;
@@ -502,7 +537,10 @@ export class SmartBotBrain {
         }
         let pick = cands[0];
         if (cands.length > 1) {
-          const ws = cands.map((s) => (useWeights ? Math.max(0.02, this.p(s, t)) : 1) * cap[s]);
+          const ws = cands.map(
+            (s) =>
+              (useWeights ? Math.max(0.02, s === PILE ? this.pileProb.get(key(t)) || 0 : this.p(s as PlayerSeat, t)) : 1) * cap[s]
+          );
           const sum = ws.reduce((a, b) => a + b, 0);
           let r = Math.random() * sum;
           for (let i = 0; i < cands.length; i++) {
@@ -516,7 +554,10 @@ export class SmartBotBrain {
         hands[pick].push(t);
         cap[pick]--;
       }
-      if (ok) return hands;
+      if (ok) {
+        const pile = hands[PILE].sort(() => Math.random() - 0.5);
+        return { hands: hands.slice(0, 4), pile };
+      }
     }
     return null;
   }
@@ -535,8 +576,12 @@ export class SmartBotBrain {
    * بيكمل الدور في دماغه لحد آخره، وكل اللاعبين بيلعبوا لعب كويس.
    * النتيجة = النقط اللي فريقنا هياخدها (موجب) أو هيدّيها (سالب).
    */
-  private playout(world: DominoTile[][], firstTile: DominoTile, firstEnd: ChainEnd): number {
+  private playout(world: DominoTile[][], worldPile: DominoTile[], firstTile: DominoTile, firstEnd: ChainEnd): number {
     const hands = world.map((h) => [...h]);
+    const pile = [...worldPile];
+    const solo = this.solo;
+    const nextOf = (s: number) => (solo ? (s === 0 ? 1 : 0) : (s + 1) % 4);
+    const fitsEnds = (x: DominoTile) => has(x, L as Pip) || has(x, R as Pip);
     let L = this.left;
     let R = this.right;
     const myTeam = this.me % 2;
@@ -555,7 +600,7 @@ export class SmartBotBrain {
     };
 
     place(this.me, firstTile, firstEnd);
-    let seat = (this.me + 1) % 4;
+    let seat = nextOf(this.me);
     let passes = 0;
 
     const finish = (winnerTeam: number, points: number) => (winnerTeam === myTeam ? points : -points);
@@ -566,6 +611,11 @@ export class SmartBotBrain {
 
     for (let step = 0; step < 120; step++) {
       const h = hands[seat];
+      // فردي: اللي معاهوش لعب بيسحب لحد ما يلاقي (إلا لو الأرض مقفولة)
+      if (solo && pile.length > 0 && !h.some(fitsEnds)) {
+        const anyFit = pile.some(fitsEnds) || hands.some((hh) => hh.some(fitsEnds));
+        while (anyFit && pile.length > 0 && !h.some(fitsEnds)) h.push(pile.pop()!);
+      }
       let bestT: DominoTile | null = null;
       let bestE: ChainEnd = 'LEFT';
       let bestS = -Infinity;
@@ -576,8 +626,8 @@ export class SmartBotBrain {
         for (const e of ends) {
           const nl = e === 'LEFT' ? (t[0] === L ? t[1] : t[0]) : (L as Pip);
           const nr = e === 'RIGHT' ? (t[0] === R ? t[1] : t[0]) : (R as Pip);
-          const nextH = hands[(seat + 1) % 4];
-          const partH = hands[(seat + 2) % 4];
+          const nextH = hands[nextOf(seat)];
+          const partH = solo ? [] : hands[(seat + 2) % 4];
           let sc = 0.3 * pips(t) + Math.random() * 1.2;
           sc += 1.5 * h.filter((x) => x !== t && (has(x, nl) || has(x, nr))).length;
           if (nextH.some((x) => has(x, nl) || has(x, nr))) sc -= 4;
@@ -600,7 +650,7 @@ export class SmartBotBrain {
         }
       } else {
         passes++;
-        if (passes >= 4) {
+        if (passes >= (solo ? 2 : 4)) {
           // قفلة: الفريق اللي معاه أقل يكسب نقط التاني
           const p0 = teamPips(0);
           const p1 = teamPips(1);
@@ -609,7 +659,7 @@ export class SmartBotBrain {
           return finish(0, 0);
         }
       }
-      seat = (seat + 1) % 4;
+      seat = nextOf(seat);
     }
     return 0;
   }

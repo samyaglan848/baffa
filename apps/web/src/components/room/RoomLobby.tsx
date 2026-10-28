@@ -35,6 +35,7 @@ import {
   Link,
   Share2,
   Edit2,
+  Users,
 } from 'lucide-react';
 
 interface RoomLobbyProps {
@@ -132,6 +133,14 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
     Boolean(room.judge && (room.judge.userId === currentUser.id || room.judge.username === currentUser.username));
 
   const allSeatsOccupied = room.seats.every((s) => s.occupied);
+  // فردي (1 ضد 1): seats 2 and 3 are switched off by the server.
+  const isSoloRoom = room.settings.maxPlayers === 2;
+  const soloSeatLabel = (seatIdx: 0 | 1) => {
+    const s = room.seats[seatIdx];
+    if (s?.playerId === currentUser.id) return 'أنت';
+    if (s?.isBot) return `🤖 بوت: ${s?.username || 'السامي'}`;
+    return s?.username || (seatIdx === 0 ? 'لاعب' : 'الخصم');
+  };
   const canClickStart = isJudge || isSpectator || allSeatsOccupied;
 
   const getInviteUrl = () => {
@@ -643,7 +652,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
             )}
           </div>
           <p style={{ fontSize: '0.85rem', color: 'var(--baffa-text-muted)', marginTop: '4px' }}>
-            Egyptian Domino 2v2 (Counter-Clockwise)
+            {isSoloRoom ? 'Egyptian Domino 1v1 (فردي)' : 'Egyptian Domino 2v2 (Counter-Clockwise)'}
           </p>
         </div>
 
@@ -863,8 +872,103 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
             border: '1px solid rgba(245, 158, 11, 0.25)',
           }}
         >
-          {/* Row 1: Target Score */}
+          {/* Row -1: Game mode (زوجي / فردي) */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={18} style={{ color: 'var(--baffa-gold-primary)' }} />
+                <span className="arabic-font" style={{ fontWeight: 800, fontSize: '0.95rem' }}>نوع اللعب:</span>
+              </div>
+              <span className="arabic-font" style={{ fontSize: '0.78rem', color: 'var(--baffa-text-muted)' }}>
+                {isSoloRoom ? '1 ضد 1، كل واحد 7 كروت والباقي سحب' : '2 ضد 2، كل واحد 7 كروت'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {([
+                { value: 4, label: '👥 زوجي (2 ضد 2)' },
+                { value: 2, label: '👤 فردي (1 ضد 1)' },
+              ] as { value: 2 | 4; label: string }[]).map((opt) => {
+                const isSelected = (room.settings.maxPlayers || 4) === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => onAdminUpdateSettings({ maxPlayers: opt.value })}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 'var(--baffa-radius-md)',
+                      backgroundColor: isSelected ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
+                      color: isSelected ? '#000' : '#fff',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      border: isSelected ? '1px solid var(--baffa-gold-primary)' : '1px solid rgba(255,255,255,0.1)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <span className="arabic-font">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Row 0: Referee mode (chosen before the match starts) */}
+          {(() => {
+            const mode = room.settings.refereeMode || (room.judge ? 'HUMAN' : 'SERVER');
+            const options: { value: 'HUMAN' | 'SERVER' | 'NONE'; label: string; icon: string }[] = [
+              { value: 'HUMAN', label: 'حكم (شخص)', icon: '🧑‍⚖️' },
+              { value: 'SERVER', label: 'السيرفر يحكم', icon: '🤖' },
+              { value: 'NONE', label: 'بدون حكم', icon: '🚫' },
+            ];
+            const hint =
+              mode === 'HUMAN'
+                ? room.judge
+                  ? `الحكم: ${room.judge.username}`
+                  : 'لحد ما الحكم يدخل، السيرفر هو اللي بيحكم'
+                : mode === 'SERVER'
+                ? 'السيرفر بيدي إنذارات على اللعب الغلط والخروج من الشاشة'
+                : 'مفيش إنذارات ولا عقوبات، واللعب الغلط بيترفض بس';
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Gavel size={18} style={{ color: 'var(--baffa-gold-primary)' }} />
+                    <span className="arabic-font" style={{ fontWeight: 800, fontSize: '0.95rem' }}>الحكم:</span>
+                  </div>
+                  <span className="arabic-font" style={{ fontSize: '0.78rem', color: 'var(--baffa-text-muted)' }}>{hint}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {options.map((opt) => {
+                    const isSelected = mode === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => onAdminUpdateSettings({ refereeMode: opt.value })}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 'var(--baffa-radius-md)',
+                          backgroundColor: isSelected ? 'var(--baffa-gold-primary)' : 'var(--baffa-bg-elevated)',
+                          color: isSelected ? '#000' : '#fff',
+                          fontWeight: 800,
+                          fontSize: '0.85rem',
+                          border: isSelected ? '1px solid var(--baffa-gold-primary)' : '1px solid rgba(255,255,255,0.1)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <span className="arabic-font">{opt.icon} {opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Row 1: Target Score */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Settings size={18} style={{ color: 'var(--baffa-gold-primary)' }} />
               <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>هدف الماتش (Target Score):</span>
@@ -1046,12 +1150,23 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
             <span className="arabic-font" style={{ fontSize: '0.85rem', color: 'var(--baffa-text-secondary)', fontWeight: 600 }}>
               قواعد اللقاء المضبوطة بواسطة الأدمن:
             </span>
+            <span className="arabic-font" style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--baffa-gold-hover)' }}>
+              {isSoloRoom ? '👤 فردي' : '👥 زوجي'}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>•</span>
             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--baffa-gold-hover)' }}>
               {room.settings.targetScore} نقطة
             </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>•</span>
             <span style={{ fontSize: '0.85rem', color: 'var(--baffa-text-secondary)' }}>
               {room.settings.roundTimerSeconds || 20}ث للتفكير
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--baffa-text-muted)' }}>•</span>
+            <span className="arabic-font" style={{ fontSize: '0.85rem', color: 'var(--baffa-text-secondary)' }}>
+              {(() => {
+                const mode = room.settings.refereeMode || (room.judge ? 'HUMAN' : 'SERVER');
+                return mode === 'HUMAN' ? '🧑‍⚖️ حكم' : mode === 'SERVER' ? '🤖 السيرفر يحكم' : '🚫 بدون حكم';
+              })()}
             </span>
           </div>
 
@@ -1087,8 +1202,11 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
           border: '1px solid var(--baffa-bg-table-border)',
         }}
       >
+        {/* فردي: the opponent (seat 1) sits on top */}
+        {isSoloRoom && renderSeatCard(room.seats[1], soloSeatLabel(1))}
+
         {/* North Seat (Team 1 Partner) */}
-        {renderSeatCard(
+        {!isSoloRoom && renderSeatCard(
           room.seats[2],
           room.seats[2]?.playerId === currentUser.id
             ? 'فريق 1 (أنت)'
@@ -1108,7 +1226,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
             gap: isMobile ? '6px' : '16px',
           }}
         >
-          {renderSeatCard(
+          {!isSoloRoom && renderSeatCard(
             room.seats[3],
             room.seats[3]?.playerId === currentUser.id
               ? 'فريق 2 (أنت)'
@@ -1138,11 +1256,11 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
               بَفّة
             </span>
             <span style={{ fontSize: isMobile ? '0.55rem' : '0.75rem', color: 'var(--baffa-text-muted)', marginTop: '1px' }}>
-              فريق 1 ضد 2
+              {isSoloRoom ? '1 ضد 1' : 'فريق 1 ضد 2'}
             </span>
           </div>
 
-          {renderSeatCard(
+          {!isSoloRoom && renderSeatCard(
             room.seats[1],
             room.seats[1]?.playerId === currentUser.id
               ? 'فريق 2 (أنت)'
@@ -1155,7 +1273,9 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
         {/* South Seat (Team 1 User/Captain or Bot) */}
         {renderSeatCard(
           room.seats[0],
-          room.seats[0]?.playerId === currentUser.id
+          isSoloRoom
+            ? soloSeatLabel(0)
+            : room.seats[0]?.playerId === currentUser.id
             ? 'فريق 1 (أنت)'
             : room.seats[0]?.isBot
             ? `فريق 1 (🤖 بوت: ${room.seats[0]?.username || 'الرايق'})`

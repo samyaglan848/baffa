@@ -100,7 +100,7 @@ export class GameSessionService {
     this.clearTurnTimer(roomId);
 
     const isObserver = Boolean(room.judge) || Boolean(room.spectator) || (room.spectators && room.spectators.length > 0);
-    const humanSeats = room.seats.filter(
+    const humanSeats = RoomService.liveSeats(room).filter(
       (s) =>
         s.occupied &&
         !s.isBot &&
@@ -122,7 +122,7 @@ export class GameSessionService {
       hasJudge ||
       allBotsOccupied ||
       isSoloHuman ||
-      room.seats.some((s) => s.playerId === adminId);
+      RoomService.liveSeats(room).some((s) => s.playerId === adminId);
 
     if (!isAuthorized) {
       throw new Error('Only the room admin or presiding judge can start the match');
@@ -136,7 +136,7 @@ export class GameSessionService {
       { name: 'رقم واحد', botId: 'RAQAM_WAHED', avatar: 'bot-raqam-wahed' },
     ];
 
-    room.seats.forEach((seat, idx) => {
+    RoomService.liveSeats(room).forEach((seat, idx) => {
       // Check if this seat is occupied by a judge or spectator who is NOT a table player
       const isJudgeOccupying = Boolean(
         room.judge &&
@@ -190,9 +190,9 @@ export class GameSessionService {
       }
     });
 
-    const occupiedSeats = room.seats.filter((s) => s.occupied);
-    if (occupiedSeats.length < 4) {
-      throw new Error('All 4 seats must be occupied (by players or bots) to start a match');
+    const occupiedSeats = RoomService.liveSeats(room).filter((s) => s.occupied);
+    if (occupiedSeats.length < RoomService.liveSeats(room).length) {
+      throw new Error('All seats must be occupied (by players or bots) to start a match');
     }
 
     const existingBot = this.botTimeouts.get(roomId);
@@ -208,7 +208,8 @@ export class GameSessionService {
       roomId,
       targetScore: room.settings.targetScore,
       turnTimeLimit: room.settings.roundTimerSeconds || 20,
-      players: room.seats.map((s) => ({
+      gameMode: RoomService.isSoloRoom(room) ? 'SOLO' : 'TEAMS',
+      players: RoomService.liveSeats(room).map((s) => ({
         seat: s.seat,
         playerId: s.playerId || `bot_${s.seat}`,
         username: s.username || `Player ${s.seat + 1}`,
@@ -224,7 +225,7 @@ export class GameSessionService {
 
     // STRICT GUARANTEE: In Round 1, immediately find the seat holding [6|6] and assign turn & starter to that exact seat!
     const dealtHands = (engine as any).hands as DominoTile[][];
-    if (dealtHands && engine.getRoundNumber() === 1) {
+    if (dealtHands && engine.getRoundNumber() === 1 && !engine.isSolo()) {
       for (let s = 0; s < 4; s++) {
         if (dealtHands[s]?.some((t) => (t[0] === 6 && t[1] === 6) || (t[1] === 6 && t[0] === 6))) {
           (engine as any).starterSeat = s;
@@ -303,13 +304,13 @@ export class GameSessionService {
         Boolean(room.spectators?.some((sp) => sp.userId === callerPlayer.userId));
 
       if (!isJudge && !isSpectator) {
-        let existingSeat = room.seats.find(
+        let existingSeat = RoomService.liveSeats(room).find(
           (s) =>
             s.playerId === callerPlayer.userId
         );
         if (!existingSeat) {
           // Seat them in a free or bot seat — never over another human player.
-          existingSeat = room.seats.find((s) => !s.occupied || s.isBot);
+          existingSeat = RoomService.liveSeats(room).find((s) => !s.occupied || s.isBot);
           if (existingSeat) {
             existingSeat.occupied = true;
             existingSeat.playerId = callerPlayer.userId;
@@ -336,7 +337,7 @@ export class GameSessionService {
       { name: 'رقم واحد', botId: 'RAQAM_WAHED', avatar: 'bot-raqam-wahed' },
       { name: 'الرايق', botId: 'EL_RAYEQ', avatar: 'bot-rayeq' },
     ];
-    room.seats.forEach((seat, idx) => {
+    RoomService.liveSeats(room).forEach((seat, idx) => {
       if (!seat.occupied || (!seat.playerId && !seat.isBot)) {
         const botConfig = defaultBots[idx % defaultBots.length];
         seat.occupied = true;
@@ -466,7 +467,7 @@ export class GameSessionService {
           (move.tile[0] === tile[0] && move.tile[1] === tile[1]) ||
           (move.tile[0] === tile[1] && move.tile[1] === tile[0])
       );
-    if (!room?.judge && isIllegalTile) {
+    if (room && RoomService.serverJudges(room) && isIllegalTile) {
       const autoDecision = this.autoJudgeService.evaluateAction({
         roomId,
         seat,
@@ -535,7 +536,7 @@ export class GameSessionService {
     const room = this.roomService.getRoom(roomId);
     const isOwnTurn = engine.getStatus() === 'PLAYING' && engine.getCurrentTurnSeat() === seat;
     const legalMoves = isOwnTurn ? engine.getLegalMovesForSeat(seat) : [];
-    if (!room?.judge && isOwnTurn && legalMoves.length > 0) {
+    if (room && RoomService.serverJudges(room) && isOwnTurn && legalMoves.length > 0) {
       const autoDecision = this.autoJudgeService.evaluateAction({
         roomId,
         seat,
@@ -790,7 +791,7 @@ export class GameSessionService {
     if (!room) return;
 
     // Only auto-advance when all seats are bots or a judge is presiding
-    const isBotOrJudgeMatch = room.seats.every((s) => s.isBot) || Boolean(room.judge);
+    const isBotOrJudgeMatch = RoomService.liveSeats(room).every((s) => s.isBot) || Boolean(room.judge);
     if (!isBotOrJudgeMatch) return;
 
     setTimeout(() => this.safeTimer('AUTO_ADVANCE', roomId, () => {
@@ -979,7 +980,7 @@ export class GameSessionService {
     }
 
     // Round 1 opening safeguard: strictly ensure the turn belongs to the player holding [6|6]
-    if (engine.getChain().getState().tiles.length === 0 && engine.getRoundNumber() === 1) {
+    if (engine.getChain().getState().tiles.length === 0 && engine.getRoundNumber() === 1 && !engine.isSolo()) {
       const hands = (engine as any).hands as DominoTile[][];
       if (hands) {
         for (let s = 0; s < 4; s++) {
@@ -1053,7 +1054,7 @@ export class GameSessionService {
       if (!room) return;
 
       // Round 1 opening safeguard: strictly ensure the turn belongs to the player holding [6|6]
-      if (engine.getChain().getState().tiles.length === 0 && engine.getRoundNumber() === 1) {
+      if (engine.getChain().getState().tiles.length === 0 && engine.getRoundNumber() === 1 && !engine.isSolo()) {
         const hands = (engine as any).hands as DominoTile[][];
         if (hands) {
           let seatWith66: PlayerSeat | null = null;
@@ -1319,7 +1320,7 @@ export class GameSessionService {
 
     // Collect bots in this room
     const botSeats: { seat: PlayerSeat; botId: BotId; isWinner: boolean }[] = [];
-    room.seats.forEach((s) => {
+    RoomService.liveSeats(room).forEach((s) => {
       if (s.isBot || s.isTemporarilyBotControlled || (s.playerId && s.playerId.startsWith('bot_'))) {
         const team: TeamId = s.seat % 2 === 0 ? 1 : 2;
         const isWinner = team === winnerTeam;
@@ -1385,7 +1386,7 @@ export class GameSessionService {
 
     // Find bots on the opposing team
     const passingTeam: TeamId = passingSeat % 2 === 0 ? 1 : 2;
-    const opponentBots = room.seats.filter(
+    const opponentBots = RoomService.liveSeats(room).filter(
       (s) =>
         (s.isBot || s.isTemporarilyBotControlled || (s.playerId && s.playerId.startsWith('bot_'))) &&
         (s.seat % 2 === 0 ? 1 : 2) !== passingTeam

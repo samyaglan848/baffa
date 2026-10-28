@@ -11,8 +11,17 @@ export type PresenceStatus =
   | 'DISCONNECTED'
   | 'BOT_CONTROLLED';
 
+/**
+ * Who referees the match, chosen in the lobby before it starts:
+ * - HUMAN:  a person sits as referee (until one joins, the server referees)
+ * - SERVER: the server's automatic referee (warnings, cheating, leaving the screen)
+ * - NONE:   no referee at all, no penalties (illegal moves are simply refused)
+ */
+export type RefereeMode = 'HUMAN' | 'SERVER' | 'NONE';
+
 export interface RoomSettings {
   targetScore: 101 | 151;
+  /** 4 = زوجي (2 vs 2). 2 = فردي (1 vs 1 with a draw pile). */
   maxPlayers: 2 | 4;
   fillWithBots: boolean;
   roundTimerSeconds: number;
@@ -24,6 +33,7 @@ export interface RoomSettings {
   reactionsEnabled: boolean;
   selectedBotId?: BotId;
   roomName?: string;
+  refereeMode?: RefereeMode;
 }
 
 export interface RoomSeatInfo {
@@ -39,6 +49,8 @@ export interface RoomSeatInfo {
   isConnected: boolean;
   presence: PresenceStatus;
   isTemporarilyBotControlled?: boolean;
+  /** SOLO rooms (maxPlayers 2): seats 2 and 3 are not part of the table. */
+  disabled?: boolean;
 }
 
 export interface JudgeInfo {

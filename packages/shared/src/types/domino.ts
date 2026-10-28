@@ -108,6 +108,9 @@ export interface SanitizedPlayerState {
   originalPlayerId?: string | null;
 }
 
+/** TEAMS = 2 vs 2 (زوجي). SOLO = 1 vs 1 (فردي): 7 each, 14 in the draw pile, automatic drawing. */
+export type GameMode = 'TEAMS' | 'SOLO';
+
 export interface SanitizedGameState {
   matchId: string;
   roomId: string;
@@ -135,4 +138,10 @@ export interface SanitizedGameState {
   turnStartTime?: number;
   /** Server clock (ms) when this state was produced; lets clients correct for device clock skew. */
   serverTime?: number;
+  /** Game mode; missing = TEAMS (older servers). */
+  gameMode?: GameMode;
+  /** SOLO only: how many tiles are left in the draw pile. */
+  boneyardCount?: number;
+  /** SOLO only: the last automatic draw (who drew and how many). */
+  lastDraw?: { seat: PlayerSeat; count: number; at: number } | null;
 }

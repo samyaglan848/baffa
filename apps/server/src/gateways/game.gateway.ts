@@ -93,12 +93,18 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
    * from the table and replaced by a bot.
    */
   private static readonly AWAY_GRACE_MS = 5000;
+  /**
+   * A dropped connection is not the same as leaving the screen: on a weak network (or a slow server)
+   * the socket can drop and come back in a few seconds while the player never left the game.
+   * Leaving the app is reported separately (visibility event) and still uses AWAY_GRACE_MS.
+   */
+  private static readonly NETWORK_DROP_GRACE_MS = 30000;
   private readonly awayViolationTimers = new Map<string, NodeJS.Timeout>(); // `${roomId}_${userId}`
   private readonly awayStrikes = new Map<string, number>(); // `${roomId}_${matchId}_${userId}`
 
-  private scheduleAwayViolation(roomId: string, userId: string) {
+  private scheduleAwayViolation(roomId: string, userId: string, graceMs: number = GameGateway.AWAY_GRACE_MS) {
     const room = this.findRoom(roomId);
-    if (!room || room.matchStatus !== 'PLAYING' || room.judge) return;
+    if (!room || room.matchStatus !== 'PLAYING' || !RoomService.serverJudges(room)) return;
     if (!this.getMembership(room, userId).seated) return;
     const key = `${room.id}_${userId}`;
     if (this.awayViolationTimers.has(key)) return;
@@ -109,7 +115,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       } catch (err: any) {
         this.logger.warn(`Away violation failed for ${userId} in ${room.id}: ${err.message}`);
       }
-    }, GameGateway.AWAY_GRACE_MS);
+    }, graceMs);
     timer.unref?.();
     this.awayViolationTimers.set(key, timer);
   }
@@ -124,11 +130,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   private applyAwayViolation(roomId: string, userId: string) {
     const room = this.findRoom(roomId);
-    if (!room || room.matchStatus !== 'PLAYING' || room.judge) return;
+    if (!room || room.matchStatus !== 'PLAYING' || !RoomService.serverJudges(room)) return;
     const seated = this.getMembership(room, userId).seated;
     const engine = this.gameSessionService.getSession(room.id);
     // Between rounds (score screen) leaving is not counted.
     if (!seated || !engine || engine.getStatus() !== 'PLAYING') return;
+
+    // Never punish a player who is actually back: connected again and not marked as away.
+    const markedAway = this.playerAwaySince.has(`${room.id}_${userId}`);
+    if (!markedAway && this.hasOtherLiveSocket(userId, '')) return;
 
     const seat = seated.seat as PlayerSeat;
     const name = seated.username || `لاعب ${seat + 1}`;
@@ -640,7 +650,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           if (grace) {
             this.gameSessionService.setBotTakeover(roomId, player.seat, true);
             // Closing the game (or the phone killing it in the background) counts like leaving the screen.
-            this.scheduleAwayViolation(roomId, player.userId);
+            this.scheduleAwayViolation(roomId, player.userId, GameGateway.NETWORK_DROP_GRACE_MS);
             this.server.to(roomId).emit(ServerEvents.DISCONNECT_GRACE_UPDATE, { grace });
             const notif: NotificationPayload = {
               type: 'WARNING',
@@ -706,7 +716,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         (room.spectator && room.spectator.userId === user.id) ||
         room.spectators?.some((s) => s.userId === user.id)
       );
-      const seated = room.seats.find(
+      const seated = RoomService.liveSeats(room).find(
         (s) => !s.isBot && s.occupied && s.playerId === user.id
       );
       const isAdmin =
@@ -858,7 +868,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   /** Membership of a user id in a room, by id only (never by display name). */
   private getMembership(room: any, userId: string) {
-    const seated = room.seats.find((s: any) => !s.isBot && s.occupied && s.playerId === userId);
+    const seated = RoomService.liveSeats(room).find((s: any) => !s.isBot && s.occupied && s.playerId === userId);
     const isJudge = Boolean(room.judge && room.judge.userId === userId);
     const isSpectator = Boolean(
       room.spectator?.userId === userId || room.spectators?.some((sp: any) => sp.userId === userId)
@@ -1103,7 +1113,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       // Quick play: start at once instead of showing the lobby and waiting for another press.
       // If room is created as a Judge with 4 Egyptian bots, auto-start match immediately so the referee presides directly over the game
-      if ((initialRole === 'JUDGE' && room.seats.every((s) => s.isBot)) || (payload?.autoStart === true && initialRole !== 'JUDGE')) {
+      if ((initialRole === 'JUDGE' && RoomService.liveSeats(room).every((s) => s.isBot)) || (payload?.autoStart === true && initialRole !== 'JUDGE')) {
         this.logger.log(`Auto-starting 4-bot match for presiding referee in room ${room.id}`);
         this.gameSessionService.startMatch(room.id, user.id);
         const updatedRoom = this.roomService.getRoom(room.id);
@@ -1137,7 +1147,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       }
       // joinRoom() cancels the disconnect grace itself, so remember whether there was one first
       // (the old check ran afterwards, never matched, and left the seat flagged as bot-controlled).
-      const seatBefore = room.seats.find((s) => !s.isBot && s.occupied && s.playerId === user.id);
+      const seatBefore = RoomService.liveSeats(room).find((s) => !s.isBot && s.occupied && s.playerId === user.id);
       const hadActiveGrace = Boolean(seatBefore && room.disconnectGraces?.some((g) => g.seat === seatBefore.seat));
 
       const updatedRoom = this.roomService.joinRoom(room.id, client.id, user);
@@ -1294,7 +1304,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       // Count human players remaining in the room (both seated and unseated in lobby)
       const seatedHumans = room.seats
-        ? room.seats.filter((s) => s.occupied && !s.isBot && s.playerId && s.playerId !== userId).length
+        ? RoomService.liveSeats(room).filter((s) => s.occupied && !s.isBot && s.playerId && s.playerId !== userId).length
         : 0;
       const judgeHuman = room.judge && room.judge.userId !== userId && room.judge.isConnected ? 1 : 0;
       const spectatorHuman = (room.spectator && room.spectator.userId !== userId && room.spectator.isConnected ? 1 : 0) +
@@ -1306,7 +1316,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const totalRemainingHumans = seatedHumans + judgeHuman + spectatorHuman + otherConnected;
 
       const leftPlayerUsername = player?.username || client.data?.user?.username || 'أحد اللاعبين';
-      const leftPlayerSeat = player?.seat ?? room.seats.find((s) => s.playerId === userId)?.seat ?? null;
+      const leftPlayerSeat = player?.seat ?? RoomService.liveSeats(room).find((s) => s.playerId === userId)?.seat ?? null;
 
       // Leaving on purpose is not "away" any more.
       if (userId) this.cancelAwayViolation(actualRoomId, userId);
@@ -1438,7 +1448,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         };
         this.broadcastNotificationToRoom(roomId, notif);
 
-        const seatObj = room.seats.find((s) => s.playerId === userId && !s.isBot);
+        const seatObj = RoomService.liveSeats(room).find((s) => s.playerId === userId && !s.isBot);
         if (seatObj) {
           seatObj.presence = 'AWAY';
         }
@@ -1480,7 +1490,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.broadcastNotificationToRoom(roomId, notif);
         if (awayStart) this.sendAwaySummary(roomId, userId, awayStart);
 
-        const seatObj = room.seats.find((s) => s.playerId === userId && !s.isBot);
+        const seatObj = RoomService.liveSeats(room).find((s) => s.playerId === userId && !s.isBot);
         if (seatObj) {
           seatObj.presence = 'ONLINE';
           seatObj.isTemporarilyBotControlled = false;
@@ -1545,7 +1555,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         };
         this.broadcastNotificationToRoom(roomId, notif);
 
-        const seatObj = room.seats.find((s) => s.playerId === userId && !s.isBot);
+        const seatObj = RoomService.liveSeats(room).find((s) => s.playerId === userId && !s.isBot);
         if (seatObj) {
           seatObj.presence = 'AWAY';
         }
@@ -1585,7 +1595,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.broadcastNotificationToRoom(roomId, notif);
         if (awayStart) this.sendAwaySummary(roomId, userId, awayStart);
 
-        const seatObj = room.seats.find((s) => s.playerId === userId && !s.isBot);
+        const seatObj = RoomService.liveSeats(room).find((s) => s.playerId === userId && !s.isBot);
         if (seatObj) {
           seatObj.presence = 'ONLINE';
         }
@@ -1635,7 +1645,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       let leftUsername = 'أحد اللاعبين';
 
       if (userId) {
-        const seated = room.seats.find((s) => s.playerId === userId);
+        const seated = RoomService.liveSeats(room).find((s) => s.playerId === userId);
         if (seated) {
           leftSeat = seated.seat;
           leftUsername = seated.username || 'أحد اللاعبين';
@@ -1660,7 +1670,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       this.broadcastNotificationToRoom(actualRoomId, leaveNotif);
 
       const seatedHumans = room.seats
-        ? room.seats.filter((s) => s.occupied && !s.isBot && s.playerId && s.playerId !== userId).length
+        ? RoomService.liveSeats(room).filter((s) => s.occupied && !s.isBot && s.playerId && s.playerId !== userId).length
         : 0;
       const judgeHuman = room.judge && room.judge.userId !== userId && room.judge.isConnected ? 1 : 0;
       const spectatorHuman = (room.spectator && room.spectator.userId !== userId && room.spectator.isConnected ? 1 : 0) +
@@ -1919,7 +1929,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     try {
       const { player, room } = this.validateCallerInRoom(client, payload?.roomId, payload?.user);
       const userAuth = this.resolveUser(client, payload?.user);
-      const allBotsOccupied = room.seats.filter((s) => s.occupied && !s.isBot).length === 0;
+      const allBotsOccupied = RoomService.liveSeats(room).filter((s) => s.occupied && !s.isBot).length === 0;
 
       const isAlreadyJudge = Boolean(room.judge && room.judge.userId === userAuth.id);
       const isJudgeRequest = payload?.role === 'JUDGE' || isAlreadyJudge;
@@ -1934,7 +1944,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         }
       }
 
-      const humanSeats = room.seats.filter((s) => s.occupied && !s.isBot);
+      const humanSeats = RoomService.liveSeats(room).filter((s) => s.occupied && !s.isBot);
       const isSoloHuman = humanSeats.length <= 1;
 
       const isAuthorized =
@@ -1946,7 +1956,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         isJudgeRequest ||
         allBotsOccupied ||
         isSoloHuman ||
-        room.seats.some((s) => s.playerId === userAuth.id || s.playerId === player.userId);
+        RoomService.liveSeats(room).some((s) => s.playerId === userAuth.id || s.playerId === player.userId);
 
       if (!isAuthorized) {
         this.logger.warn(`Unauthorized start match attempt by ${player.username} in room ${room.id}`);
@@ -2146,7 +2156,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
         this.notifyWarnedPlayer(room.id, seat, player.username, reason, isCheating);
         this.broadcastGameState(payload.roomId);
-        if (room.seats.every((s: any) => s.isBot)) {
+        if (RoomService.liveSeats(room).every((s: any) => s.isBot)) {
           this.gameSessionService.checkAndTriggerBotTurn(payload.roomId, true);
         }
       } else {
@@ -2396,7 +2406,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
           this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
           this.broadcastGameState(payload.roomId, client.id);
-          if (room.seats.every((s: any) => s.isBot)) {
+          if (RoomService.liveSeats(room).every((s: any) => s.isBot)) {
             this.gameSessionService.checkAndTriggerBotTurn(payload.roomId, true);
           }
         } else {
@@ -2642,7 +2652,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       return { success: true, roomId: room.id };
     }
 
-    const humanSeats = room.seats.filter((s) => s.occupied && !s.isBot);
+    const humanSeats = RoomService.liveSeats(room).filter((s) => s.occupied && !s.isBot);
     const isAuthorized = m.isAdmin || m.isJudge || Boolean(m.seated) || humanSeats.length <= 1;
     if (!isAuthorized) {
       return { success: false, error: 'Only the room admin or presiding judge can start the match' };
@@ -2724,7 +2734,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
         this.notifyWarnedPlayer(room.id, seat, judgeName, reason, isCheating);
         this.broadcastGameState(payload.roomId);
-        if (room.seats.every((s: any) => s.isBot)) {
+        if (RoomService.liveSeats(room).every((s: any) => s.isBot)) {
           this.gameSessionService.checkAndTriggerBotTurn(payload.roomId, true);
         }
         return { success: true, result: broadcastPayload };
@@ -2876,7 +2886,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           };
           this.emitToRoom(payload.roomId, ServerEvents.REFEREE_DECISION_BROADCAST, broadcastPayload);
           this.broadcastGameState(payload.roomId);
-          if (room.seats.every((s: any) => s.isBot)) {
+          if (RoomService.liveSeats(room).every((s: any) => s.isBot)) {
             this.gameSessionService.checkAndTriggerBotTurn(payload.roomId, true);
           }
           return { success: true, result: broadcastPayload };

@@ -1,5 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import {
+import { RefereeMode,
   BotId,
   DisconnectGraceInfo,
   JudgeInfo,
@@ -69,6 +69,22 @@ export class RoomService {
     return Math.min(60, Math.max(5, n));
   }
 
+  /** The room's referee mode. Rooms from before this setting: a seated judge = HUMAN, else SERVER. */
+  public static refereeModeOf(room: Pick<RoomDetails, 'settings' | 'judge'>): RefereeMode {
+    const mode = room.settings?.refereeMode;
+    if (mode === 'HUMAN' || mode === 'SERVER' || mode === 'NONE') return mode;
+    return room.judge ? 'HUMAN' : 'SERVER';
+  }
+
+  /**
+   * Does the server's automatic referee judge this room right now?
+   * SERVER: always. HUMAN: only while no human referee is in the room. NONE: never.
+   */
+  public static serverJudges(room: Pick<RoomDetails, 'settings' | 'judge'>): boolean {
+    const mode = RoomService.refereeModeOf(room);
+    return mode === 'SERVER' || (mode === 'HUMAN' && !room.judge);
+  }
+
   /** Keeps only known settings with valid values (the client could previously inject anything). */
   public static sanitizeSettings(input: Partial<RoomSettings> | undefined): Partial<RoomSettings> {
     const out: Partial<RoomSettings> = {};
@@ -84,6 +100,13 @@ export class RoomService {
     if ('roundTimerSeconds' in input) out.roundTimerSeconds = RoomService.clampTimer(input.roundTimerSeconds);
     if ('selectedBotId' in input && typeof input.selectedBotId === 'string') out.selectedBotId = input.selectedBotId;
     if ('roomName' in input && typeof input.roomName === 'string') out.roomName = input.roomName.trim().slice(0, 40);
+    if ('refereeMode' in input) {
+      const m = (input as any).refereeMode;
+      if (m === 'HUMAN' || m === 'SERVER' || m === 'NONE') {
+        out.refereeMode = m;
+        out.allowJudge = m === 'HUMAN'; // a person can sit as referee only in HUMAN mode
+      }
+    }
     return out;
   }
 
@@ -107,6 +130,89 @@ export class RoomService {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
+  }
+
+  /** SOLO (فردي) room: 1 vs 1 on seats 0 and 1. */
+  public static isSoloRoom(room: Pick<RoomDetails, 'settings'>): boolean {
+    return room.settings?.maxPlayers === 2;
+  }
+
+  /** The seats that are part of the table (all 4 in TEAMS, seats 0 and 1 in SOLO). */
+  public static liveSeats(room: Pick<RoomDetails, 'seats'>): RoomSeatInfo[] {
+    return room.seats.filter((s) => !s.disabled);
+  }
+
+  private static disabledSeat(seat: PlayerSeat): RoomSeatInfo {
+    return {
+      seat,
+      team: (seat === 0 || seat === 2 ? 1 : 2) as TeamId,
+      occupied: true, // never offered as a free seat
+      playerId: null,
+      username: null,
+      avatar: null,
+      isBot: false,
+      isReady: true,
+      isConnected: false,
+      presence: 'ONLINE',
+      disabled: true,
+    };
+  }
+
+  /**
+   * Makes the seats match the mode: SOLO turns off seats 2 and 3 (moving a player sitting there to
+   * seat 0/1 when one is free or held by a bot); TEAMS turns them back on (with bots when the room
+   * fills empty seats with bots).
+   */
+  private applySeatLayout(room: RoomDetails): void {
+    if (RoomService.isSoloRoom(room)) {
+      for (const seatIdx of [2, 3] as PlayerSeat[]) {
+        const occupant = room.seats[seatIdx];
+        if (occupant.disabled) continue;
+        if (occupant.occupied && !occupant.isBot && occupant.playerId) {
+          const target = ([0, 1] as PlayerSeat[]).find((i) => !room.seats[i].occupied || room.seats[i].isBot);
+          if (target === undefined) {
+            throw new Error('مينفعش تحوّل لفردي: في أكتر من لاعبين قاعدين على الترابيزة');
+          }
+          room.seats[target] = { ...occupant, seat: target, team: (target === 0 ? 1 : 2) as TeamId };
+          for (const p of this.socketPlayers.values()) {
+            if (p.roomId === room.id && p.userId === occupant.playerId) p.seat = target;
+          }
+        }
+        room.seats[seatIdx] = RoomService.disabledSeat(seatIdx);
+      }
+    } else {
+      const fallbackBots: BotId[] = ['RAQAM_WAHED', 'EL_HEMA'];
+      for (const seatIdx of [2, 3] as PlayerSeat[]) {
+        if (!room.seats[seatIdx].disabled) continue;
+        const empty: RoomSeatInfo = {
+          seat: seatIdx,
+          team: (seatIdx === 2 ? 1 : 2) as TeamId,
+          occupied: false,
+          playerId: null,
+          username: null,
+          avatar: null,
+          isBot: false,
+          isReady: false,
+          isConnected: false,
+          presence: 'ONLINE',
+        };
+        if (room.settings.fillWithBots) {
+          const botId = fallbackBots[seatIdx - 2];
+          const profile = OFFICIAL_BAFFA_BOTS[botId];
+          Object.assign(empty, {
+            occupied: true,
+            playerId: `bot_${seatIdx}`,
+            username: profile?.arabicName || botId,
+            avatar: profile?.avatar || 'bot-samy',
+            isBot: true,
+            botId,
+            isReady: true,
+            isConnected: true,
+          });
+        }
+        room.seats[seatIdx] = empty;
+      }
+    }
   }
 
   private createDefaultSeats(): RoomSeatInfo[] {
@@ -150,7 +256,7 @@ export class RoomService {
       if (player.roomId === roomId) {
         players.push(player);
       } else if (room) {
-        const isSeated = room.seats.some((s) => s.playerId === player.userId && s.occupied);
+        const isSeated = RoomService.liveSeats(room).some((s) => s.playerId === player.userId && s.occupied);
         const isAdmin = room.currentAdminId === player.userId || room.originalAdminId === player.userId;
         const isJudge = room.judge?.userId === player.userId;
         const isSpectator = room.spectator?.userId === player.userId;
@@ -210,6 +316,16 @@ export class RoomService {
       reactionsEnabled: settings?.reactionsEnabled ?? true,
       selectedBotId: settings?.selectedBotId || 'EL_SAMY',
     };
+    {
+      // Until the admin picks a referee mode, the room works as before: a referee may join, and the
+      // server referees while nobody does (see refereeModeOf). An explicit choice is enforced.
+      const requested = RoomService.sanitizeSettings({ refereeMode: settings?.refereeMode } as Partial<RoomSettings>).refereeMode;
+      const mode: RefereeMode | undefined = requested || (initialRole === 'JUDGE' ? 'HUMAN' : undefined);
+      if (mode) {
+        mergedSettings.refereeMode = mode;
+        mergedSettings.allowJudge = mode === 'HUMAN';
+      }
+    }
 
     const seats = this.createDefaultSeats();
     const isJudge = initialRole === 'JUDGE';
@@ -318,6 +434,7 @@ export class RoomService {
       createdAt: Date.now(),
     };
 
+    this.applySeatLayout(room);
     this.rooms.set(id, room);
 
     const connected = this.socketPlayers.get(ownerSocketId);
@@ -341,13 +458,13 @@ export class RoomService {
     }
 
     // Check if player is already seated (e.g. reconnecting)
-    let playerSeat = room.seats.find(
+    let playerSeat = RoomService.liveSeats(room).find(
       (s) => !s.isBot && s.occupied && Boolean(user.id && s.playerId === user.id)
     );
 
     // Fallback: if only 1 human seat exists and user matches admin, restore to that seat
     if (!playerSeat) {
-      const humanSeats = room.seats.filter((s) => s.occupied && !s.isBot);
+      const humanSeats = RoomService.liveSeats(room).filter((s) => s.occupied && !s.isBot);
       if (humanSeats.length === 1 && (room.currentAdminId === user.id || room.originalAdminId === user.id)) {
         playerSeat = humanSeats[0];
       }
@@ -439,9 +556,9 @@ export class RoomService {
       let availableBotSeat =
         previousSeat !== undefined && room.seats[previousSeat]?.isBot ? room.seats[previousSeat] : undefined;
       // Otherwise: is there an available BOT seat that the joining player can take over to PLAY?
-      if (!availableBotSeat) availableBotSeat = room.seats.find((s) => s.isBot && s.occupied);
+      if (!availableBotSeat) availableBotSeat = RoomService.liveSeats(room).find((s) => s.isBot && s.occupied);
       if (!availableBotSeat) {
-        availableBotSeat = room.seats.find((s) => !s.occupied);
+        availableBotSeat = RoomService.liveSeats(room).find((s) => !s.occupied);
       }
 
       if (availableBotSeat) {
@@ -488,9 +605,9 @@ export class RoomService {
     }
 
     // Prioritize empty seats first; if none empty, take a bot's seat!
-    let availableSeat = room.seats.find((s) => !s.occupied);
+    let availableSeat = RoomService.liveSeats(room).find((s) => !s.occupied);
     if (!availableSeat) {
-      availableSeat = room.seats.find((s) => s.isBot);
+      availableSeat = RoomService.liveSeats(room).find((s) => s.isBot);
     }
     if (!availableSeat) {
       throw new Error('All 4 playing seats are occupied by human players');
@@ -533,9 +650,11 @@ export class RoomService {
       room.ownerId === user.id;
 
     if (isAdmin) {
+      // The admin choosing the referee role means a human referees this room.
       room.settings.allowJudge = true;
+      if (room.matchStatus === 'LOBBY') room.settings.refereeMode = 'HUMAN';
     } else if (!room.settings.allowJudge) {
-      throw new Error('Judge mode is disabled for this room');
+      throw new Error('الأوضة دي مفيهاش حكم: الأدمن مختار إن السيرفر يحكم أو بدون حكم');
     }
 
     const isCurrentJudge =
@@ -543,7 +662,7 @@ export class RoomService {
       room.judge.userId === user.id;
 
     if (isCurrentJudge) {
-      const fallbackSeatIndex = room.seats.findIndex((seat) => !seat.occupied || seat.isBot);
+      const fallbackSeatIndex = RoomService.liveSeats(room).findIndex((seat) => !seat.occupied || seat.isBot);
       const targetSeat = fallbackSeatIndex >= 0 ? (fallbackSeatIndex as PlayerSeat) : 0;
       const targetSeatObj = room.seats[targetSeat];
 
@@ -590,13 +709,13 @@ export class RoomService {
 
     // When joining as Judge: replace the user's vacated seat with a bot.
     // If no other human players are seated, guarantee ALL 4 seats are active Egyptian bots!
-    const otherHumanSeats = room.seats.filter(
+    const otherHumanSeats = RoomService.liveSeats(room).filter(
       (s) => !s.isBot && s.occupied && s.playerId !== user.id
     );
     const noOtherHumans = otherHumanSeats.length === 0;
 
     if (room.matchStatus !== 'PLAYING') {
-      room.seats.forEach((seat, idx) => {
+      RoomService.liveSeats(room).forEach((seat, idx) => {
         const isVacatingUser =
           !seat.isBot &&
           seat.playerId === user.id;
@@ -683,12 +802,12 @@ export class RoomService {
     ];
 
     // Vacate seat occupied by this user and guarantee all empty seats are populated with bots
-    const otherHumanSeats = room.seats.filter(
+    const otherHumanSeats = RoomService.liveSeats(room).filter(
       (s) => !s.isBot && s.occupied && s.playerId !== user.id
     );
     const noOtherHumans = otherHumanSeats.length === 0;
 
-    room.seats.forEach((seat, idx) => {
+    RoomService.liveSeats(room).forEach((seat, idx) => {
       const isVacatingUser =
         !seat.isBot &&
         seat.playerId === user.id;
@@ -767,7 +886,7 @@ export class RoomService {
       room.spectator?.userId === userId ||
       room.spectators?.some((s) => s.userId === effectiveUserId || s.userId === userId);
 
-    const currentSeatObj = room.seats.find(
+    const currentSeatObj = RoomService.liveSeats(room).find(
       (s) =>
         !s.isBot &&
         s.occupied &&
@@ -778,6 +897,9 @@ export class RoomService {
     const targetSeatObj = room.seats[targetSeat];
     if (!targetSeatObj) {
       throw new Error(`Target seat ${targetSeat} is invalid`);
+    }
+    if (targetSeatObj.disabled) {
+      throw new Error('الكرسي ده مش موجود في الفردي');
     }
 
     // Do not allow taking a seat occupied by another real human
@@ -914,6 +1036,7 @@ export class RoomService {
 
     const from = room.seats[fromSeat];
     const to = room.seats[toSeat];
+    if (from.disabled || to.disabled) throw new Error('الكرسي ده مش موجود في الفردي');
 
     const tempFrom: RoomSeatInfo = {
       ...from,
@@ -964,6 +1087,7 @@ export class RoomService {
     if (room.matchStatus !== 'LOBBY') throw new Error('Cannot toggle bots while match is in progress');
 
     const seatObj = room.seats[seat];
+    if (seatObj.disabled) throw new Error('الكرسي ده مش موجود في الفردي');
     if (enable) {
       const selectedId = (botId && OFFICIAL_BAFFA_BOTS[botId]) ? botId : 'EL_SAMY';
       const botProfile = OFFICIAL_BAFFA_BOTS[selectedId];
@@ -1021,10 +1145,24 @@ export class RoomService {
       }
     }
 
+    const clean = RoomService.sanitizeSettings(settings);
+    if (clean.refereeMode && clean.refereeMode !== 'HUMAN' && room.judge) {
+      throw new Error('في حكم قاعد في الأوضة: لازم يخرج من دور الحكم الأول قبل ما تغيّر نوع التحكيم');
+    }
+
+    const previous = room.settings;
     room.settings = {
       ...room.settings,
-      ...RoomService.sanitizeSettings(settings),
+      ...clean,
     };
+    if (clean.maxPlayers !== undefined && clean.maxPlayers !== previous.maxPlayers) {
+      try {
+        this.applySeatLayout(room);
+      } catch (err) {
+        room.settings = previous; // keep the room as it was
+        throw err;
+      }
+    }
 
     return room;
   }
@@ -1108,7 +1246,7 @@ export class RoomService {
     }
 
     // 2. Find any connected human player
-    const anyConnectedHuman = room.seats.find((s) => !s.isBot && s.isConnected && s.playerId);
+    const anyConnectedHuman = RoomService.liveSeats(room).find((s) => !s.isBot && s.isConnected && s.playerId);
     if (anyConnectedHuman && anyConnectedHuman.playerId) {
       room.currentAdminId = anyConnectedHuman.playerId;
       this.logger.log(`Transferred admin to player ${anyConnectedHuman.username} in room ${room.id}`);
@@ -1123,7 +1261,7 @@ export class RoomService {
     const room = this.rooms.get(roomId);
     if (!room || room.matchStatus !== 'LOBBY') return null;
 
-    const seatObj = room.seats.find((s) => !s.isBot && s.occupied && s.playerId === userId);
+    const seatObj = RoomService.liveSeats(room).find((s) => !s.isBot && s.occupied && s.playerId === userId);
     if (seatObj) {
       seatObj.isConnected = false;
       seatObj.presence = 'DISCONNECTED';
@@ -1165,7 +1303,7 @@ export class RoomService {
 
     const room = this.rooms.get(roomId);
     if (room) {
-      const seatObj = room.seats.find((s) => !s.isBot && s.occupied && s.playerId === userId);
+      const seatObj = RoomService.liveSeats(room).find((s) => !s.isBot && s.occupied && s.playerId === userId);
       if (seatObj) {
         seatObj.isConnected = true;
         seatObj.presence = 'IN_ROOM';
@@ -1198,7 +1336,7 @@ export class RoomService {
       room.spectators = room.spectators.filter((s) => s.userId !== userId);
     }
 
-    const seat = room.seats.find((s) => !s.isBot && s.occupied && s.playerId === userId);
+    const seat = RoomService.liveSeats(room).find((s) => !s.isBot && s.occupied && s.playerId === userId);
     if (seat) {
       seat.occupied = false;
       seat.playerId = null;
@@ -1212,7 +1350,7 @@ export class RoomService {
     }
 
     if (room.currentAdminId === userId) {
-      const remainingHuman = room.seats.find((s) => !s.isBot && s.occupied && s.playerId && s.playerId !== userId);
+      const remainingHuman = RoomService.liveSeats(room).find((s) => !s.isBot && s.occupied && s.playerId && s.playerId !== userId);
       if (remainingHuman?.playerId) {
         room.currentAdminId = remainingHuman.playerId;
         this.logger.log(`Transferred lobby admin to player ${remainingHuman.username} (${remainingHuman.playerId}) in room ${room.id}`);
@@ -1255,7 +1393,7 @@ export class RoomService {
         }
       }
     } else {
-      const seat = room.seats.find((s) => s.playerId === player.userId);
+      const seat = RoomService.liveSeats(room).find((s) => s.playerId === player.userId);
       if (seat && !seat.isBot) {
         if (room.matchStatus === 'LOBBY') {
           seat.occupied = false;
@@ -1275,7 +1413,7 @@ export class RoomService {
             { botId: 'EL_SAMY', name: 'السامي', avatar: 'bot-samy' },
             { botId: 'RAQAM_WAHED', name: 'رقم واحد', avatar: 'bot-raqam-wahed' },
           ];
-          const existingBotIds = new Set(room.seats.filter((s) => s.isBot && s.botId).map((s) => s.botId));
+          const existingBotIds = new Set(RoomService.liveSeats(room).filter((s) => s.isBot && s.botId).map((s) => s.botId));
           const availableBots = egyptianBots.filter((b) => !existingBotIds.has(b.botId));
           const chosenBot = (availableBots.length > 0 ? availableBots : egyptianBots)[
             Math.floor(Math.random() * (availableBots.length > 0 ? availableBots.length : egyptianBots.length))
@@ -1298,7 +1436,7 @@ export class RoomService {
 
     // If departing player is current admin, transfer admin to remaining participant
     if (room.currentAdminId === player.userId) {
-      const remainingHuman = room.seats.find(
+      const remainingHuman = RoomService.liveSeats(room).find(
         (s) => !s.isBot && s.occupied && s.playerId && s.playerId !== player.userId
       );
       if (remainingHuman?.playerId) {
@@ -1329,7 +1467,7 @@ export class RoomService {
   public countHumanPlayers(roomId: string): number {
     const room = this.rooms.get(roomId);
     if (!room) return 0;
-    return room.seats.filter((s) => s.occupied && !s.isBot && s.playerId).length;
+    return RoomService.liveSeats(room).filter((s) => s.occupied && !s.isBot && s.playerId).length;
   }
 
   /**
