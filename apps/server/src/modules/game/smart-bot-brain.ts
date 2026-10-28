@@ -48,6 +48,14 @@ export interface SmartDecision {
   isOpening: boolean;
 }
 
+export interface ScoredMove {
+  score: number;
+  move: LegalMove;
+  end: ChainEnd;
+  lock: boolean;
+  door: boolean;
+}
+
 export interface SmartPassInfo {
   /** زميله غطّى الرقم اللي هو فاتحه وده اللي خلاه يفوت */
   partnerMistake: boolean;
@@ -259,6 +267,19 @@ export class SmartBotBrain {
     return doubles <= 2 && (maxSuit >= Math.max(2, Math.round(4 * sizeFactor)) || distinct >= Math.max(3, Math.round(6 * sizeFactor)));
   }
 
+  /** ورقه وحش: أكتر من بفتين، أو ناقص أرقام كتير */
+  public isBadHand(): boolean {
+    const doubles = this.hand.filter(isDouble).length;
+    let distinct = 0;
+    for (let n = 0; n <= 6; n++) if (countWith(this.hand, n) > 0) distinct++;
+    return doubles > 2 || distinct <= 5;
+  }
+
+  /** دي أول مرة يلعب في الدور ده (لسه معاه السبع كروت) */
+  public isFirstTurnOfRound(): boolean {
+    return this.hand.length === 7;
+  }
+
   /** هل الحركة دي هتقفل اللعب؟ (الطرفين نفس الرقم والسبع كروت بتوعه نزلوا) */
   private wouldLock(l: Pip, r: Pip, tile: DominoTile): boolean {
     if (l !== r) return false;
@@ -288,14 +309,39 @@ export class SmartBotBrain {
   // ───────────────────────────── القرار ─────────────────────────────
 
   public decide(moves: LegalMove[]): SmartDecision {
+    const scored = this.scoreMoves(moves);
+    let chosen = scored[0];
+    for (const c of scored) if (c.score > chosen.score) chosen = c;
+    return this.toDecision(chosen);
+  }
+
+  private toDecision(c: ScoredMove): SmartDecision {
+    return {
+      move: c.move,
+      end: c.end,
+      isLock: c.lock,
+      isDoorForPartner: c.door,
+      partnerGaveDoor: this.partnerJustGaveDoor(),
+      isOpening: this.left === null || this.right === null,
+    };
+  }
+
+  /** وصف لعبة اتاخدت بعقل تاني (قفلة؟ باب لزميله؟) علشان الكلام يبقى على حسب الموقف */
+  public describe(move: LegalMove, end: ChainEnd): SmartDecision {
+    const scored = this.scoreMoves([move]);
+    const match = scored.find((c) => c.end === end) || scored[0];
+    return this.toDecision(match);
+  }
+
+  /** تقييم كل لعبة ممكنة (على كل طرف) بالخبرة */
+  public scoreMoves(moves: LegalMove[]): ScoredMove[] {
+    const out: ScoredMove[] = [];
     const strong = this.isStrongHand();
     const empty = this.left === null || this.right === null;
     const partnerLast = this.handSizes[this.partner] === 1;
     const oppNextLast = this.handSizes[this.oppNext] === 1;
     const oppPrevLast = this.handSizes[this.oppPrev] === 1;
     const boardCount = this.boardKeys.size;
-
-    let best: { score: number; move: LegalMove; end: ChainEnd; lock: boolean; door: boolean } | null = null;
 
     for (const move of moves) {
       const tile = move.tile;
@@ -377,19 +423,195 @@ export class SmartBotBrain {
 
         const door = !lock && !empty && pNext <= 0.25 && pPartner >= 0.5;
 
-        if (!best || score > best.score) best = { score, move, end, lock, door };
+        out.push({ score, move, end, lock, door });
       }
     }
+    return out;
+  }
 
-    const chosen = best!;
-    return {
-      move: chosen.move,
-      end: chosen.end,
-      isLock: chosen.lock,
-      isDoorForPartner: chosen.door,
-      partnerGaveDoor: this.partnerJustGaveDoor(),
-      isOpening: empty,
+
+  // ═════════════════════ السامي: أسطورة الدومينو ═════════════════════
+  /**
+   * السامي بيعمل كل اللي فوق، وبيزود عليه إنه بيحسب لقدّام لحد آخر الدور:
+   *  ١. بيتخيل توزيعات كتير لورق الباقيين، كلها متوافقة مع اللي شافه
+   *     (مين فوّت على إيه، مين فتح إيه، مين ضرب على إيه، وعدد كروت كل واحد).
+   *  ٢. لكل لعبة ممكنة، بيكمل الدور في دماغه لحد آخره في كل توزيع.
+   *  ٣. بيختار اللعبة اللي بتجيب لفريقه أحسن نتيجة في المتوسط
+   *     (سواء يقفّل هو، أو يضمن زميله، أو يكسب القفلة بالعدّة).
+   */
+  public decideLegend(moves: LegalMove[], timeBudgetMs = 60): SmartDecision {
+    const scored = this.scoreMoves(moves);
+    if (scored.length <= 1) return this.toDecision(scored[0]);
+
+    const start = Date.now();
+    const totals = new Array(scored.length).fill(0);
+    let samples = 0;
+    const maxSamples = 150;
+
+    while (samples < maxSamples && (samples < 24 || Date.now() - start < timeBudgetMs)) {
+      const world = this.sampleWorld();
+      if (!world) break;
+      for (let i = 0; i < scored.length; i++) {
+        totals[i] += this.playout(world, scored[i].move.tile, scored[i].end);
+      }
+      samples++;
+    }
+
+    if (samples === 0) {
+      let best = scored[0];
+      for (const c of scored) if (c.score > best.score) best = c;
+      return this.toDecision(best);
+    }
+
+    let bestIdx = 0;
+    let bestVal = -Infinity;
+    for (let i = 0; i < scored.length; i++) {
+      // الحساب لقدّام هو الأساس، والخبرة بتفرق بين اللعبات المتقاربة
+      const val = totals[i] / samples + 0.35 * scored[i].score;
+      if (val > bestVal) {
+        bestVal = val;
+        bestIdx = i;
+      }
+    }
+    return this.toDecision(scored[bestIdx]);
+  }
+
+  /** بيوزّع الكروت المخفية على الباقيين توزيعة ممكنة (حسب الاحتمالات اللي حسبها) */
+  private sampleWorld(): DominoTile[][] | null {
+    const others = [this.oppNext, this.partner, this.oppPrev];
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const respectVoids = attempt < 25;
+      const useWeights = attempt < 15;
+      const hands: DominoTile[][] = [[], [], [], []];
+      hands[this.me] = [...this.hand];
+      const cap = [0, 0, 0, 0];
+      for (const s of others) cap[s] = this.handSizes[s];
+
+      // الكروت الأصعب (اللي ليها أماكن أقل) الأول
+      const tiles = [...this.unseen].sort(() => Math.random() - 0.5);
+      tiles.sort((a, b) => this.allowedCount(a, respectVoids) - this.allowedCount(b, respectVoids));
+
+      let ok = true;
+      for (const t of tiles) {
+        const cands = others.filter(
+          (s) => cap[s] > 0 && (!respectVoids || (!this.memory[s].voids.has(t[0]) && !this.memory[s].voids.has(t[1])))
+        );
+        if (cands.length === 0) {
+          ok = false;
+          break;
+        }
+        let pick = cands[0];
+        if (cands.length > 1) {
+          const ws = cands.map((s) => (useWeights ? Math.max(0.02, this.p(s, t)) : 1) * cap[s]);
+          const sum = ws.reduce((a, b) => a + b, 0);
+          let r = Math.random() * sum;
+          for (let i = 0; i < cands.length; i++) {
+            r -= ws[i];
+            if (r <= 0) {
+              pick = cands[i];
+              break;
+            }
+          }
+        }
+        hands[pick].push(t);
+        cap[pick]--;
+      }
+      if (ok) return hands;
+    }
+    return null;
+  }
+
+  private allowedCount(t: DominoTile, respectVoids: boolean): number {
+    let n = 0;
+    for (const s of [this.oppNext, this.partner, this.oppPrev]) {
+      if (this.handSizes[s] === 0) continue;
+      if (respectVoids && (this.memory[s].voids.has(t[0]) || this.memory[s].voids.has(t[1]))) continue;
+      n++;
+    }
+    return n;
+  }
+
+  /**
+   * بيكمل الدور في دماغه لحد آخره، وكل اللاعبين بيلعبوا لعب كويس.
+   * النتيجة = النقط اللي فريقنا هياخدها (موجب) أو هيدّيها (سالب).
+   */
+  private playout(world: DominoTile[][], firstTile: DominoTile, firstEnd: ChainEnd): number {
+    const hands = world.map((h) => [...h]);
+    let L = this.left;
+    let R = this.right;
+    const myTeam = this.me % 2;
+
+    const place = (seat: number, t: DominoTile, end: ChainEnd) => {
+      const idx = hands[seat].findIndex((x) => key(x) === key(t));
+      if (idx >= 0) hands[seat].splice(idx, 1);
+      if (L === null || R === null) {
+        L = t[0];
+        R = t[1];
+      } else if (end === 'LEFT') {
+        L = t[0] === L ? t[1] : t[0];
+      } else {
+        R = t[0] === R ? t[1] : t[0];
+      }
     };
+
+    place(this.me, firstTile, firstEnd);
+    let seat = (this.me + 1) % 4;
+    let passes = 0;
+
+    const finish = (winnerTeam: number, points: number) => (winnerTeam === myTeam ? points : -points);
+    const teamPips = (team: number) =>
+      hands[team].reduce((a, t) => a + pips(t), 0) + hands[team + 2].reduce((a, t) => a + pips(t), 0);
+
+    if (hands[this.me].length === 0) return finish(myTeam, teamPips(1 - myTeam));
+
+    for (let step = 0; step < 120; step++) {
+      const h = hands[seat];
+      let bestT: DominoTile | null = null;
+      let bestE: ChainEnd = 'LEFT';
+      let bestS = -Infinity;
+      for (const t of h) {
+        const ends: ChainEnd[] = [];
+        if (has(t, L as Pip)) ends.push('LEFT');
+        if (has(t, R as Pip) && !(L === R && ends.length)) ends.push('RIGHT');
+        for (const e of ends) {
+          const nl = e === 'LEFT' ? (t[0] === L ? t[1] : t[0]) : (L as Pip);
+          const nr = e === 'RIGHT' ? (t[0] === R ? t[1] : t[0]) : (R as Pip);
+          const nextH = hands[(seat + 1) % 4];
+          const partH = hands[(seat + 2) % 4];
+          let sc = 0.3 * pips(t) + Math.random() * 1.2;
+          sc += 1.5 * h.filter((x) => x !== t && (has(x, nl) || has(x, nr))).length;
+          if (nextH.some((x) => has(x, nl) || has(x, nr))) sc -= 4;
+          if (partH.some((x) => has(x, nl) || has(x, nr))) sc += 3;
+          if (isDouble(t)) sc += 1.5;
+          if (sc > bestS) {
+            bestS = sc;
+            bestT = t;
+            bestE = e;
+          }
+        }
+      }
+
+      if (bestT) {
+        place(seat, bestT, bestE);
+        passes = 0;
+        if (hands[seat].length === 0) {
+          const team = seat % 2;
+          return finish(team, teamPips(1 - team));
+        }
+      } else {
+        passes++;
+        if (passes >= 4) {
+          // قفلة: الفريق اللي معاه أقل يكسب نقط التاني
+          const p0 = teamPips(0);
+          const p1 = teamPips(1);
+          if (p0 < p1) return finish(0, p1);
+          if (p1 < p0) return finish(1, p0);
+          return finish(0, 0);
+        }
+      }
+      seat = (seat + 1) % 4;
+    }
+    return 0;
   }
 
   /** زميله لعب والخصم اللي بعده فوّت ← الدور جالي على طول: ده باب منه */
@@ -419,5 +641,120 @@ export class SmartBotBrain {
       }
     }
     return { partnerMistake: false };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// عقل البوتات البسيطة: الرايق · التيتو · القط
+// مبيفكروش كتير: كل اللي يعرفوه ورقهم هم وأول رقم فتحه زميلهم.
+//  - بيعرف إمتى يمسك لعب ومبينقصش كروته
+//  - بيلعب علشان ميفوتش كتير
+//  - لو زميله فتح أول لعبة برقم (مثلًا شيش) بيلعبله الرقم ده لو يقدر
+//  - القفلة فاهمها نص فهم: بيبص على ورقه هو بس
+// ═══════════════════════════════════════════════════════════════════
+export interface SimpleDecision {
+  move: LegalMove;
+  end: ChainEnd;
+}
+
+export class SimpleBotBrain {
+  private readonly hand: DominoTile[];
+  private readonly left: Pip | null;
+  private readonly right: Pip | null;
+  private readonly partnerFirstOpen: Pip | null;
+  private readonly boardKeys = new Set<number>();
+
+  constructor(engine: DominoGameEngine, seat: PlayerSeat) {
+    this.hand = [...(engine.getRawHands()[seat] || [])];
+    const chain = engine.getChain();
+    this.left = chain.getLeftEnd();
+    this.right = chain.getRightEnd();
+
+    const partner = nextSeat(seat, 2);
+    const placements = [...chain.getTiles()].sort((a, b) => a.order - b.order);
+    let L: Pip | null = null;
+    let R: Pip | null = null;
+    let firstOpen: Pip | null = null;
+    for (const p of placements) {
+      this.boardKeys.add(key(p.tile));
+      let opened: Pip;
+      if (p.end === 'START' || L === null || R === null) {
+        L = p.tile[0];
+        R = p.tile[1];
+        opened = p.tile[0];
+      } else if (p.end === 'LEFT') {
+        L = p.tile[0];
+        opened = L;
+      } else {
+        R = p.tile[1];
+        opened = R;
+      }
+      if (firstOpen === null && p.playedBySeat === partner) firstOpen = opened;
+    }
+    this.partnerFirstOpen = firstOpen;
+  }
+
+  public decide(moves: LegalMove[]): SimpleDecision {
+    const empty = this.left === null || this.right === null;
+    const myPipsTotal = this.hand.reduce((a, t) => a + pips(t), 0);
+    let best: { s: number; move: LegalMove; end: ChainEnd } | null = null;
+
+    for (const move of moves) {
+      const tile = move.tile;
+      const after = this.hand.filter((t) => key(t) !== key(tile));
+      const ends: ChainEnd[] = move.validEnds.length ? move.validEnds : ['LEFT'];
+      for (const end of ends) {
+        let l: Pip;
+        let r: Pip;
+        let connected: Pip | null = null;
+        if (empty) {
+          l = tile[0];
+          r = tile[1];
+        } else {
+          connected = end === 'LEFT' ? (this.left as Pip) : (this.right as Pip);
+          const exposed = tile[0] === connected ? tile[1] : tile[0];
+          l = end === 'LEFT' ? exposed : (this.left as Pip);
+          r = end === 'RIGHT' ? exposed : (this.right as Pip);
+        }
+
+        // شوية عشوائية: مش بيفكر كتير
+        let s = Math.random() * 2.5 + 0.2 * pips(tile);
+
+        // ميفوتش كتير: يسيب الأرض على أرقام معاه منها
+        const follow = after.filter((t) => has(t, l) || has(t, r)).length;
+        s += 2.5 * Math.min(follow, 4);
+
+        // مبينقصش كروته
+        if (!isDouble(tile)) {
+          for (const n of [tile[0], tile[1]]) {
+            if (n === connected) continue;
+            if (countWith(this.hand, n) === 1) s -= 3;
+          }
+        }
+
+        // البفة لو لوحدها في رقمها يتقل بيها في الأول، ولو هتموت يرميها
+        if (isDouble(tile) && !empty) {
+          const leftOfSuit = ALL_TILES.filter((t) => has(t, tile[0]) && !this.boardKeys.has(key(t))).length;
+          if (leftOfSuit <= 2 || after.length <= 2) s += 4;
+        }
+
+        // زميله فتح أول لعبة برقم ← يلعبله نفس الرقم
+        if (this.partnerFirstOpen !== null && (l === this.partnerFirstOpen || r === this.partnerFirstOpen)) s += 4;
+
+        // القفلة: نص فهم، بيبص على ورقه هو بس
+        if (!empty && l === r) {
+          let onBoard = 0;
+          for (const t of ALL_TILES) if (has(t, l) && (this.boardKeys.has(key(t)) || key(t) === key(tile))) onBoard++;
+          if (onBoard === 7) {
+            const mine = myPipsTotal - pips(tile);
+            if (mine <= 10) s += 15;
+            else if (mine >= 20) s -= 15;
+          }
+        }
+
+        if (!best || s > best.s) best = { s, move, end };
+      }
+    }
+    return { move: best!.move, end: best!.end };
   }
 }

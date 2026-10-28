@@ -12,7 +12,7 @@ import {
   PlayerSeat,
 } from '@baffa/shared';
 import { DominoGameEngine } from '@baffa/engine';
-import { SmartBotBrain } from './smart-bot-brain';
+import { SimpleBotBrain, SmartBotBrain, SmartDecision } from './smart-bot-brain';
 
 export interface BotDecision {
   action: 'PLAY' | 'PASS';
@@ -515,8 +515,20 @@ const BOT_QUOTES: Partial<Record<BotChatTrigger, Partial<Record<BotId, string[]>
 // نفس نظام التفكير (SmartBotBrain) وكل واحد ليه كلامه.
 // الكلام على حسب الموقف بس، وهاديين: فين وفين لما يتكلموا.
 // ═══════════════════════════════════════════════════════════════════
-type SmartBotId = 'EL_HEMA' | 'EL_HOBA' | 'RAQAM_WAHED';
-const SMART_BOTS: ReadonlySet<BotId> = new Set<BotId>(['EL_HEMA', 'EL_HOBA', 'RAQAM_WAHED']);
+type SmartBotId = 'EL_HEMA' | 'EL_HOBA' | 'RAQAM_WAHED' | 'EL_SAMY' | 'EL_RAYEQ' | 'EL_TITO';
+type SpeakingBotId = 'EL_HEMA' | 'EL_HOBA' | 'RAQAM_WAHED' | 'EL_SAMY';
+const SMART_BOTS: ReadonlySet<BotId> = new Set<BotId>(['EL_HEMA', 'EL_HOBA', 'RAQAM_WAHED', 'EL_SAMY', 'EL_RAYEQ', 'EL_TITO']);
+/** بوتات بتلعب بالعقل البسيط بس بتتكلم بالكلام الجديد */
+const SIMPLE_THINKERS: ReadonlySet<BotId> = new Set<BotId>(['EL_RAYEQ', 'EL_TITO']);
+/** الرايق بيتكلم زي رقم واحد في العذبة، والتيتو زي الهيما */
+const SPEECH_AS: Record<SmartBotId, SpeakingBotId> = {
+  EL_HEMA: 'EL_HEMA',
+  EL_HOBA: 'EL_HOBA',
+  RAQAM_WAHED: 'RAQAM_WAHED',
+  EL_SAMY: 'EL_SAMY',
+  EL_RAYEQ: 'RAQAM_WAHED',
+  EL_TITO: 'EL_HEMA',
+};
 
 type SmartSituation =
   | 'MY_DOOR'          // لعب باب لزميله
@@ -526,68 +538,88 @@ type SmartSituation =
   | 'PARTNER_MISTAKE'  // زميله غلط
   | 'LOCK'             // قفل
   | 'WIN'              // كسب
-  | 'LOSS';            // خسر
+  | 'LOSS'             // خسر
+  | 'BAD_HAND';        // ورقه جه وحش (السامي بيشتكي من حظه)
 
-const SMART_QUOTES: Record<SmartSituation, Record<SmartBotId, string[]>> = {
+const SMART_QUOTES: Record<SmartSituation, Record<SpeakingBotId, string[]>> = {
   MY_DOOR: {
     EL_HEMA: ['مسا مني ليك', 'لكش يطمر فيك', 'خد عشان انت طفس'],
     EL_HOBA: ['المفروض دي ليك', 'خد يعم', 'خد يزميلي'],
     RAQAM_WAHED: ['خد يعم العب لوحدك', 'انا عايزك تبهدلهم'],
+    EL_SAMY: ['احلي مسا عليك يقدوة', 'خد دي من عمك السامي', 'خد رغم انك متستاهلش'],
   },
   PASS: {
     EL_HEMA: ['فوت يعم منا بلعب مع خدادية', 'معييش يعم'],
     EL_HOBA: ['يحرق دم دا ورق', 'فوت', 'فوت منا بلعب لوحدي'],
     RAQAM_WAHED: ['قاعد', 'فوت منا بلعب مع فردة', 'ابو ال يلعب معاك ياخي'],
+    EL_SAMY: ['فوت يعم', 'انا لو بلعب لوحدي مش هفوت كده', 'يجدعان حد يقوم الواد دا من قصادي'],
   },
   OPP_PASS: {
     EL_HEMA: ['لو مزعلك اقوم امشي'],
     EL_HOBA: ['هو انا كل ما العب تفوت', 'شوف ال ورايا بعمل فيه ايه'],
     RAQAM_WAHED: ['العبلك لعبة غيرها طيب', 'حد يشيله من هنا يبني'],
+    EL_SAMY: ['اقعد ياض', 'ظلمت نفسك انت بقعدتك ورايا', 'انا زميلي دا اسطورة'],
   },
   PARTNER_DOOR: {
     EL_HEMA: ['اسطورة يجدعان'],
     EL_HOBA: ['مش طبيعي الواد دا'],
     RAQAM_WAHED: ['انت منجد يبني', 'الراجل دا انتو ظلمينه'],
+    EL_SAMY: ['يبني متبقاش غشيم كده', 'حرام عليك يزميلي الناس دي تبعنا', 'مش طبيعي انا بلعب مع فحل'],
   },
   PARTNER_MISTAKE: {
     EL_HEMA: ['يعم ركز يعم'],
     EL_HOBA: ['يعم غور فداهية'],
     RAQAM_WAHED: ['والله انت مليك فيها'],
+    EL_SAMY: ['يعم غور فداهية', 'انت بتلعب ضدي يبني ولا ايه', 'تصدق بالله انت اغبي من الرايق'],
   },
   LOCK: {
     EL_HEMA: ['قفلة'],
     EL_HOBA: ['قفلة'],
     RAQAM_WAHED: ['قفلة'],
+    EL_SAMY: ['قفلة'],
   },
   WIN: {
     EL_HEMA: ['يلا سلموا علي بعض'],
     EL_HOBA: ['يلا يا فردة انت وهو'],
     RAQAM_WAHED: ['طب متلعبوا بل او اساتك'],
+    EL_SAMY: [
+      'انا الصراحه ولا حاجة من غير زميلي',
+      'لا ال بيلعب معايا دا اسطورة',
+      'انتو عايزين تكسبوا السامي ولا ايه يتعبانين انتو',
+    ],
   },
   LOSS: {
     EL_HEMA: ['الورق زفت يعم'],
     EL_HOBA: ['مش عارف منجسه كده ليه'],
     RAQAM_WAHED: ['انا مش فايق والله مكسل احسب اصلا'],
+    EL_SAMY: ['انت محتاج تشوفلك واحد ضروري والله', 'انت يدوب تروح مشوفش وشك ع الترابيزة تاني'],
+  },
+  BAD_HAND: {
+    EL_HEMA: [],
+    EL_HOBA: [],
+    RAQAM_WAHED: [],
+    EL_SAMY: ['هو جيم شمال من اوله', 'يلا املنا فيك يزميلي'],
   },
 };
 
 /** احتمال إن البوت يتكلم في الموقف (القفلة والكسب والخسارة دايمًا) */
 const SMART_PROBABILITIES: Record<SmartSituation, number> = {
-  MY_DOOR: 0.35,
-  PASS: 0.25,
-  OPP_PASS: 0.25,
-  PARTNER_DOOR: 0.4,
-  PARTNER_MISTAKE: 0.45,
+  MY_DOOR: 0.5,
+  PASS: 0.5,
+  OPP_PASS: 0.5,
+  PARTNER_DOOR: 0.5,
+  PARTNER_MISTAKE: 0.5,
   LOCK: 1,
   WIN: 1,
   LOSS: 1,
+  BAD_HAND: 0.5,
 };
 const SMART_MUST_SAY: ReadonlySet<SmartSituation> = new Set<SmartSituation>(['LOCK', 'WIN', 'LOSS']);
-/** بعد أي رسالة في الأوضة: البوت الذكي يستنى 20 ثانية قبل ما يتكلم (إلا القفلة/الكسب/الخسارة) */
-const SMART_ROOM_GAP_MS = 20000;
+/** بعد أي رسالة في الأوضة: البوت الذكي يستنى 5 ثواني قبل ما يتكلم (إلا القفلة/الكسب/الخسارة) */
+const SMART_ROOM_GAP_MS = 5000;
 /** حتى القفلة/الكسب/الخسارة: مفيش رسالتين ورا بعض في أقل من 4 ثواني (بوت واحد بس يتكلم) */
 const SMART_MUST_SAY_GAP_MS = 4000;
-const SMART_PER_BOT_GAP_MS = 20000;
+const SMART_PER_BOT_GAP_MS = 8000;
 
 const TRIGGER_TO_SMART: Partial<Record<BotChatTrigger, SmartSituation>> = {
   OPPONENT_PASS: 'OPP_PASS',
@@ -607,6 +639,7 @@ const SMART_TO_TRIGGER: Record<SmartSituation, BotChatTrigger> = {
   LOCK: 'GAME_LOCKED',
   WIN: 'ROUND_WIN',
   LOSS: 'ROUND_LOSS',
+  BAD_HAND: 'PASS',
 };
 
 // Probability gates to eliminate message spam ("أفورة الرسايل")
@@ -679,8 +712,23 @@ export class BotService {
     }
 
     const validBotId: BotId = (botId && OFFICIAL_BAFFA_BOTS[botId]) ? botId : 'EL_SAMY';
-    const chosenMove = this.selectMoveByPersonality(legalMoves, validBotId, engine, seat);
-    const preferredEnd = chosenMove.validEnds[0] || 'LEFT';
+    let chosenMove: LegalMove;
+    let preferredEnd: ChainEnd;
+    if (validBotId === 'EL_RAYEQ' || validBotId === 'EL_TITO' || validBotId === 'EL_QETT') {
+      // الرايق · التيتو · القط: عقل بسيط مشترك
+      try {
+        const d = new SimpleBotBrain(engine, seat).decide(legalMoves);
+        chosenMove = d.move;
+        preferredEnd = d.move.validEnds.includes(d.end) ? d.end : (d.move.validEnds[0] || 'LEFT');
+      } catch (err: any) {
+        this.logger.warn(`Simple bot brain failed: ${err?.message}`);
+        chosenMove = legalMoves[0];
+        preferredEnd = chosenMove.validEnds[0] || 'LEFT';
+      }
+    } else {
+      chosenMove = this.selectMoveByPersonality(legalMoves, validBotId, engine, seat);
+      preferredEnd = chosenMove.validEnds[0] || 'LEFT';
+    }
 
     // Contextual evaluation for special play triggers (Opening [6|6], Doubles, etc.)
     const isDouble = chosenMove.tile[0] === chosenMove.tile[1];
@@ -882,11 +930,21 @@ export class BotService {
       return { action: 'PLAY', tile: fb.tile, end: fb.validEnds[0] || 'LEFT' };
     }
 
-    const d = brain.decide(legalMoves);
+    // السامي: أسطورة الدومينو، بيحسب لقدّام لحد آخر الدور
+    let d: SmartDecision;
+    if (SIMPLE_THINKERS.has(botId)) {
+      // الرايق والتيتو: بيلعبوا بالعقل البسيط، والكلام على حسب اللي حصل
+      const simple = new SimpleBotBrain(engine, seat).decide(legalMoves);
+      d = brain.describe(simple.move, simple.end);
+    } else {
+      d = botId === 'EL_SAMY' ? brain.decideLegend(legalMoves) : brain.decide(legalMoves);
+    }
     let chatMessage: BotChatMessage | undefined;
     // أول الجيم: محدش بيتكلم
     if (!d.isOpening) {
       if (d.isLock) chatMessage = this.generateSmartReaction(engine, seat, botId, 'LOCK');
+      else if (botId === 'EL_SAMY' && brain.isFirstTurnOfRound() && brain.isBadHand())
+        chatMessage = this.generateSmartReaction(engine, seat, botId, 'BAD_HAND');
       else if (d.isDoorForPartner) chatMessage = this.generateSmartReaction(engine, seat, botId, 'MY_DOOR');
       else if (d.partnerGaveDoor) chatMessage = this.generateSmartReaction(engine, seat, botId, 'PARTNER_DOOR');
     }
@@ -954,7 +1012,7 @@ export class BotService {
       if (Math.random() > SMART_PROBABILITIES[situation]) return undefined;
     }
 
-    const pool = SMART_QUOTES[situation][botId];
+    const pool = SMART_QUOTES[situation][SPEECH_AS[botId]];
     if (!pool || pool.length === 0) return undefined;
 
     const lastUsed = this.lastQuotes.get(botKey);
