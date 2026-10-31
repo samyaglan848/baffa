@@ -972,7 +972,8 @@ export class BotService {
       const simple = new SimpleBotBrain(engine, seat).decide(legalMoves);
       d = brain.describe(simple.move, simple.end);
     } else {
-      d = botId === 'EL_SAMY' ? brain.decideLegend(legalMoves) : brain.decide(legalMoves);
+      // السامي بيحسب لآخر الدور بعمق كبير؛ الهيما والهوبا ورقم واحد بيحسبوا لقدّام برضه بس أقل منه
+      d = botId === 'EL_SAMY' ? brain.decideLegend(legalMoves) : brain.decideLegend(legalMoves, 20, 30);
     }
     let chatMessage: BotChatMessage | undefined;
     // أول الجيم: محدش بيتكلم

@@ -407,12 +407,15 @@ export class SmartBotBrain {
         const follow = after.filter((t) => has(t, l) || has(t, r)).length;
         score += (strong ? 3 : 1.5) * Math.min(follow, 4);
 
-        // ─ البفات: مش بيستعجل، بس مبيسيبهاش تموت في إيده
-        if (isDouble(tile)) {
+        // ─ البفات: البفة مبتنزلش غير على رقمها، فلو رقمها مفتوح يرميها قبل ما تموت في إيده
+        if (isDouble(tile) && !empty) {
           const d = tile[0];
-          const othersAlive = this.unseen.filter((t) => has(t, d)).length + countWith(after, d);
-          if (othersAlive <= 1 || after.length <= 2) score += 8;
-          else if (boardCount < 8 && !empty) score -= 3;
+          const outside = this.unseen.filter((t) => has(t, d)).length; // من رقمها لسه برة
+          const mine = countWith(after, d); // معاه من رقمها غيرها
+          score += 5;
+          if (mine >= 1) score += 3; // يرمي البفة ويكمل بنفس الرقم بعدها
+          if (outside <= 2) score += 6; // رقمها قرب يخلص
+          if (after.length <= 3) score += 4; // آخر الدور
         }
 
         // ─ بداية الجيم: يبدأ بالبفة لو معاه من رقمها، ولو هي لوحدها يستنى بيها
@@ -470,14 +473,14 @@ export class SmartBotBrain {
    *  ٣. بيختار اللعبة اللي بتجيب لفريقه أحسن نتيجة في المتوسط
    *     (سواء يقفّل هو، أو يضمن زميله، أو يكسب القفلة بالعدّة).
    */
-  public decideLegend(moves: LegalMove[], timeBudgetMs = 60): SmartDecision {
+  public decideLegend(moves: LegalMove[], timeBudgetMs = 60, maxSamplesCap = 150): SmartDecision {
     const scored = this.scoreMoves(moves);
     if (scored.length <= 1) return this.toDecision(scored[0]);
 
     const start = Date.now();
     const totals = new Array(scored.length).fill(0);
     let samples = 0;
-    const maxSamples = 150;
+    const maxSamples = maxSamplesCap;
 
     while (samples < maxSamples && (samples < 24 || Date.now() - start < timeBudgetMs)) {
       const world = this.sampleWorld();
@@ -632,7 +635,7 @@ export class SmartBotBrain {
           sc += 1.5 * h.filter((x) => x !== t && (has(x, nl) || has(x, nr))).length;
           if (nextH.some((x) => has(x, nl) || has(x, nr))) sc -= 4;
           if (partH.some((x) => has(x, nl) || has(x, nr))) sc += 3;
-          if (isDouble(t)) sc += 1.5;
+          if (isDouble(t)) sc += 3;
           if (sc > bestS) {
             bestS = sc;
             bestT = t;
@@ -782,10 +785,11 @@ export class SimpleBotBrain {
           }
         }
 
-        // البفة لو لوحدها في رقمها يتقل بيها في الأول، ولو هتموت يرميها
+        // البفة: لو رقمها مفتوح يرميها، وخصوصًا لو رقمها قرب يخلص أو الدور قرب يخلص
         if (isDouble(tile) && !empty) {
           const leftOfSuit = ALL_TILES.filter((t) => has(t, tile[0]) && !this.boardKeys.has(key(t))).length;
-          if (leftOfSuit <= 2 || after.length <= 2) s += 4;
+          s += 4;
+          if (leftOfSuit <= 3 || after.length <= 3) s += 4;
         }
 
         // زميله فتح أول لعبة برقم ← يلعبله نفس الرقم
